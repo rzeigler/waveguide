@@ -1,12 +1,14 @@
 {
-  "name": "waveguide-photon",
+  "name": "waveguide",
   "version": "0.0.1-alpha.1",
   "description": "An effect type for typescript/javascript",
   "main": "lib/index.js",
   "scripts": {
-    "prepare": "tsc",
     "clean": "rimraf lib/",
-    "test": "mocha --require ts-node/register src/**/*.spec.ts"
+    "build": "tsc",
+    "build-watch": "nodemon -w src/ -e ts -x tsc",
+    "test": "mocha lib/**/*.spec.js",
+    "test-watch": "mocha --watch --reporter min lib/**/*.spec.js"
   },
   "keywords": [
     "typescript",
@@ -19,12 +21,20 @@
   "peerDependencies": {},
   "devDependencies": {
     "@types/chai": "^4.1.7",
+    "@types/chai-as-promised": "^7.1.0",
     "@types/mocha": "^5.2.5",
+    "bind-decorator": "^1.0.11",
     "chai": "^4.2.0",
+    "chai-as-promised": "^7.1.1",
+    "esm": "^3.2.5",
+    "fast-check": "^1.10.1",
     "mocha": "^5.2.0",
+    "nodemon": "^1.18.10",
     "rimraf": "^2.6.3",
-    "ts-node": "^8.0.2",
     "tslint": "^5.12.1",
     "typescript": "^3.3.3"
+  },
+  "dependencies": {
+    "fp-ts": "^1.13.0"
   }
 }
