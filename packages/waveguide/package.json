@@ -8,7 +8,9 @@
     "build": "tsc",
     "build-watch": "nodemon -w src/ -e ts -x tsc",
     "test": "mocha lib/**/*.spec.js",
-    "test-watch": "mocha --watch --reporter min lib/**/*.spec.js"
+    "test-watch": "mocha --watch --reporter min lib/**/*.spec.js",
+    "lint": "tslint --project .",
+    "prepublishOnly": "npm run clean && npm run lint && npm run build && npm run test"
   },
   "keywords": [
     "typescript",
