@@ -1,5 +1,5 @@
 import { array } from "fp-ts/lib/Array";
-import { Async, Bracket, IO } from "./io";
+import { Async, IO } from "./io";
 import { Abort, Failure, Raise, Reason, Result, ResultListener, Success } from "./result";
 
 /**
@@ -32,11 +32,11 @@ class ChainFinalize implements ChainContinuation {
   public readonly variant: "ensure" = "ensure";
   constructor(public readonly ensure: IO<any, any>) { }
   public chain(a: any): IO<any, any> {
-    return this.ensure.map((_) => a);
+    return this.ensure.as(a);
   }
 }
 
-type FiberState = "suspended" | "running" | "finished";
+type FiberState = "suspended" | "running" | "finished" | "terminated";
 
 export class Fiber<E, A> {
   public readonly join: IO<E, A>;
@@ -53,6 +53,7 @@ export class FiberHandle<E, A> {
 
   private continuations: Continuation[] = [];
   private state: FiberState = "suspended";
+  private terminating: boolean = false;
 
   public listen(listener: ResultListener<E, A>) {
     if (this.result === null) {
@@ -128,6 +129,10 @@ export class FiberHandle<E, A> {
       // In this case, push the recover back onto continuations and return the finalizer (which will rethrow the error)
       this.continuations.push(recover);
       return finalizer;
+    } else if (finalizer) {
+      // We have a finalizer but no recovery step
+      // Run the finalizer to rethrow the error which will rethrow at the end
+      return finalizer;
     } else if (recover) {
       // We don't have a finalizer step so immediately invoke the recovery
       return recover.f(reason);
@@ -156,7 +161,8 @@ function fuseErrorEnsure(base: Reason<any>): (first: IO<any, any>, second: IO<an
       second.resurrect()
         .widenError<any>()
         .map((result) => result.isLeft() ? firstReason.and(result.value) : firstReason)
-    );
+    )
+    .chain((resultingReason) => IO.failureReason(resultingReason));
 }
 
 export function spawn<E, A>(io: IO<E, A>): FiberHandle<E, A> {
@@ -186,6 +192,8 @@ function run(io: IO<any, any>, fiber: FiberHandle<any, any>): void {
         current = fiber.handleOrFinish(new Raise(current.step.e));
       } else if (current.step.variant === "abort") {
         current = fiber.handleOrFinish(new Abort(current.step.abort));
+      } else if (current.step.variant === "reason") {
+        current = fiber.handleOrFinish(current.step.reason);
       } else if (current.step.variant === "suspend") {
         try {
           current = current.step.thunk();
@@ -207,12 +215,9 @@ function run(io: IO<any, any>, fiber: FiberHandle<any, any>): void {
         fiber.pushContinue(new ChainRecover(current.step.f));
         current = current.step.base;
       } else {
-        // Rewrite rewrite bracket in terms of Ensure and Continue using
-        // the fiber internals
-        const bracket: Bracket<any, any, any> = current.step;
-        current = bracket.resource.chain((r) =>
-        IO.defer(() => fiber.pushContinue(new ChainFinalize(bracket.release(r)))).widenError<any>()
-          .applyFirst(IO.defer(() => fiber.pushContinue(new ChainContinue(bracket.use))).widenError<any>()));
+        const ensuring = current.step;
+        fiber.pushContinue(new ChainFinalize(ensuring.ensure));
+        current = ensuring.base;
       }
     }
     if (fiber.running()) {

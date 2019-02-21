@@ -23,11 +23,21 @@ export class IO<E, A> {
     return new IO(new Fail(e));
   }
 
+  /**
+   * You probably don't need this.
+   * This allows the run fiber to rethrow reasons with additional information attached
+   * during finalizer execution.
+   * @param reason
+   */
+  public static failureReason<E, A>(reason: Reason<E>): IO<E, A> {
+    return new IO(new FailureReason(reason));
+  }
+
   public static abort<E, A>(e: any): IO<E, A> {
     return new IO(new Abort(e));
   }
 
-  public static defer<A>(thunk: () => A): IO<never, A> {
+  public static defer<E, A>(thunk: () => A): IO<E, A> {
     return new IO(new Suspend(() => IO.of(thunk())));
   }
 
@@ -182,8 +192,8 @@ export class IO<E, A> {
     }).widenError<E>().applySecond(this);
   }
 
-  public bracket<B>(release: (a: A) => IO<E, void>, use: (a: A) => IO<E, B>): IO<E, B> {
-    return new IO(new Bracket(this, use, release));
+  public bracket<B>(release: (a: A) => IO<E, void>, consume: (a: A) => IO<E, B>): IO<E, B> {
+    return this.chain((r) => consume(r).ensuring(release(r)));
   }
 
   /**
@@ -191,7 +201,7 @@ export class IO<E, A> {
    * @param fb
    */
   public ensuring<B>(fb: IO<E, B>): IO<E, A> {
-    return this.bracket((_) => fb.voided(), (a) => IO.of(a));
+    return new IO(new Ensuring(this, fb));
   }
 
   public run(onComplete: (result: Result<E, A>) => void): void {
@@ -218,15 +228,26 @@ export type Step<E, A> =
   Of<A> |
   Fail<E> |
   Abort |
+  FailureReason<E> |
   Suspend<E, A> |
   Async<E, A> |
   Chain<E, any, A> |
   ChainError<any, E, A> |
-  Bracket<E, any, A>;
+  Ensuring<E, any, A>;
 
 export class Of<A> {
   public readonly variant: "of" = "of";
   constructor(public readonly a: A) { }
+}
+
+/**
+ * Allow rethrowing reasons.
+ * Eases the complexity of the fiber run loop which
+ * needs to frequently rethrow reasons with additional info attached
+ */
+export class FailureReason<E> {
+  public readonly variant: "reason" = "reason";
+  constructor(public readonly reason: Reason<E>) { }
 }
 
 export class Fail<E> {
@@ -259,9 +280,7 @@ export class ChainError<E0, E, A> {
   constructor(public readonly base: IO<E0, A>, public readonly f: (e0: Reason<E0>) => IO<E, A>) { }
 }
 
-export class Bracket<E, R, A> {
-  public readonly variant: "bracket" = "bracket";
-  constructor(public readonly resource: IO<E, R>,
-              public readonly use: (r: R) => IO<E, A>,
-              public readonly release: (r: R) => IO<E, void>) { }
+export class Ensuring<E, B, A> {
+  public readonly variant: "ensuring" = "ensuring";
+  constructor(public readonly base: IO<E, A>, public readonly ensure: IO<E, B>) { }
 }
