@@ -30,9 +30,9 @@ class ChainRecover implements ChainContinuation {
 
 class ChainFinalize implements ChainContinuation {
   public readonly variant: "ensure" = "ensure";
-  constructor(public readonly ensure: IO<any, any>) { }
+  constructor(public readonly finalize: IO<any, any>) { }
   public chain(a: any): IO<any, any> {
-    return this.ensure.as(a);
+    return this.finalize.as(a);
   }
 }
 
@@ -122,7 +122,7 @@ export class FiberHandle<E, A> {
       recover = this.continuations.pop();
     }
 
-    const finalizer = ensuring.length === 0 ? null : ensuring.map((c) => c.ensure).reduce(fuseErrorEnsure(reason));
+    const finalizer = ensuring.length === 0 ? null : fuseManyFinalizers(reason, ensuring);
 
     if (recover && finalizer) {
       // We have a recovery step and a finalizer
@@ -152,17 +152,16 @@ export class FiberHandle<E, A> {
   }
 }
 
-function fuseErrorEnsure(base: Reason<any>): (first: IO<any, any>, second: IO<any, any>) => IO<any, any> {
-  return (first, second) => first
-    .resurrect()
-    .widenError<any>()
-    .map((result) => result.isLeft() ? base.and(result.value) : base)
-    .chain((firstReason) =>
-      second.resurrect()
+// Assumes that array is non-empty
+function fuseManyFinalizers(cause: Reason<any>, finalizers: ChainFinalize[]): IO<any, any> {
+  const ios = finalizers.map((f) => f.finalize);
+  const fused = array.reduce(ios, IO.of(cause), (left, right) =>
+    left.chain((reason) =>
+      right.resurrect()
         .widenError<any>()
-        .map((result) => result.isLeft() ? firstReason.and(result.value) : firstReason)
-    )
-    .chain((resultingReason) => IO.failureReason(resultingReason));
+        .map((result) => result.isLeft() ? reason.and(result.value) : reason))
+  );
+  return fused.chain((reason) => IO.failureReason(reason));
 }
 
 export function spawn<E, A>(io: IO<E, A>): FiberHandle<E, A> {
