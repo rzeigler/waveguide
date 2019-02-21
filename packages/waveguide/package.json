@@ -1,6 +1,6 @@
 {
   "name": "waveguide",
-  "version": "0.0.1-alpha.1",
+  "version": "0.0.1",
   "description": "An effect type for typescript/javascript",
   "main": "lib/index.js",
   "scripts": {
@@ -18,7 +18,6 @@
   ],
   "author": "Ryan Zeigler",
   "license": "MIT",
-  "peerDependencies": {},
   "devDependencies": {
     "@types/chai": "^4.1.7",
     "@types/chai-as-promised": "^7.1.0",
