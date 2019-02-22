@@ -1,4 +1,5 @@
 import { array } from "fp-ts/lib/Array";
+import { Either, left, right } from "fp-ts/lib/Either";
 import { Async, IO } from "./io";
 import { Abort, Failure, Raise, Reason, Result, ResultListener, Success } from "./result";
 
@@ -40,19 +41,26 @@ type FiberState = "suspended" | "running" | "finished" | "terminated";
 
 export class Fiber<E, A> {
   public readonly join: IO<E, A>;
-  constructor(private handle: FiberHandle<E, A>) {
+  constructor(private context: Context<E, A>) {
     this.join = IO.async((listener) => {
-      handle.listen(listener);
+      context.listen((result) => {
+        if (result.variant === "success") {
+          listener(right(result.value));
+        } else {
+          listener(left(result.reason));
+        }
+      });
     });
   }
 }
 
-export class FiberHandle<E, A> {
+export class Context<E, A> {
   private result: Result<E, A> | null = null;
   private listeners: Array<ResultListener<E, A>> = [];
 
   private continuations: Continuation[] = [];
   private state: FiberState = "suspended";
+  private criticals: number = 0;
   private terminating: boolean = false;
 
   public listen(listener: ResultListener<E, A>) {
@@ -98,6 +106,20 @@ export class FiberHandle<E, A> {
     this.listeners.forEach((l) => l(result));
   }
 
+  public enterCritical(): number {
+    this.criticals++;
+    return this.criticals;
+  }
+
+  public leaveCritical(): number {
+    this.criticals--;
+    return this.criticals;
+  }
+
+  public reentrantCriticals(): number {
+    return this.criticals;
+  }
+
   public pushContinue(cont: Continuation): void {
     this.continuations.push(cont);
   }
@@ -121,9 +143,7 @@ export class FiberHandle<E, A> {
       }
       recover = this.continuations.pop();
     }
-
-    const finalizer = ensuring.length === 0 ? null : fuseManyFinalizers(reason, ensuring);
-
+    const finalizer = ensuring.length === 0 ? null : fuseErrorFinalizer(reason, ensuring);
     if (recover && finalizer) {
       // We have a recovery step and a finalizer
       // In this case, push the recover back onto continuations and return the finalizer (which will rethrow the error)
@@ -143,56 +163,55 @@ export class FiberHandle<E, A> {
     }
   }
 
-  public continueOrFinish(e: Result<any, any>): IO<any, any> | null {
-    if (e.variant === "success") {
-      return this.chainOrFinish(e.value);
-    } else {
-      return this.handleOrFinish(e.reason);
-    }
+  public continueOrFinish(e: Either<Reason<any>, any>): IO<any, any> | null {
+    return e.fold((reason) => this.handleOrFinish(reason), (value) => this.chainOrFinish(value));
   }
 }
 
-// Assumes that array is non-empty
-function fuseManyFinalizers(cause: Reason<any>, finalizers: ChainFinalize[]): IO<any, any> {
+function fuseErrorFinalizer(cause: Reason<any>, finalizers: ChainFinalize[]): IO<any, any> {
   const ios = finalizers.map((f) => f.finalize);
-  const fused = array.reduce(ios, IO.of(cause), (left, right) =>
-    left.chain((reason) =>
-      right.resurrect()
+  const fused = array.reduce(ios, IO.of(cause), (seed, finalizer) =>
+    seed.chain((reason) =>
+      finalizer.resurrect()
         .widenError<any>()
         .map((result) => result.isLeft() ? reason.and(result.value) : reason))
   );
-  return fused.chain((reason) => IO.failureReason(reason));
+  // Now that we have made all the finalizers into one nested IO, we should rethrow the initialize error
+  return fused.chain((reason) => IO.raiseReason(reason));
 }
 
-export function spawn<E, A>(io: IO<E, A>): FiberHandle<E, A> {
-  const fiber = new FiberHandle<E, A>();
-  run(io, fiber);
-  return fiber;
+export function spawn<E, A>(io: IO<E, A>): Context<E, A> {
+  const context = new Context<E, A>();
+  run(io, context);
+  return context;
 }
 
-function run(io: IO<any, any>, fiber: FiberHandle<any, any>): void {
+function run(io: IO<any, any>, context: Context<any, any>): void {
   let current: IO<any, any> | null = io;
-  function resume(result?: Result<any, any>): void {
+  function resume(result?: Either<Reason<any>, any>): void {
+    if (!context.suspended()) {
+      throw new Error("Bug: Unable to resume; fiber is not suspended");
+    }
     if (current === null && !result) {
       throw new Error("Bug: Unable to resume; there is no way to continue");
     }
     if (current !== null && result) {
       throw new Error("Bug: Unable to resume; there are multiple ways to continue");
     }
-    fiber.resume();
+    context.resume();
     // Handle the resume case when current was set to null by async
     if (result) {
-      current = fiber.continueOrFinish(result);
+      current = context.continueOrFinish(result);
     }
     while (current !== null) {
       if (current.step.variant === "of") {
-        current = fiber.chainOrFinish(current.step.a);
+        current = context.chainOrFinish(current.step.a);
       } else if (current.step.variant === "fail") {
-        current = fiber.handleOrFinish(new Raise(current.step.e));
+        current = context.handleOrFinish(new Raise(current.step.e));
       } else if (current.step.variant === "abort") {
-        current = fiber.handleOrFinish(new Abort(current.step.abort));
+        current = context.handleOrFinish(new Abort(current.step.abort));
       } else if (current.step.variant === "reason") {
-        current = fiber.handleOrFinish(current.step.reason);
+        current = context.handleOrFinish(current.step.reason);
       } else if (current.step.variant === "suspend") {
         try {
           current = current.step.thunk();
@@ -204,22 +223,40 @@ function run(io: IO<any, any>, fiber: FiberHandle<any, any>): void {
         const step: Async<any, any> = current.step;
         // we need to break the loop so that we can re-resume in a different tick
         current = null;
-        fiber.suspend();
+        context.suspend();
         step.async(resume);
       } else if (current.step.variant === "chain") {
         // Peel a layer off
-        fiber.pushContinue(new ChainContinue(current.step.f));
+        context.pushContinue(new ChainContinue(current.step.f));
         current = current.step.base;
       } else if (current.step.variant === "chainerror") {
-        fiber.pushContinue(new ChainRecover(current.step.f));
+        context.pushContinue(new ChainRecover(current.step.f));
         current = current.step.base;
+      } else if (current.step.variant === "critical") {
+        // Critical section
+        // We immediately enter critical and push a finalizer that clears the critical
+        const critical = current.step;
+        context.enterCritical();
+        context.pushContinue(new ChainFinalize(IO.sync(() => {
+          context.leaveCritical();
+        })));
+        current = critical.base;
       } else {
-        const ensuring = current.step;
-        fiber.pushContinue(new ChainFinalize(ensuring.ensure));
-        current = ensuring.base;
+        const bracket = current.step;
+        context.enterCritical();
+        current = bracket.resource
+          .chain((r) => IO.sync(() => {
+            // Once we are here, the resource is done, so we have left a critical section
+            context.leaveCritical();
+            // setup the continuation stack correctly for the bracket
+            context.pushContinue(new ChainFinalize(bracket.release(r)));
+            context.pushContinue(new ChainContinue(bracket.use));
+            // return the resource so we can continue the process
+            return r;
+          }));
       }
     }
-    if (fiber.running()) {
+    if (context.running()) {
       throw new Error("Bug: Exiting run loop without suspending or committing");
     }
   }

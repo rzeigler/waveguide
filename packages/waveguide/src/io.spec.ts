@@ -29,7 +29,7 @@ describe("IO", () => {
   });
 
   it("should complete failures values", () => {
-    return eqv(IO.fail(42), rejector(new Raise(42)));
+    return eqv(IO.failure(42), rejector(new Raise(42)));
   });
 
   it("should complete abort values", () => {
@@ -41,7 +41,7 @@ describe("IO", () => {
   });
 
   it("should complete async values", () => {
-    return eqv(IO.asyncDefer<number>((cont) => {
+    return eqv(IO.later<number>((cont) => {
       setTimeout(() => {
         cont(42);
       }, 10);
@@ -50,7 +50,7 @@ describe("IO", () => {
 
   it("should complete async chain values", () => {
     // Use map because everything is internally implemented in terms of chain
-    return eqv(IO.asyncDefer<number>((cont) => {
+    return eqv(IO.later<number>((cont) => {
       setTimeout(() => {
         cont(41);
       }, 10);
@@ -58,11 +58,11 @@ describe("IO", () => {
   });
 
   it("should complete sync chain values", () => {
-    return eqv(IO.defer(() => 41).map((a) => a + 1), () => Promise.resolve(42));
+    return eqv(IO.sync(() => 41).map((a) => a + 1), () => Promise.resolve(42));
   });
 
   it("should bypass chain on error", () => {
-    return eqv(IO.fail("explode!").map((a: number) => a + 1), rejector(new Raise("explode!")));
+    return eqv(IO.failure("explode!").map((a: number) => a + 1), rejector(new Raise("explode!")));
   });
 
   it("should bypass chainError on success", () => {
@@ -72,7 +72,7 @@ describe("IO", () => {
   // TODO: needs property tests also
   it("spawn/join should be equivalent to normal", () => {
     return eqv(
-      IO.defer(() => 41)
+      IO.sync(() => 41)
       .map((a) => a + 1)
       .spawn()
       .widenError<{}>()
@@ -81,20 +81,20 @@ describe("IO", () => {
 
   it("should allow recovery through chainError", () => {
     return eqv(
-      IO.defer<string, number>(() => 42)
+      IO.sync<string, number>(() => 42)
         .chain((a) => IO.raise("" + 42))
         .chainError((e) => IO.of<string, number>(parseInt(e, 10))), () => Promise.resolve(42));
   });
 
   it("should run all finalizers on success", () => {
     let n = 0;
-    const acq = IO.defer(() => {
+    const acq = IO.sync(() => {
       n += 1;
     }).delay(10);
-    const get = IO.defer(() => {
+    const get = IO.sync(() => {
       return n;
     });
-    const rel = IO.defer(() => {
+    const rel = IO.sync(() => {
       n -= 1;
     }).delay(10);
 
@@ -108,10 +108,10 @@ describe("IO", () => {
 
   it("should run all finalizers on error", () => {
     let n = 0;
-    const acq = IO.defer<string, void>(() => {
+    const acq = IO.sync<string, void>(() => {
       n += 1;
     }).delay(10);
-    const rel = IO.defer<string, void>(() => {
+    const rel = IO.sync<string, void>(() => {
       n -= 1;
     }).delay(10);
 
@@ -125,10 +125,10 @@ describe("IO", () => {
 
   it("should run all finalizers on buggy finalizer", () => {
     let n = 0;
-    const acq = IO.defer<string, void>(() => {
+    const acq = IO.sync<string, void>(() => {
       n += 1;
     }).delay(10);
-    const rel = IO.defer<string, void>(() => {
+    const rel = IO.sync<string, void>(() => {
       n -= 1;
     }).delay(10);
 
@@ -142,10 +142,10 @@ describe("IO", () => {
 
   it("should run all finalizers on buggy finalizer during failure", () => {
     let n = 0;
-    const acq = IO.defer<string, void>(() => {
+    const acq = IO.sync<string, void>(() => {
       n += 1;
     }).delay(10);
-    const rel = IO.defer<string, void>(() => {
+    const rel = IO.sync<string, void>(() => {
       n -= 1;
     }).delay(10);
 

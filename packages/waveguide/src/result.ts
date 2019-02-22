@@ -7,17 +7,11 @@ import { none, Option, some } from "fp-ts/lib/Option";
 export type Result<E, A> = Success<A> | Failure<E>;
 
 export class Success<A> {
-  public static of<A>(a: A): Success<A> {
-    return new Success(a);
-  }
   public readonly variant: "success" = "success";
   constructor(public readonly value: A) { }
 }
 
 export class Failure<E> {
-  public static ofRaise<E>(e: E) {
-    return new Failure(new Raise(e));
-  }
   public readonly variant: "failure" = "failure";
   constructor(public readonly reason: Reason<E>) { }
 }
