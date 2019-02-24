@@ -4,7 +4,7 @@
 
 import { none, Option, some } from "fp-ts/lib/Option";
 
-export type Result<E, A> = Success<A> | Failure<E>;
+export type Result<E, A> = Success<A> | Failure<E> | Terminated;
 
 export class Success<A> {
   public readonly variant: "success" = "success";
@@ -14,6 +14,10 @@ export class Success<A> {
 export class Failure<E> {
   public readonly variant: "failure" = "failure";
   constructor(public readonly reason: Reason<E>) { }
+}
+
+export class Terminated {
+  public readonly variant: "terminated" = "terminated";
 }
 
 export type Reason<E> = Raise<E> | Abort;

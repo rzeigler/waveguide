@@ -1,7 +1,7 @@
 import { array } from "fp-ts/lib/Array";
 import { Either, left, right } from "fp-ts/lib/Either";
 import { Async, IO } from "./io";
-import { Abort, Failure, Raise, Reason, Result, ResultListener, Success } from "./result";
+import { Abort, Failure, Raise, Reason, Result, ResultListener, Success, Terminated } from "./result";
 
 /**
  * Interface encapsulating a chain like operation.
@@ -30,29 +30,43 @@ class ChainRecover implements ChainContinuation {
 }
 
 class ChainFinalize implements ChainContinuation {
-  public readonly variant: "ensure" = "ensure";
+  public readonly variant: "finalize" = "finalize";
   constructor(public readonly finalize: IO<any, any>) { }
   public chain(a: any): IO<any, any> {
     return this.finalize.as(a);
   }
 }
 
-type FiberState = "suspended" | "running" | "finished" | "terminated";
-
 export class Fiber<E, A> {
   public readonly join: IO<E, A>;
-  constructor(private context: Context<E, A>) {
-    this.join = IO.async((listener) => {
-      context.listen((result) => {
+  public readonly cancel: IO<never, void>;
+
+  constructor(context: Context<E, A>) {
+    this.join = IO.async<E, A>((listener) => {
+      function go(result: Result<E, A>) {
         if (result.variant === "success") {
           listener(right(result.value));
-        } else {
+        } else if (result.variant === "failure") {
           listener(left(result.reason));
         }
-      });
+        // Joining on a terminated fiber is a hang
+      }
+      context.listen(go);
+      return () => {
+        context.unlisten(go);
+      };
+    });
+    this.cancel = IO.sync(() => {
+      context.kill();
     });
   }
 }
+
+function noop(): void {
+  return;
+}
+
+type FiberState = "suspended" | "running" | "done";
 
 export class Context<E, A> {
   private result: Result<E, A> | null = null;
@@ -60,8 +74,51 @@ export class Context<E, A> {
 
   private continuations: Continuation[] = [];
   private state: FiberState = "suspended";
+
   private criticals: number = 0;
   private terminating: boolean = false;
+  private halt: () => void = noop;
+
+  constructor(public readonly go: () => void) { }
+
+  /* Perform the suspend of an async */
+  public doSuspend(async: Async<any, any>, resume: (result: Either<Reason<any>, any>) => void): void {
+    let done = false;
+    const connect = (result: Either<Reason<any>, any>): void => {
+      if (!done) {
+        // defend against things being invoked mulitple times;
+        done = true;
+        resume(result);
+      }
+      this.halt = noop;
+    };
+    const impl = async.async(connect);
+    this.halt = () => {
+      if (!done) {
+        done = true;
+        impl();
+        // If this is invoked, then we were allowed to do early termination
+        // Because we weren't in a critical section
+        // This means we should attempt to complete the fiber
+        this.finalizeFiber();
+      }
+      this.halt = noop;
+    };
+  }
+
+  public shouldTerminate(): boolean {
+    return this.terminating;
+  }
+
+  public requestTerminate(): void {
+    this.terminating = true;
+    console.log(this.criticals);
+    // Don't invoke the halt and finish with terminated unless we are outside of criticals
+    if (this.criticals <= 0) {
+      console.log("criticals, ", 0);
+      this.halt();
+    }
+  }
 
   public listen(listener: ResultListener<E, A>) {
     if (this.result === null) {
@@ -71,37 +128,45 @@ export class Context<E, A> {
     }
   }
 
-  public finished(): boolean {
-    return this.state === "finished";
+  public unlisten(listener: ResultListener<E, A>) {
+    this.listeners = this.listeners.filter((l) => l !== listener);
   }
 
-  public suspended(): boolean {
+  public isDone(): boolean {
+    return this.state === "done";
+  }
+
+  public isSuspended(): boolean {
     return this.state === "suspended";
   }
 
-  public running(): boolean {
+  public isRunning(): boolean {
     return this.state === "running";
   }
 
+  public getState(): FiberState {
+    return this.state;
+  }
+
   public resume(): void {
-    if (!this.suspended()) {
+    if (!this.isSuspended()) {
       throw new Error("Bug: Resume precondition failed; the fiber must be suspended");
     }
     this.state = "running";
   }
 
   public suspend(): void {
-    if (!this.running()) {
+    if (!this.isRunning()) {
       throw new Error("Bug: Suspend precondition failed; the fiber must be running");
     }
     this.state = "suspended";
   }
 
   public finish(result: Result<E, A>) {
-    if (!this.running()) {
-      throw new Error("Bug: Commit precondition failed; the fiber must be running");
+    if (this.isDone()) {
+      throw new Error("Bug: Commit precondition failed; the fiber must not be done");
     }
-    this.state = "finished";
+    this.state = "done";
     this.result = result;
     this.listeners.forEach((l) => l(result));
   }
@@ -134,16 +199,16 @@ export class Context<E, A> {
   }
 
   public handleOrFinish(reason: Reason<any>): IO<any, any> | null {
-    const ensuring: ChainFinalize[] = [];
+    const finalizers: ChainFinalize[] = [];
     // Find an error handler, collecting any ensures that we find along the way
     let recover = this.continuations.pop();
     while (recover && recover.variant !== "recover") {
-      if (recover.variant === "ensure") {
-        ensuring.push(recover);
+      if (recover.variant === "finalize") {
+        finalizers.push(recover);
       }
       recover = this.continuations.pop();
     }
-    const finalizer = ensuring.length === 0 ? null : fuseErrorFinalizer(reason, ensuring);
+    const finalizer = finalizers.length === 0 ? null : fuseErrorFinalizer(reason, finalizers);
     if (recover && finalizer) {
       // We have a recovery step and a finalizer
       // In this case, push the recover back onto continuations and return the finalizer (which will rethrow the error)
@@ -163,9 +228,40 @@ export class Context<E, A> {
     }
   }
 
+  public terminationFinalizer(): IO<any, any> | null {
+    const finalizers: ChainFinalize[] = (this.continuations
+      .filter((c) => c.variant === "finalize") as ChainFinalize[]);
+    if (finalizers.length === 0) {
+      return null;
+    }
+    return finalizers.map((flz) => flz.finalize)
+      .reduce((l, r) => l.applySecond(r));
+  }
+
+  public finalizeFiber(): void {
+    const final = this.terminationFinalizer();
+    if (!final) {
+      this.finish(new Terminated());
+    } else {
+      this.suspend();
+      run(final, this, "terminate");
+    }
+  }
+
+  public kill() {
+    if (this.state === "running") {
+      throw new Error("Bug: Terminate called on fiber that is running");
+    } else if (this.state === "suspended" && !this.terminating) {
+      console.log("requesting terminate");
+      this.requestTerminate();
+    }
+    // Else we are done because finished, terminated, or terminating
+  }
+
   public continueOrFinish(e: Either<Reason<any>, any>): IO<any, any> | null {
     return e.fold((reason) => this.handleOrFinish(reason), (value) => this.chainOrFinish(value));
   }
+
 }
 
 function fuseErrorFinalizer(cause: Reason<any>, finalizers: ChainFinalize[]): IO<any, any> {
@@ -180,17 +276,54 @@ function fuseErrorFinalizer(cause: Reason<any>, finalizers: ChainFinalize[]): IO
   return fused.chain((reason) => IO.raiseReason(reason));
 }
 
-export function spawn<E, A>(io: IO<E, A>): Context<E, A> {
-  const context = new Context<E, A>();
-  run(io, context);
+export function bootstrap<E, A>(io: IO<E, A>): Context<E, A> {
+  const context = new Context<E, A>(() => {
+    run(io, context, "run");
+  });
   return context;
 }
 
-function run(io: IO<any, any>, context: Context<any, any>): void {
+type RunMode = "run" | "terminate";
+
+/**
+ * Handling termination
+ * What does it mean to terminate a running fiber?
+ *
+ * Assume that it is not possible for a fiber to terminate itself (the mechanism for this is raise)
+ * Therefore, we may assume a fiber being terminated is always in the suspended state
+ *
+ * From here there are 3 options.
+ *
+ * We are either in a critical section, we aren't, we are terminating/terminated.
+ *
+ * If terminating/terminated, do nothing
+ *
+ * If we are not in a critical section, we need to invoke the cancellation handler, mark terminating and then
+ *  begin unwinding finalizers.
+ * The cancellation action should wrap the async cancellation handler but also latch the resume connection to ensure
+ * buggy cancellation doesn't cause action invocation after cancelling.
+ *
+ * If we are in a critical section, we need to mark terminating so that ever execution of the runloop can check
+ * current terminating state and if not in a critical section, can then begin unwindind for termination
+ */
+
+function shouldContinue(context: Context<any, any>, mode: RunMode): boolean {
+  return (context.isRunning() && mode === "run" && (!context.shouldTerminate() || context.reentrantCriticals() > 0)) ||
+    (context.isRunning() && mode === "terminate");
+}
+
+function run(io: IO<any, any>, context: Context<any, any>, mode: RunMode): void {
+  const enterCritical = IO.sync(() => {
+    context.enterCritical();
+  });
+  const leaveCritical = IO.sync(() => {
+    context.leaveCritical();
+  });
+
   let current: IO<any, any> | null = io;
   function resume(result?: Either<Reason<any>, any>): void {
-    if (!context.suspended()) {
-      throw new Error("Bug: Unable to resume; fiber is not suspended");
+    if (!context.isSuspended()) {
+      throw new Error(`Bug: Unable to resume; fiber is not suspended, it is ${context.getState()}`);
     }
     if (current === null && !result) {
       throw new Error("Bug: Unable to resume; there is no way to continue");
@@ -203,60 +336,77 @@ function run(io: IO<any, any>, context: Context<any, any>): void {
     if (result) {
       current = context.continueOrFinish(result);
     }
-    while (current !== null) {
-      if (current.step.variant === "of") {
-        current = context.chainOrFinish(current.step.a);
-      } else if (current.step.variant === "fail") {
-        current = context.handleOrFinish(new Raise(current.step.e));
-      } else if (current.step.variant === "abort") {
-        current = context.handleOrFinish(new Abort(current.step.abort));
-      } else if (current.step.variant === "reason") {
-        current = context.handleOrFinish(current.step.reason);
-      } else if (current.step.variant === "suspend") {
-        try {
-          current = current.step.thunk();
-        } catch (e) {
-          // 'userland' threw lets trigger an abort because this is a bug
-          current = IO.abort(e);
-        }
-      } else if (current.step.variant === "async") {
-        const step: Async<any, any> = current.step;
-        // we need to break the loop so that we can re-resume in a different tick
-        current = null;
-        context.suspend();
-        step.async(resume);
-      } else if (current.step.variant === "chain") {
-        // Peel a layer off
-        context.pushContinue(new ChainContinue(current.step.f));
-        current = current.step.base;
-      } else if (current.step.variant === "chainerror") {
-        context.pushContinue(new ChainRecover(current.step.f));
-        current = current.step.base;
-      } else if (current.step.variant === "critical") {
-        // Critical section
-        // We immediately enter critical and push a finalizer that clears the critical
-        const critical = current.step;
-        context.enterCritical();
-        context.pushContinue(new ChainFinalize(IO.sync(() => {
-          context.leaveCritical();
-        })));
-        current = critical.base;
+    let async: Async<any, any> | null = null;
+    // context.running() should be true whenever current !== null
+    // As soon as we hit mode terminate we want to abort as soon as there are no critical sections
+    while (shouldContinue(context, mode)) {
+      if (current === null) {
+        throw new Error("Bug: Context is running but there is no current IO");
       } else {
-        const bracket = current.step;
-        context.enterCritical();
-        current = bracket.resource
-          .chain((r) => IO.sync(() => {
-            // Once we are here, the resource is done, so we have left a critical section
-            context.leaveCritical();
-            // setup the continuation stack correctly for the bracket
-            context.pushContinue(new ChainFinalize(bracket.release(r)));
-            context.pushContinue(new ChainContinue(bracket.use));
-            // return the resource so we can continue the process
-            return r;
-          }));
+        if (current.step.variant === "of") {
+          current = context.chainOrFinish(current.step.a);
+        } else if (current.step.variant === "fail") {
+          current = context.handleOrFinish(new Raise(current.step.e));
+        } else if (current.step.variant === "abort") {
+          current = context.handleOrFinish(new Abort(current.step.abort));
+        } else if (current.step.variant === "reason") {
+          current = context.handleOrFinish(current.step.reason);
+        } else if (current.step.variant === "suspend") {
+          try {
+            current = current.step.thunk();
+          } catch (e) {
+            // 'userland' threw lets trigger an abort because this is a bug
+            current = IO.abort(e);
+          }
+        } else if (current.step.variant === "async") {
+          async = current.step;
+          // we need to break the loop so that we can re-resume in a different tick
+          current = null;
+          context.suspend();
+        } else if (current.step.variant === "chain") {
+          // Peel a layer off
+          context.pushContinue(new ChainContinue(current.step.f));
+          current = current.step.base;
+        } else if (current.step.variant === "chainerror") {
+          context.pushContinue(new ChainRecover(current.step.f));
+          current = current.step.base;
+        } else if (current.step.variant === "critical") {
+          current = enterCritical.applySecond(current.step.base).ensure(leaveCritical);
+        } else if (current.step.variant === "ensure") {
+          context.pushContinue(new ChainFinalize(current.step.ensure));
+          current = current.step.io;
+        } else {
+          const bracket = current.step;
+          current = enterCritical.applySecond(bracket.resource
+            .resurrect()
+            .widenError<any>()
+            .chain((either) =>
+              either.fold(
+                // If resource acquire failed, just leave critical section and re-raise
+                (reason) => leaveCritical.applySecond(IO.raiseReason(reason)),
+                (resource) => IO.sync(() => {
+                   // Don't leave the critical section until this block which ensures finalizer is set up
+                   context.leaveCritical();
+                    // Do all the actions here in one sync, because if we attempt to use enterCritical,
+                  // we will end up consuming some of the finalizers we push here
+                   context.pushContinue(new ChainFinalize(bracket.release(resource)));
+                   context.pushContinue(new ChainContinue(bracket.use));
+                   return resource;
+                })
+              )
+            ));
+        }
       }
     }
-    if (context.running()) {
+    // We broke out of the above loop because we are attempting to terminate
+    if (context.shouldTerminate() && context.reentrantCriticals() <= 0 && mode === "run") {
+      context.finalizeFiber();
+    } else if (context.isSuspended()) {
+      if (!async) {
+        throw new Error("Bug: Suspended without an async to evaluate");
+      }
+      context.doSuspend(async, resume);
+    } else if (context.isRunning()) {
       throw new Error("Bug: Exiting run loop without suspending or committing");
     }
   }
