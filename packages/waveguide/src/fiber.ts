@@ -1,11 +1,11 @@
 import { left, right } from "fp-ts/lib/Either";
-import { async, sync, IO } from "./io";
+import { async, IO, sync } from "./io";
 import { Result } from "./result";
 import { Runtime } from "./runtime";
 
 export class Fiber<E, A> {
   public readonly join: IO<E, A>;
-  public readonly kill: IO<never, void>;
+  public readonly interrupt: IO<never, void>;
   constructor(public readonly runtime: Runtime<E, A>) {
     this.join = async((callback) => {
       function listener(result: Result<E, A>) {
@@ -23,8 +23,8 @@ export class Fiber<E, A> {
     });
 
     // Implementation of kill signals the kill then awaits a result to confirm
-    this.kill = sync<never, void>(() => {
-      this.runtime.halt();
+    this.interrupt = sync<never, void>(() => {
+      this.runtime.interrupt();
     }).applySecond(async<never, void>((callback) => {
       function listener(_: Result<E, A>) {
         callback(right(undefined));

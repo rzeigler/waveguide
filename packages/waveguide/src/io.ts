@@ -13,6 +13,10 @@ export class IO<E, A> {
     return this.chain((a) => new IO(new Of(f(a))));
   }
 
+  public map2<B, C>(fb: IO<E, B>, f: (a: A, b: B) => C): IO<E, C> {
+    return this.chain((a) => fb.map((b) => f(a, b)));
+  }
+
   public ap<B>(fab: IO<E, (a: A) => B>): IO<E, B> {
     return this.chain((a) => fab.map((f) => f(a)));
   }
@@ -22,13 +26,16 @@ export class IO<E, A> {
   }
 
   public applyFirst<B>(fb: IO<E, B>): IO<E, A> {
-    const io = syntax<E>().of((a: A) => (_: B) => a);
-    return io.ap_(this).ap_(fb);
+    return this.map2(fb, (a, _) => a);
+
   }
 
   public applySecond<B>(fb: IO<E, B>): IO<E, B> {
-    const io = syntax<E>().of((_: A) => (b: B) => b);
-    return io.ap_(this).ap_(fb);
+    return this.map2(fb, (_, b) => b);
+  }
+
+  public product<B>(fb: IO<E, B>): IO<E, [A, B]> {
+    return this.map2(fb, (a, b) => [a, b] as [A, B]);
   }
 
   public chain<B>(f: (a: A) => IO<E, B>): IO<E, B> {
@@ -98,6 +105,15 @@ export class IO<E, A> {
       runtime.start(this);
       return new Fiber(runtime);
     });
+  }
+
+  public launch(callback?: (result: Result<E, A>) => void): void {
+    const runtime = new Runtime<E, A>();
+    if (callback) {
+      runtime.result.listen(callback);
+    }
+    runtime.start(this);
+    return;
   }
 
   public promised(): Promise<A> {
@@ -182,10 +198,18 @@ export function empty<E>(): IO<E, void> {
   return sync<E, void>(() => { return; });
 }
 
-export function shift<E>(scheduler: Scheduler = defaultScheduler): IO<E, void> {
-  return syntax<E>().of({}).empty().shift(scheduler);
+export function delay(millis: number, scheduler: Scheduler = defaultScheduler): IO<never, void> {
+  return new IO(new Async((callback) => {
+    function go() {
+      callback(right(undefined));
+    }
+    const id = scheduler.after(millis, go);
+    return () => {
+      scheduler.cancel(id);
+    };
+  }));
 }
 
-export function after(millis: number, scheduler: Scheduler = defaultScheduler): IO<never, void> {
-  return of({}).empty().delay(millis, scheduler);
+export function shift(scheduler: Scheduler = defaultScheduler): IO<never, void> {
+  return delay(0, scheduler);
 }

@@ -1,7 +1,8 @@
 import { expect } from "chai";
 import { Either, left, right } from "fp-ts/lib/Either";
 import { Cause, Raise } from "../cause";
-import { failed, IO, of, sync } from "../io";
+import ConsoleIO from "../console";
+import { failed, IO, of, shift, sync } from "../io";
 import { unsafeRef } from "../ref";
 
 async function equiv<E, A>(io: IO<E, A>, result: Either<Cause<E>, A>): Promise<void> {
@@ -44,13 +45,11 @@ describe("Runtime", () => {
       const fiber = base.fork().chain((f) => f.join);
       return equivIO(base, fiber);
     });
-    it.only("should provide for termination", () => {
+    it("should provide for termination", () => {
       const ref = unsafeRef(42);
-      const handle = ref.set(-42).delay(100).applySecond(sync(() => {
-        // tslint:disable-next-line
-        console.log("wasn't killed?");
-      })).fork();
-      const io = handle.chain((fiber) => fiber.kill).applySecond(ref.get.delay(110));
+      const handle = shift().applySecond(ref.set(-42).delay(50));
+      const io = handle.fork()
+        .chain((fiber) => fiber.interrupt.delay(10).applySecond(ref.get.delay(60)));
       return equiv(io, right(42));
     });
   });

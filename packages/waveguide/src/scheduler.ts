@@ -5,7 +5,9 @@ export interface Scheduler {
 
 class SetTimeoutScheduler implements Scheduler {
   public after(millis: number, action: () => void): number {
-    return setTimeout(action, millis);
+    return setTimeout(() => {
+      action();
+    }, millis);
   }
   public cancel(handle: number): void {
     clearTimeout(handle);

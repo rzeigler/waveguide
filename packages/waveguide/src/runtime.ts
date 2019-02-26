@@ -2,9 +2,9 @@ import { boundMethod } from "autobind-decorator";
 import { array } from "fp-ts/lib/Array";
 import { Either } from "fp-ts/lib/Either";
 import { Abort, Cause, Raise } from "./cause";
-import { Fuse } from "./fuse";
+import { ForwardProxy } from "./forwardproxy";
 import { caused, IO, of, sync, syntax } from "./io";
-import { Async, Caused } from "./iostep";
+import { Caused } from "./iostep";
 import { OneShot } from "./oneshot";
 import { Completed, Failed, Killed, Result } from "./result";
 
@@ -45,7 +45,31 @@ export class ErrorFrame implements Call {
  * ((Either => void) => (() => void))
  * which is responsible for doing the linking
  */
-type AsyncHop = (cont: (callback: (result: Either<Cause<unknown>, unknown>) => void) => (() => void)) => void;
+type AsyncHop = (continuation: (callback: (result: Either<Cause<unknown>, unknown>) => void) => (() => void)) => void;
+
+class AsyncFrame {
+  private proxy: ForwardProxy;
+  private interrupted: boolean;
+  private continuation: (callback: (result: Either<Cause<unknown>, unknown>) => void) => () => void;
+  constructor(continuation: (callback: (result: Either<Cause<unknown>, unknown>) => void) => () => void) {
+    this.proxy = new ForwardProxy();
+    this.interrupted = false;
+    this.continuation = continuation;
+  }
+  public go(callback: (result: Either<Cause<unknown>, unknown>) => void): void {
+    const adapted = (result: Either<Cause<unknown>, unknown>) => {
+      if (!this.interrupted) {
+        this.interrupted = true;
+        callback(result);
+      }
+    };
+    this.proxy.fill(this.continuation(adapted));
+  }
+  public interrupt(): void {
+    this.interrupted = true;
+    this.proxy.invoke();
+  }
+}
 
 export class FinalizeFrame implements Call {
   public readonly _tag: "finalize" = "finalize";
@@ -64,7 +88,7 @@ export class Runtime<E, A> {
 
   private started: boolean = false;
 
-  private fuse: Fuse<Either<Cause<unknown>, unknown>> | null = null;
+  private asyncFrame: AsyncFrame | undefined;
   private readonly callFrames: Frame[] = [];
 
   private halting: boolean = false;
@@ -74,78 +98,77 @@ export class Runtime<E, A> {
       throw new Error("Bug: Runtime may not be started more than once");
     }
     this.started = true;
-    this.loop(io as IO<unknown, unknown>, this.asyncHop);
+    this.loop(io as IO<unknown, unknown>, this.contextSwitch);
   }
 
-  public halt(): void {
-    console.log(this.result.isSet(), this.halting);
+  public interrupt(): void {
     if (!this.result.isSet() && !this.halting) {
       this.halting = true;
       /**
        * Assume that the only reason we aren't in the runloop and thus able to kill halt is
        * because we hit an async boundary. The side effect of an async boundary sets up a fuse
        */
-      console.log("fuse.block");
-      this.fuse!.block();
+      this.asyncFrame!.interrupt();
       this.result.set(new Killed());
     }
   }
 
   @boundMethod
   private loop(io: IO<unknown, unknown>, hop: AsyncHop): void {
-    let boundary: Async<unknown, unknown> | undefined;
     let current: IO<unknown, unknown> | undefined = io;
     while (current) {
-      if (current.step._tag === "of") {
-        current = this.popFrame(current.step.value);
-      } else if (current.step._tag === "failed") {
-        current = this.unwindError(new Raise(current.step.error));
-      } else if (current.step._tag === "raised") {
-        current = this.unwindError(current.step.raise);
-      } else if (current.step._tag === "suspend") {
-        try {
-          current = current.step.thunk();
-        } catch (e) {
-          current = new IO(new Caused(new Abort(e)));
-        }
-      } else if (current.step._tag === "async") {
-        boundary = current.step;
-        current = undefined;
-      } else if (current.step._tag === "chain") {
-        this.callFrames.push(new ChainFrame(current.step.chain));
-        current = current.step.left;
-      } else if (current.step._tag === "chainerror") {
-        this.callFrames.push(new ErrorFrame(current.step.chain));
-        current = current.step.left;
-      } else if (current.step._tag === "finally") {
-        this.callFrames.push(new FinalizeFrame(current.step.always));
-        current = current.step.first;
-      } else if (current.step._tag === "bracket") {
-        const bracket = current.step;
-        current = current.step.resource.chain((resource) => sync(() => {
-          // Push these things onto the call stack to ensure that we can correctly consume them on subsequent runs
-          this.callFrames.push(new FinalizeFrame(bracket.release(resource)));
-          this.callFrames.push(new ChainFrame(bracket.consume));
-          return resource;
-        }));
-      } else {
-        throw new Error(`Bug: Unrecognized step tag: ${current.step}`);
-      }
+      current = this.step(current, hop);
     }
-    if (boundary) {
-      hop(boundary.start);
+  }
+
+  private step(current: IO<unknown, unknown>, hop: AsyncHop): IO<unknown, unknown> | undefined {
+    if (current.step._tag === "of") {
+      return this.popFrame(current.step.value);
+    } else if (current.step._tag === "failed") {
+      return this.unwindError(new Raise(current.step.error));
+    } else if (current.step._tag === "raised") {
+      return this.unwindError(current.step.raise);
+    } else if (current.step._tag === "suspend") {
+      try {
+        return current.step.thunk();
+      } catch (e) {
+        return new IO(new Caused(new Abort(e)));
+      }
+    } else if (current.step._tag === "async") {
+      hop(current.step.start);
+      return;
+    } else if (current.step._tag === "chain") {
+      this.callFrames.push(new ChainFrame(current.step.chain));
+      return current.step.left;
+    } else if (current.step._tag === "chainerror") {
+      this.callFrames.push(new ErrorFrame(current.step.chain));
+      return current.step.left;
+    } else if (current.step._tag === "finally") {
+      this.callFrames.push(new FinalizeFrame(current.step.always));
+      return current.step.first;
+    } else if (current.step._tag === "bracket") {
+      const bracket = current.step;
+      return current.step.resource.chain((resource) => sync(() => {
+        // Push these things onto the call stack to ensure that we can correctly consume them on subsequent runs
+        this.callFrames.push(new FinalizeFrame(bracket.release(resource)));
+        this.callFrames.push(new ChainFrame(bracket.consume));
+        return resource;
+      }));
+    } else {
+      throw new Error(`Bug: Unrecognized step tag: ${current.step}`);
     }
   }
 
   @boundMethod
-  private asyncHop(continuation: (callback: (result: Either<Cause<unknown>, unknown>) => void) => (() => void)): void {
-    this.fuse = new Fuse(continuation);
-    this.fuse.adapted((result) => {
-      const next = result.fold((cause) => this.unwindError(cause), (value) => this.popFrame(value));
-      if (next) {
-        this.loop(next, this.asyncHop);
-      }
-    });
+  private contextSwitch(
+      continuation: (callback: (result: Either<Cause<unknown>, unknown>) => void) => (() => void)): void {
+      this.asyncFrame = new AsyncFrame(continuation);
+      this.asyncFrame.go((result) => {
+        const next = result.fold((cause) => this.unwindError(cause), (value) => this.popFrame(value));
+        if (next) {
+          this.loop(next, this.contextSwitch);
+        }
+      });
   }
 
   @boundMethod
