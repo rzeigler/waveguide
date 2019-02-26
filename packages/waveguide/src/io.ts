@@ -1,7 +1,7 @@
 import { Either, left, right } from "fp-ts/lib/Either";
 import { Cause, Raise } from "./cause";
 import { Fiber } from "./fiber";
-import { Async, Bracket, Caused, Chain, ChainError, Critical, Failed, Finally, IOStep, Of, Sync as Suspend } from "./iostep";
+import { Async, Bracket, Caused, Chain, ChainError, Critical, Failed, Finally, IOStep, Of, Suspend } from "./iostep";
 import { Result } from "./result";
 import { Runtime } from "./runtime";
 import defaultScheduler, { Scheduler } from "./scheduler";

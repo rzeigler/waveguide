@@ -7,7 +7,7 @@ export type IOStep<E, A> =
   Of<A>
   | Failed<E>
   | Caused<E>
-  | Sync<E, A>
+  | Suspend<E, A>
   | Async<E, A>
   | Critical<E, A>
   | Chain<E, any, A>
@@ -30,7 +30,7 @@ export class Caused<E> {
   constructor(public readonly raise: Cause<E>) { }
 }
 
-export class Sync<E, A> {
+export class Suspend<E, A> {
   public readonly _tag: "suspend" = "suspend";
   constructor(public readonly thunk: () => IO<E, A>) { }
 }
