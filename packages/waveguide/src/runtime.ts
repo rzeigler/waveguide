@@ -1,12 +1,12 @@
 import { boundMethod } from "autobind-decorator";
 import { array } from "fp-ts/lib/Array";
-import { Either } from "fp-ts/lib/Either";
+import { Either, left, right } from "fp-ts/lib/Either";
 import { Abort, Cause, Raise } from "./cause";
 import { ForwardProxy } from "./forwardproxy";
-import { caused, IO, of, sync, syntax } from "./io";
+import { caused, IO, of, suspend, sync, syntax } from "./io";
 import { Caused } from "./iostep";
 import { OneShot } from "./oneshot";
-import { Completed, Failed, Killed, Result } from "./result";
+import { Completed, Failed, Interrupted, interrupted, Result } from "./result";
 
 export type Frame = ChainFrame | ErrorFrame | FinalizeFrame;
 
@@ -59,6 +59,7 @@ class AsyncFrame {
   public go(callback: (result: Either<Cause<unknown>, unknown>) => void): void {
     const adapted = (result: Either<Cause<unknown>, unknown>) => {
       if (!this.interrupted) {
+        // Set interrupted after first call through to defend against buggy async
         this.interrupted = true;
         callback(result);
       }
@@ -90,44 +91,95 @@ export class Runtime<E, A> {
 
   private asyncFrame: AsyncFrame | undefined;
   private readonly callFrames: Frame[] = [];
+  private criticalSections: number = 0;
 
-  private halting: boolean = false;
+  private interrupted: boolean = false;
+
+  private enterCritical: IO<unknown, unknown> = sync(() => {
+    this.criticalSections++;
+  });
+
+  private leaveCritical: IO<unknown, unknown> = sync(() => {
+    this.criticalSections--;
+  });
 
   public start(io: IO<E, A>): void {
     if (this.started) {
       throw new Error("Bug: Runtime may not be started more than once");
     }
     this.started = true;
-    this.loop(io as IO<unknown, unknown>, this.contextSwitch);
+    this.loopResume(io as IO<unknown, unknown>);
   }
 
   public interrupt(): void {
-    if (!this.result.isSet() && !this.halting) {
-      this.halting = true;
-      /**
-       * Assume that the only reason we aren't in the runloop and thus able to kill halt is
-       * because we hit an async boundary. The side effect of an async boundary sets up a fuse
-       */
-      this.asyncFrame!.interrupt();
-      this.result.set(new Killed());
+    if (!this.result.isSet() && !this.interrupted) {
+      this.interrupted = true;
+      if (this.criticalSections === 0) {
+        this.asyncFrame!.interrupt();
+        this.interruptFinalize();
+      }
     }
   }
 
   @boundMethod
-  private loop(io: IO<unknown, unknown>, hop: AsyncHop): void {
+  private loopResume(next: IO<unknown, unknown>): void {
+    this.loop(next, this.loopResume);
+  }
+
+  @boundMethod
+  private interruptLoopResume(next: IO<unknown, unknown>): void {
+    this.interruptLoop(next, this.interruptLoopResume);
+  }
+
+  @boundMethod
+  private loop(io: IO<unknown, unknown>, resume: (next: IO<unknown, unknown>) => void): void {
     let current: IO<unknown, unknown> | undefined = io;
-    while (current) {
-      current = this.step(current, hop);
+    while (current && (!this.interrupted || this.criticalSections > 0)) {
+      current = this.step(current, resume, this.complete);
+    }
+    // We were interrupted, so switch to the interrupt loop
+    if (current) {
+      this.interruptFinalize();
     }
   }
 
-  private step(current: IO<unknown, unknown>, hop: AsyncHop): IO<unknown, unknown> | undefined {
+  @boundMethod
+  private interruptFinalize(): void {
+    const finalize = this.unwindInterrupt();
+    if (finalize) {
+      this.interruptLoopResume(finalize);
+    } else {
+      this.result.set(interrupted);
+    }
+  }
+
+  @boundMethod
+  private interruptLoop(io: IO<unknown, unknown>, resume: (next: IO<unknown, unknown>) => void): void {
+    let current: IO<unknown, unknown> | undefined = io;
+    while (current) {
+      current = this.step(current, resume, this.interruptComplete);
+    }
+  }
+
+  @boundMethod
+  private complete(result: Either<Cause<unknown>, unknown>): void {
+    this.result.set(result.fold<Result<unknown, unknown>>(Failed.create, Completed.create) as Result<E, A>);
+  }
+
+  @boundMethod
+  private interruptComplete(_: Either<Cause<unknown>, unknown>): void {
+    this.result.set(interrupted);
+  }
+
+  private step(current: IO<unknown, unknown>,
+               resume: (next: IO<unknown, unknown>) => void,
+               complete: (result: Either<Cause<unknown>, unknown>) => void): IO<unknown, unknown> | undefined {
     if (current.step._tag === "of") {
-      return this.popFrame(current.step.value);
+      return this.popFrame(current.step.value, complete);
     } else if (current.step._tag === "failed") {
-      return this.unwindError(new Raise(current.step.error));
+      return this.unwindError(new Raise(current.step.error), complete);
     } else if (current.step._tag === "raised") {
-      return this.unwindError(current.step.raise);
+      return this.unwindError(current.step.raise, complete);
     } else if (current.step._tag === "suspend") {
       try {
         return current.step.thunk();
@@ -135,8 +187,11 @@ export class Runtime<E, A> {
         return new IO(new Caused(new Abort(e)));
       }
     } else if (current.step._tag === "async") {
-      hop(current.step.start);
+      this.contextSwitch(current.step.start, resume, complete);
       return;
+    } else if (current.step._tag === "critical") {
+      this.criticalSections++;
+      return current.step.io.ensuring(this.leaveCritical);
     } else if (current.step._tag === "chain") {
       this.callFrames.push(new ChainFrame(current.step.chain));
       return current.step.left;
@@ -148,48 +203,60 @@ export class Runtime<E, A> {
       return current.step.first;
     } else if (current.step._tag === "bracket") {
       const bracket = current.step;
-      return current.step.resource.chain((resource) => sync(() => {
-        // Push these things onto the call stack to ensure that we can correctly consume them on subsequent runs
-        this.callFrames.push(new FinalizeFrame(bracket.release(resource)));
-        this.callFrames.push(new ChainFrame(bracket.consume));
-        return resource;
-      }));
+      return this.enterCritical.applySecond(current.step.resource)
+        .resurrect()
+        .widenError<unknown>()
+        .chain((result) => suspend(() => {
+          // We always leave critical sections
+          this.criticalSections--;
+          if (result.isLeft()) {
+            return caused(result.value) as IO<unknown, unknown>;
+          }
+          // Push these things onto the call stack to ensure that we can correctly consume them on subsequent runs
+          this.callFrames.push(new FinalizeFrame(bracket.release(result.value)));
+          this.callFrames.push(new ChainFrame(bracket.consume));
+          return of(result.value) as unknown as IO<unknown, unknown>;
+        }));
     } else {
-      throw new Error(`Bug: Unrecognized step tag: ${current.step}`);
+      throw new Error(`Bug: Unrecognized step tag: ${(current.step as any)._tag}`);
     }
   }
 
   @boundMethod
   private contextSwitch(
-      continuation: (callback: (result: Either<Cause<unknown>, unknown>) => void) => (() => void)): void {
-      this.asyncFrame = new AsyncFrame(continuation);
-      this.asyncFrame.go((result) => {
-        const next = result.fold((cause) => this.unwindError(cause), (value) => this.popFrame(value));
-        if (next) {
-          this.loop(next, this.contextSwitch);
-        }
-      });
+    continuation: (callback: (result: Either<Cause<unknown>, unknown>) => void) => (() => void),
+    resume: (next: IO<unknown, unknown>) => void,
+    complete: (result: Either<Cause<unknown>, unknown>) => void): void {
+    this.asyncFrame = new AsyncFrame(continuation);
+    this.asyncFrame.go((result) => {
+      const next = result.fold((cause) => this.unwindError(cause, complete), (value) => this.popFrame(value, complete));
+      if (next) {
+        resume(next);
+      }
+    });
   }
 
   @boundMethod
-  private popFrame(result: unknown): IO<unknown, unknown> | undefined {
+  private popFrame(result: unknown,
+                   complete: (result: Either<Cause<unknown>, unknown>) => void): IO<unknown, unknown> | undefined {
     const frame = this.callFrames.pop();
     if (frame) {
       return frame.apply(result);
     }
-    this.result.set(new Completed(result as A));
+    complete(right(result));
     return;
   }
 
   @boundMethod
-  private unwindError(cause: Cause<unknown>): IO<unknown, unknown> | undefined {
+  private unwindError(cause: Cause<unknown>,
+                      complete: (result: Either<Cause<unknown>, unknown>) => void): IO<unknown, unknown> | undefined {
     const finalizers: FinalizeFrame[] = [];
     let frame: ErrorFrame | undefined;
-    while (frame === null && this.callFrames.length > 0) {
-      const candidate = this.callFrames.pop();
-      if (candidate && candidate._tag === "error") {
+    while (!frame && this.callFrames.length > 0) {
+      const candidate = this.callFrames.pop()!;
+      if (candidate._tag === "error") {
         frame = candidate;
-      } else if (candidate && candidate._tag === "finalize") {
+      } else if (candidate._tag === "finalize") {
         finalizers.push(candidate);
       }
     }
@@ -206,12 +273,12 @@ export class Runtime<E, A> {
       return frame.f(cause);
     }
     // We are done, so time to explode with a failure
-    this.result.set(new Failed(cause as Cause<E>));
+    complete(left(cause));
     return;
   }
 
   @boundMethod
-  private unwindHalt(): IO<never, void> | undefined {
+  private unwindInterrupt(): IO<unknown, unknown> | undefined {
     const finalizers: FinalizeFrame[] = [];
     while (this.callFrames.length > 0) {
       const candidate = this.callFrames.pop();
@@ -221,12 +288,13 @@ export class Runtime<E, A> {
     }
     if (finalizers.length > 0) {
       const ios = finalizers.map((final) => final.io);
-      return array.reduce(ios, of<{}>({}), (left, right) => left.applySecond(right.resurrect()).as({}))
-        .empty();
+      const combined: IO<never, void> =
+        array.reduce(ios, of(undefined), (first, second) => first.applySecond(second.resurrect()).as(undefined));
+      return combined as unknown as IO<unknown, unknown>;
     }
     return;
   }
-}
+  }
 
 /**
  * Create a single composite uninterruptible finalizer
@@ -238,9 +306,9 @@ function createCompositeFinalizer(cause: Cause<unknown>,
                                   finalizers: FinalizeFrame[]): IO<unknown, unknown> {
   const finalizerIOs = finalizers.map((final) => final.io);
   return array.reduce(finalizerIOs, of(cause), (before, after) =>
-      of(compositeCause).ap_(before).ap_(after.resurrect()))
-    .widenError<unknown>()
-    .chain(caused);
+  of(compositeCause).ap_(before).ap_(after.resurrect()))
+  .widenError<unknown>()
+  .chain(caused);
 }
 
 const compositeCause = (base: Cause<unknown>) => (more: Either<Cause<unknown>, unknown>): Cause<unknown> =>

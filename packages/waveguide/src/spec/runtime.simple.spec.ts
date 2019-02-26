@@ -1,7 +1,6 @@
 import { left, right } from "fp-ts/lib/Either";
 import { Raise } from "../cause";
-import { failed, of, sync } from "../io";
-import { unsafeRef } from "../ref";
+import { errorSyntax, failed, of, sync, syntax } from "../io";
 import { equiv } from "./lib.spec";
 
 describe("Runtime", () => {
@@ -23,6 +22,10 @@ describe("Runtime", () => {
     });
     it("should eval failed", () => {
       return equiv(failed("boom!"), left(new Raise("boom!")));
+    });
+    it("should eval recovering from errors", () => {
+      const io = errorSyntax<number>().failed("42").chainError((n) => syntax<string>().of(parseInt(n, 10)));
+      return equiv(io, right(42));
     });
   });
 });

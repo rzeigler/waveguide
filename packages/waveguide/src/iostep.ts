@@ -9,6 +9,7 @@ export type IOStep<E, A> =
   | Caused<E>
   | Sync<E, A>
   | Async<E, A>
+  | Critical<E, A>
   | Chain<E, any, A>
   | ChainError<E, any, A>
   | Finally<E, any, A>
@@ -37,6 +38,11 @@ export class Sync<E, A> {
 export class Async<E, A> {
   public readonly _tag: "async" = "async";
   constructor(public readonly start: (resume: (result: Either<Cause<E>, A>) => void) => (() => void)) { }
+}
+
+export class Critical<E, A> {
+  public readonly _tag: "critical" = "critical";
+  constructor(public readonly io: IO<E, A>) { }
 }
 
 export class ChainError<E, LeftError, A> {
