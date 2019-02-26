@@ -111,13 +111,15 @@ export class IO<E, A> {
     });
   }
 
-  public launch(callback?: (result: Result<E, A>) => void): void {
+  public launch(callback?: (result: Result<E, A>) => void): () => void {
     const runtime = new Runtime<E, A>();
     if (callback) {
       runtime.result.listen(callback);
     }
     runtime.start(this);
-    return;
+    return () => {
+      runtime.interrupt();
+    };
   }
 
   public promised(): Promise<A> {
