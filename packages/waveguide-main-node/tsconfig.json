@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "es2015",
     "module": "commonjs",
-    "lib": ["dom", "es2015"],
+    "lib": ["es2015"],
     "declaration": true,
     "outDir": "./lib",
     "strict": true,
@@ -13,13 +13,13 @@
     "strictPropertyInitialization": true,
     "noImplicitThis": true,
     "alwaysStrict": true,
-    "types": ["mocha"],
     "esModuleInterop": true,
     "experimentalDecorators": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "types": ["node"]
   },
   "exclude": [
-    "lib/**/*",
+    "lib",
     "node_modules"
   ]
 }

@@ -2,6 +2,10 @@
   "name": "root",
   "private": true,
   "devDependencies": {
-    "lerna": "^3.11.1"
+    "lerna": "^3.13.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rzeigler/waveguide.git"
   }
 }

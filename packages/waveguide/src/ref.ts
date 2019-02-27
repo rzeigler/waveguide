@@ -1,31 +1,25 @@
-import { IO, sync } from "./io";
+import { IO } from "./io";
 
-export interface Ref<A> {
-  get: IO<never, A>;
-  set(a: A): IO<never, void>;
-  modify(f: (a: A) => A): IO<never, A>;
-}
+export class Ref<A> {
+  public static alloc<A>(a: A): IO<never, Ref<A>> {
+    return IO.eval(() => Ref.unsafeAlloc<A>(a));
+  }
 
-class RefImpl<A> implements Ref<A> {
-  public get: IO<never, A> = sync(() => this.a);
+  public static unsafeAlloc<A>(a: A): Ref<A> {
+    return new Ref(a);
+  }
+
+  public get: IO<never, A> = IO.eval(() => this.a);
   constructor(private a: A) { }
   public set(a: A): IO<never, void> {
-    return sync(() => {
+    return IO.eval(() => {
       this.a = a;
     });
   }
   public modify(f: (a: A) => A): IO<never, A> {
-    return sync(() => {
+    return IO.eval(() => {
       this.a = f(this.a);
       return this.a;
     });
   }
-}
-
-export function unsafeRef<A>(a: A): Ref<A> {
-  return new RefImpl(a);
-}
-
-export function ref<A>(a: A): IO<never, Ref<A>> {
-  return sync(() => unsafeRef(a));
 }

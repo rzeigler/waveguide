@@ -13,13 +13,12 @@
     "strictPropertyInitialization": true,
     "noImplicitThis": true,
     "alwaysStrict": true,
-    "types": ["mocha"],
     "esModuleInterop": true,
     "experimentalDecorators": true,
     "sourceMap": true
   },
   "exclude": [
-    "lib/**/*",
+    "lib",
     "node_modules"
   ]
 }

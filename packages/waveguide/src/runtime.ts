@@ -1,12 +1,8 @@
 import { boundMethod } from "autobind-decorator";
-import { array } from "fp-ts/lib/Array";
-import { Either, left, right } from "fp-ts/lib/Either";
-import { Abort, Cause, Raise } from "./cause";
 import { ForwardProxy } from "./forwardproxy";
-import { caused, IO, of, suspend, sync, syntax } from "./io";
-import { Caused } from "./iostep";
+import { IO } from "./io";
 import { OneShot } from "./oneshot";
-import { Completed, Failed, Interrupted, interrupted, Result } from "./result";
+import { Abort, Cause, Completed, FiberResult, interrupted, Raise, Result, Value } from "./result";
 
 export type Frame = ChainFrame | ErrorFrame | FinalizeFrame;
 
@@ -36,28 +32,21 @@ export class ErrorFrame implements Call {
    * Normal processing of error frames means pass the value through directly
    */
   public apply(a: unknown): IO<unknown, unknown> {
-    return syntax<unknown>().of(a);
+    return IO.of(a) as unknown as IO<unknown, unknown>;
   }
 }
-
-/* I find this type deeply confusing, apologies. Basically, we are encoding an async boundary link.
- * In order to cross an async boundary we need a function (cont) that is able to receive an async callback
- * ((Either => void) => (() => void))
- * which is responsible for doing the linking
- */
-type AsyncHop = (continuation: (callback: (result: Either<Cause<unknown>, unknown>) => void) => (() => void)) => void;
 
 class AsyncFrame {
   private proxy: ForwardProxy;
   private interrupted: boolean;
-  private continuation: (callback: (result: Either<Cause<unknown>, unknown>) => void) => () => void;
-  constructor(continuation: (callback: (result: Either<Cause<unknown>, unknown>) => void) => () => void) {
+  private continuation: (callback: (result: Result<unknown, unknown>) => void) => () => void;
+  constructor(continuation: (callback: (result: Result<unknown, unknown>) => void) => () => void) {
     this.proxy = new ForwardProxy();
     this.interrupted = false;
     this.continuation = continuation;
   }
-  public go(callback: (result: Either<Cause<unknown>, unknown>) => void): void {
-    const adapted = (result: Either<Cause<unknown>, unknown>) => {
+  public go(callback: (result: Result<unknown, unknown>) => void): void {
+    const adapted = (result: Result<unknown, unknown>) => {
       if (!this.interrupted) {
         // Set interrupted after first call through to defend against buggy async
         this.interrupted = true;
@@ -85,23 +74,22 @@ export class FinalizeFrame implements Call {
 }
 
 export class Runtime<E, A> {
-  public readonly result: OneShot<Result<E, A>> = new OneShot();
+  public readonly result: OneShot<FiberResult<E, A>> = new OneShot();
 
   private started: boolean = false;
-
   private asyncFrame: AsyncFrame | undefined;
   private readonly callFrames: Frame[] = [];
   private criticalSections: number = 0;
-
   private interrupted: boolean = false;
+  private suspended: boolean = true;
 
-  private enterCritical: IO<unknown, unknown> = sync(() => {
+  private enterCritical: IO<unknown, unknown> = IO.eval(() => {
     this.criticalSections++;
-  });
+  }).widenError<unknown>();
 
-  private leaveCritical: IO<unknown, unknown> = sync(() => {
+  private leaveCritical: IO<unknown, unknown> = IO.eval(() => {
     this.criticalSections--;
-  });
+  }).widenError<unknown>();
 
   public start(io: IO<E, A>): void {
     if (this.started) {
@@ -116,7 +104,20 @@ export class Runtime<E, A> {
       this.interrupted = true;
       if (this.criticalSections === 0) {
         this.asyncFrame!.interrupt();
-        this.interruptFinalize();
+        /**
+         * It is possible for interrupts to be delivered synchronously
+         * As an example, consider the of setting a Deferred.
+         * The setting fiber will 'pause' in its run loop to advance the run loop of any listeners without technically
+         * being suspended
+         * If any of those listeners interrupt the setting fiber, we need to ensure we only finalize once.
+         * As such, the contract of suspended is that it is only set to true during callback boundaries
+         * and it is set to false before any additional work is done
+         * We assume if we aren't suspended, then the run loop will detect the interrupt on its next step
+         * and run the finalizer there
+         */
+        if (this.suspended) {
+          this.interruptFinalize();
+        }
       }
     }
   }
@@ -137,7 +138,9 @@ export class Runtime<E, A> {
     while (current && (!this.interrupted || this.criticalSections > 0)) {
       current = this.step(current, resume, this.complete);
     }
-    // We were interrupted, so switch to the interrupt loop
+    /**
+     * We were interrupted so determine if we need to switch to the finalize loop
+     */
     if (current) {
       this.interruptFinalize();
     }
@@ -162,18 +165,26 @@ export class Runtime<E, A> {
   }
 
   @boundMethod
-  private complete(result: Either<Cause<unknown>, unknown>): void {
-    this.result.set(result.fold<Result<unknown, unknown>>(Failed.create, Completed.create) as Result<E, A>);
+  private complete(result: Result<unknown, unknown>): void {
+    /**
+     * If a result is already set, don't do anything.
+     * This happens for instance, in the case of race, where setting the deferred synchronously advances
+     * the supervisor fiber which will then cause a cancellation.
+     * On unwind, the supervised fiber will attempt to complete here and get a multiple sets error
+     */
+    if (this.result.isUnset()) {
+      this.result.set(new Completed(result as Result<E, A>));
+    }
   }
 
   @boundMethod
-  private interruptComplete(_: Either<Cause<unknown>, unknown>): void {
+  private interruptComplete(_: Result<unknown, unknown>): void {
     this.result.set(interrupted);
   }
 
   private step(current: IO<unknown, unknown>,
                resume: (next: IO<unknown, unknown>) => void,
-               complete: (result: Either<Cause<unknown>, unknown>) => void): IO<unknown, unknown> | undefined {
+               complete: (result: Result<unknown, unknown>) => void): IO<unknown, unknown> | undefined {
     if (current.step._tag === "of") {
       return this.popFrame(current.step.value, complete);
     } else if (current.step._tag === "failed") {
@@ -184,7 +195,7 @@ export class Runtime<E, A> {
       try {
         return current.step.thunk();
       } catch (e) {
-        return new IO(new Caused(new Abort(e)));
+        return IO.caused(new Abort(e));
       }
     } else if (current.step._tag === "async") {
       this.contextSwitch(current.step.start, resume, complete);
@@ -206,16 +217,16 @@ export class Runtime<E, A> {
       return this.enterCritical.applySecond(current.step.resource)
         .resurrect()
         .widenError<unknown>()
-        .chain((result) => suspend(() => {
+        .chain((result) => IO.suspend(() => {
           // We always leave critical sections
           this.criticalSections--;
-          if (result.isLeft()) {
-            return caused(result.value) as IO<unknown, unknown>;
+          if (result._tag === "value") {
+            this.callFrames.push(new FinalizeFrame(bracket.release(result.value)));
+            this.callFrames.push(new ChainFrame(bracket.consume));
+            return IO.of(result.value) as unknown as IO<unknown, unknown>;
           }
           // Push these things onto the call stack to ensure that we can correctly consume them on subsequent runs
-          this.callFrames.push(new FinalizeFrame(bracket.release(result.value)));
-          this.callFrames.push(new ChainFrame(bracket.consume));
-          return of(result.value) as unknown as IO<unknown, unknown>;
+          return IO.caused(result) as IO<unknown, unknown>;
         }));
     } else {
       throw new Error(`Bug: Unrecognized step tag: ${(current.step as any)._tag}`);
@@ -224,12 +235,14 @@ export class Runtime<E, A> {
 
   @boundMethod
   private contextSwitch(
-    continuation: (callback: (result: Either<Cause<unknown>, unknown>) => void) => (() => void),
+    continuation: (callback: (result: Result<unknown, unknown>) => void) => (() => void),
     resume: (next: IO<unknown, unknown>) => void,
-    complete: (result: Either<Cause<unknown>, unknown>) => void): void {
+    complete: (result: Result<unknown, unknown>) => void): void {
     this.asyncFrame = new AsyncFrame(continuation);
+    this.suspended = true;
     this.asyncFrame.go((result) => {
-      const next = result.fold((cause) => this.unwindError(cause, complete), (value) => this.popFrame(value, complete));
+      this.suspended = false;
+      const next = result._tag === "value" ? this.popFrame(result.value, complete) : this.unwindError(result, complete);
       if (next) {
         resume(next);
       }
@@ -238,18 +251,18 @@ export class Runtime<E, A> {
 
   @boundMethod
   private popFrame(result: unknown,
-                   complete: (result: Either<Cause<unknown>, unknown>) => void): IO<unknown, unknown> | undefined {
+                   complete: (result: Result<unknown, unknown>) => void): IO<unknown, unknown> | undefined {
     const frame = this.callFrames.pop();
     if (frame) {
       return frame.apply(result);
     }
-    complete(right(result));
+    complete(new Value(result));
     return;
   }
 
   @boundMethod
   private unwindError(cause: Cause<unknown>,
-                      complete: (result: Either<Cause<unknown>, unknown>) => void): IO<unknown, unknown> | undefined {
+                      complete: (result: Result<unknown, unknown>) => void): IO<unknown, unknown> | undefined {
     const finalizers: FinalizeFrame[] = [];
     let frame: ErrorFrame | undefined;
     while (!frame && this.callFrames.length > 0) {
@@ -273,7 +286,7 @@ export class Runtime<E, A> {
       return frame.f(cause);
     }
     // We are done, so time to explode with a failure
-    complete(left(cause));
+    complete(cause);
     return;
   }
 
@@ -289,7 +302,7 @@ export class Runtime<E, A> {
     if (finalizers.length > 0) {
       const ios = finalizers.map((final) => final.io);
       const combined: IO<never, void> =
-        array.reduce(ios, of(undefined), (first, second) => first.applySecond(second.resurrect()).as(undefined));
+        ios.reduce((first, second) => first.applySecond(second.resurrect()).as(undefined), IO.of(undefined));
       return combined as unknown as IO<unknown, unknown>;
     }
     return;
@@ -305,11 +318,10 @@ export class Runtime<E, A> {
 function createCompositeFinalizer(cause: Cause<unknown>,
                                   finalizers: FinalizeFrame[]): IO<unknown, unknown> {
   const finalizerIOs = finalizers.map((final) => final.io);
-  return array.reduce(finalizerIOs, of(cause), (before, after) =>
-  of(compositeCause).ap_(before).ap_(after.resurrect()))
+  return finalizerIOs.reduce((before, after) => IO.of(compositeCause).ap_(before).ap_(after.resurrect()), IO.of(cause))
   .widenError<unknown>()
-  .chain(caused);
+  .chain(IO.caused);
 }
 
-const compositeCause = (base: Cause<unknown>) => (more: Either<Cause<unknown>, unknown>): Cause<unknown> =>
-  more.fold((c) => base.and(c), (_) => base);
+const compositeCause = (base: Cause<unknown>) => (more: Result<unknown, unknown>): Cause<unknown> =>
+  more._tag === "value" ? base : base.and(more);

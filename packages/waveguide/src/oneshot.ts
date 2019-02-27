@@ -1,4 +1,3 @@
-import { filter, findFirst } from "fp-ts/lib/Array";
 
 export class OneShot<A> {
   private value: A | undefined;
@@ -16,8 +15,12 @@ export class OneShot<A> {
     return this.value !== undefined;
   }
 
+  public isUnset(): boolean {
+    return this.value === undefined;
+  }
+
   public listen(f: (a: A) => void): void {
-    if (findFirst(this.listeners, (l) => l === f).isSome()) {
+    if (this.listeners.findIndex((l) => l === f) >= 0) {
       throw new Error("Bug: OneShot is already notifying that listener");
     }
     if (this.isSet()) {
@@ -28,6 +31,6 @@ export class OneShot<A> {
   }
 
   public unlisten(f: (a: A) => void): void {
-    this.listeners = filter(this.listeners, (l) => l === f);
+    this.listeners = this.listeners.filter((l) => l !== f);
   }
 }

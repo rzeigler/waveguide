@@ -1,7 +1,5 @@
-import { Either } from "fp-ts/lib/Either";
-
-import { Cause, Raise } from "./cause";
 import { IO } from "./io";
+import { Cause, Result } from "./result";
 
 export type IOStep<E, A> =
   Of<A>
@@ -37,7 +35,7 @@ export class Suspend<E, A> {
 
 export class Async<E, A> {
   public readonly _tag: "async" = "async";
-  constructor(public readonly start: (resume: (result: Either<Cause<E>, A>) => void) => (() => void)) { }
+  constructor(public readonly start: (resume: (result: Result<E, A>) => void) => (() => void)) { }
 }
 
 export class Critical<E, A> {
