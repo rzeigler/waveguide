@@ -1,6 +1,6 @@
 const webpack = require('webpack');
 const path = require('path');
-
+const HtmlWebpackPlugin = require('html-webpack-plugin');
 /*
  * SplitChunksPlugin is enabled by default and replaced
  * deprecated CommonsChunkPlugin. It automatically identifies modules which
@@ -23,6 +23,8 @@ const path = require('path');
  */
 
 module.exports = {
+	entry: './src/examples/app.ts',
+	
 	module: {
 		rules: [
 			{
@@ -59,5 +61,12 @@ module.exports = {
 			minSize: 30000,
 			name: true
 		}
-	}
+	},
+
+	plugins: [
+        new HtmlWebpackPlugin({
+            hash: true,
+            filename: './index.html' //relative to root of the application
+        })
+   ]
 };

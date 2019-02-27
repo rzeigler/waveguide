@@ -14,9 +14,10 @@
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "scripts": {
-    "clean": "rimraf lib/",
+    "clean": "rimraf lib/ dist/",
     "build": "tsc",
     "build-watch": "nodemon -w src/ -e ts -x tsc",
+    "build-example": "webpack --config webpack.dev.js",
     "test": "exit 0",
     "lint": "tslint --project .",
     "prepublishOnly": "npm run clean && npm run lint && npm run build"
@@ -38,6 +39,6 @@
     "typescript": "^3.3.3",
     "webpack": "^4.29.5",
     "webpack-cli": "^3.2.3",
-    "html-webpack-plugin": "^3.2.0"
+    "html-webpack-plugin": "^3.2.0" 
   }
 }
