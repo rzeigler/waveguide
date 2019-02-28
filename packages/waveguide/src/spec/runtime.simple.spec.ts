@@ -26,5 +26,27 @@ describe("Runtime", () => {
       const io = IO.failed("42").chainError((n) => IO.of(parseInt(n, 10)));
       return equiv(io, new Value(42));
     });
+    it("should allow up to 10000 map calls", () => {
+      const f = (n: number) => n + 1;
+      let io = IO.of(0);
+      for (let i = 0; i < 10000; i++) {
+        io = io.map(f);
+      }
+      return equiv(io, new Value(10000));
+    });
+    it("should allow up to 10000 applySecond calls", () => {
+      let io = IO.of(0);
+      for (let i = 0; i < 10000; i++) {
+        io = io.applySecond(IO.of(i));
+      }
+      return equiv(io, new Value(90000));
+    });
+    it("should allow up to 10000 parApplySecond calls", () => {
+      let io = IO.of(0);
+      for (let i = 0; i < 10000; i++) {
+        io = io.parApplySecond(IO.of(i));
+      }
+      return equiv(io, new Value(9999));
+    });
   });
 });

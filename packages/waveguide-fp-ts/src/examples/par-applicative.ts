@@ -3,10 +3,10 @@ import { IO, terminal } from "waveguide";
 import { parApplicative } from "../index";
 
 const waits = [];
-for (let i = 0; i < 100; i++) {
-  waits.push(IO.of(i).delay(100));
+for (let i = 0; i < 10000; i++) {
+  waits.push(IO.of(i).delay(Math.floor(Math.random() * 1000)));
 }
 
 const wait = array.sequence(parApplicative)(waits);
 
-terminal.log("starting").applySecond(wait).applySecond(terminal.log("done")).launch();
+terminal.log("starting").applySecond(wait).chain((i) => terminal.log(`completed`)).launch();

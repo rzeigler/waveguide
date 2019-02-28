@@ -1,4 +1,3 @@
-
 export class OneShot<A> {
   private value: A | undefined;
   private listeners: Array<(a: A) => void> = [];

@@ -44,7 +44,7 @@ export class Fiber<E, A> {
     // Implementation of kill signals the kill then awaits a result to confirm
     this.interrupt = IO.eval(() => {
       this.runtime.interrupt();
-    }).applySecond(IO.async((callback) => {
+    }).applySecond(IO.async<never, void>((callback) => {
       function listener(_: FiberResult<E, A>) {
         callback(new Value(undefined));
       }
