@@ -1,6 +1,6 @@
 {
   "name": "waveguide-main-node",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "A main for the IO type of waveguide on node.",
   "keywords": [
     "typescript",
@@ -29,7 +29,7 @@
     "url": "https://github.com/rzeigler/waveguide/issues"
   },
   "dependencies": {
-    "waveguide": "^0.0.3"
+    "waveguide": "^0.0.4"
   },
   "devDependencies": {
     "@types/node": "^11.9.5",

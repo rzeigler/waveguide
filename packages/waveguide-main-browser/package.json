@@ -1,6 +1,6 @@
 {
   "name": "waveguide-main-browser",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "A main entry point for waveguide IO in the browser.",
   "keywords": [
     "promise",
@@ -26,7 +26,7 @@
     "url": "https://github.com/rzeigler/waveguide/issues"
   },
   "dependencies": {
-    "waveguide": "^0.0.3"
+    "waveguide": "^0.0.4"
   },
   "devDependencies": {
     "@babel/core": "^7.3.4",
