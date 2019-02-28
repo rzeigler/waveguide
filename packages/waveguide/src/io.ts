@@ -289,7 +289,7 @@ export class IO<E, A> {
 function raceInto<E, A>(defer: Deferred<Result<E, A>>, io: IO<E, A>): IO<never, Fiber<never, void>> {
   return io.resurrect()
     .chain((result) =>
-      // The when prevents double sets in the case that both fibers are fully synchronous
+      // Avoid double setting
       defer.set(result).when(defer.isUnset))
     .fork();
 }
