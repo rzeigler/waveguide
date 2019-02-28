@@ -24,7 +24,7 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 module.exports = {
 	entry: './src/examples/app.ts',
-	
+	devtool: 'cheap-module-eval-source-map',
 	module: {
 		rules: [
 			{
@@ -33,36 +33,11 @@ module.exports = {
 			}
 		]
 	},
-
-
 	resolve: {
 		// Add `.ts` and `.tsx` as a resolvable extension.
 		extensions: [".ts", ".tsx", ".js"]
 	},
-	
-	output: {
-		chunkFilename: '[name].[chunkhash].js',
-		filename: '[name].[chunkhash].js'
-	},
-
 	mode: 'development',
-
-	optimization: {
-		splitChunks: {
-			cacheGroups: {
-				vendors: {
-					priority: -10,
-					test: /[\\/]node_modules[\\/]/
-				}
-			},
-
-			chunks: 'async',
-			minChunks: 1,
-			minSize: 30000,
-			name: true
-		}
-	},
-
 	plugins: [
         new HtmlWebpackPlugin({
             hash: true,

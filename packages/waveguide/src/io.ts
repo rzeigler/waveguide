@@ -10,6 +10,10 @@ export class IO<E, A> {
     return new IO(new Of(a));
   }
 
+  public static pure<E, A>(a: A): IO<E, A> {
+    return new IO(new Of(a));
+  }
+
   public static eval<A>(thunk: () => A): IO<never, A> {
     return new IO(new Suspend(() => IO.of(thunk())));
   }

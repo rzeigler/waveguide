@@ -26,7 +26,7 @@
     "url": "https://github.com/rzeigler/waveguide/issues"
   },
   "dependencies": {
-    "waveguide": "^0.0.1"
+    "waveguide": "0.0.1"
   },
   "devDependencies": {
     "@babel/core": "^7.3.4",

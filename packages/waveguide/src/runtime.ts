@@ -210,7 +210,8 @@ export class Runtime<E, A> {
       this.callFrames.push(new ErrorFrame(current.step.chain));
       return current.step.left;
     } else if (current.step._tag === "finally") {
-      this.callFrames.push(new FinalizeFrame(current.step.always));
+      this.callFrames.push(new FinalizeFrame(
+        this.enterCritical.applySecond(current.step.always).applySecond(this.leaveCritical)));
       return current.step.first;
     } else if (current.step._tag === "bracket") {
       const bracket = current.step;
@@ -221,7 +222,8 @@ export class Runtime<E, A> {
           // We always leave critical sections
           this.criticalSections--;
           if (result._tag === "value") {
-            this.callFrames.push(new FinalizeFrame(bracket.release(result.value)));
+            this.callFrames.push(new FinalizeFrame(
+              this.enterCritical.applySecond(bracket.release(result.value)).applySecond(this.leaveCritical)));
             this.callFrames.push(new ChainFrame(bracket.consume));
             return IO.of(result.value) as unknown as IO<unknown, unknown>;
           }

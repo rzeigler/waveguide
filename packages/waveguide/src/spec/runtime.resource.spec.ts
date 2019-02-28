@@ -10,6 +10,12 @@ describe("Runtime", () => {
       const io = ref.modify((n) => n + 1).ensuring(ref.modify((n) => n - 1).yield_()).applySecond(ref.get);
       return equiv(io, new Value(42));
     });
+    it("should eval finally in the face of interrupts", () => {
+      const ref = Ref.unsafeAlloc(41);
+      const fiberIO = IO.never_().ensuring(ref.modify((n) => n + 1));
+      const io = fiberIO.fork().chain((fiber) => fiber.interrupt.yield_().applySecond(ref.get));
+      return equiv(io, new Value(42));
+    });
     it("should release all finalizers in the face of interrupting", () => {
       const ref = Ref.unsafeAlloc(42);
       const add1 = ref.modify((n) => n + 1);
