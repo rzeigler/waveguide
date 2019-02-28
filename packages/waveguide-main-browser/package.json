@@ -1,6 +1,6 @@
 {
   "name": "waveguide-main-browser",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "A main entry point for waveguide IO in the browser.",
   "keywords": [
     "promise",
@@ -26,19 +26,19 @@
     "url": "https://github.com/rzeigler/waveguide/issues"
   },
   "dependencies": {
-    "waveguide": "0.0.1"
+    "waveguide": "^0.0.2"
   },
   "devDependencies": {
     "@babel/core": "^7.3.4",
     "@babel/preset-env": "^7.3.4",
     "babel-loader": "^8.0.5",
     "babel-plugin-syntax-dynamic-import": "^6.18.0",
+    "html-webpack-plugin": "^3.2.0",
     "source-map-support": "^0.5.10",
     "ts-loader": "^5.3.3",
     "tslint": "^5.12.1",
     "typescript": "^3.3.3",
     "webpack": "^4.29.5",
-    "webpack-cli": "^3.2.3",
-    "html-webpack-plugin": "^3.2.0" 
+    "webpack-cli": "^3.2.3"
   }
 }
