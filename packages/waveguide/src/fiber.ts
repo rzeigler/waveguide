@@ -13,7 +13,7 @@ export class Fiber<E, A> {
    */
   public readonly wait: IO<never, void>;
   /**
-   * Interrupt the fiber and then wait for termination
+   * Interrupt the fiber
    */
   public readonly interrupt: IO<never, void>;
   constructor(public readonly runtime: Runtime<E, A>) {
@@ -44,14 +44,6 @@ export class Fiber<E, A> {
     // Implementation of kill signals the kill then awaits a result to confirm
     this.interrupt = IO.eval(() => {
       this.runtime.interrupt();
-    }).applySecond(IO.async<never, void>((callback) => {
-      function listener(_: FiberResult<E, A>) {
-        callback(new Value(undefined));
-      }
-      this.runtime.result.listen(listener);
-      return () => {
-        this.runtime.result.unlisten(listener);
-      };
-    }));
+    }).applyFirst(this.wait);
   }
 }

@@ -22,13 +22,17 @@ const raf = IO.async<never, void>((callback) => {
   };
 });
 
-const incrementMaxSpeed = (n: number, div: HTMLDivElement): IO<never, never> =>
-  raf.applySecond(IO.eval(() => div.innerText = n.toString()))
-    .chain((_) => incrementMaxSpeed(n * 2, div));
+function oscillate(n: number, div: HTMLDivElement): IO<never, never> {
+  function go(current: number): IO<never, never> {
+    return raf.applySecond(IO.eval(() => div.innerHTML = current.toString()))
+      .chain((_) => current < n * n ? go(current + 1) : go(n));
+  }
+  return go(n);
+}
 
 const flashDiv = (number: number) =>
   createDiv.chain((div) =>
-    appendDiv(div).applySecond(incrementMaxSpeed(number, div))
+    appendDiv(div).applySecond(oscillate(number, div))
   );
 
 const io = readInitial
