@@ -1,4 +1,5 @@
 import { array } from "fp-ts/lib/Array";
+import "source-map-support/register";
 import { IO, terminal } from "waveguide";
 import { parApplicative } from "../index";
 
@@ -9,4 +10,6 @@ for (let i = 0; i < 10000; i++) {
 
 const wait = array.sequence(parApplicative)(waits);
 
-terminal.log("starting").applySecond(wait).chain((i) => terminal.log(`completed`)).launch();
+terminal.log("starting").applySecond(wait)
+  .chain((i) => terminal.log(`completed`))
+  .launch((result) => console.log(result));

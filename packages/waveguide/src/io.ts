@@ -130,6 +130,10 @@ export class IO<E, A> {
     return this.parMap2(fb, (a, b) => [a, b] as [A, B]);
   }
 
+  public join<AA>(this: IO<E, IO<E | never, AA>>): IO<E, AA> {
+    return this.chain((io) => io);
+  }
+
   public chain<EE, B>(this: IO<EE | never, A>, f: (a: A) => IO<EE, B>): IO<EE, B> {
     return new IO(new Chain(this, f));
   }
@@ -242,7 +246,7 @@ export class IO<E, A> {
       const runtime = new Runtime<E, A>();
       runtime.start(this);
       return new Fiber(runtime);
-    });
+    }).yield_();
   }
 
   public launch(callback?: (result: FiberResult<E, A>) => void): () => void {

@@ -39,6 +39,7 @@ export class ErrorFrame implements Call {
 class AsyncFrame {
   private proxy: ForwardProxy;
   private interrupted: boolean;
+  private unwinding: boolean = false;
   private continuation: (callback: (result: Result<unknown, unknown>) => void) => () => void;
   constructor(continuation: (callback: (result: Result<unknown, unknown>) => void) => () => void) {
     this.proxy = new ForwardProxy();
@@ -47,17 +48,23 @@ class AsyncFrame {
   }
   public go(callback: (result: Result<unknown, unknown>) => void): void {
     const adapted = (result: Result<unknown, unknown>) => {
-      if (!this.interrupted) {
-        // Set interrupted after first call through to defend against buggy async
-        this.interrupted = true;
-        callback(result);
-      }
+      this.unwinding = true;
+      // Attempt to ensure that we are in fact unwinding the stack
+      setTimeout(() => {
+        if (!this.interrupted) {
+          this.interrupted = true;
+          callback(result);
+        }
+      }, 0);
     };
     this.proxy.fill(this.continuation(adapted));
   }
   public interrupt(): void {
     this.interrupted = true;
-    this.proxy.invoke();
+    // Only deliver the cancel invoke if we h aven't been delivered a result
+    if (!this.unwinding) {
+      this.proxy.invoke();
+    }
   }
 }
 
