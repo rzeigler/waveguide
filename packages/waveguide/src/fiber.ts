@@ -44,6 +44,6 @@ export class Fiber<E, A> {
     // Implementation of kill signals the kill then awaits a result to confirm
     this.interrupt = IO.eval(() => {
       this.runtime.interrupt();
-    }).applyFirst(this.wait);
+    });
   }
 }
