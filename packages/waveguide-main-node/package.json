@@ -38,5 +38,6 @@
     "source-map-support": "^0.5.10",
     "tslint": "^5.12.1",
     "typescript": "^3.3.3"
-  }
+  },
+  "gitHead": "c45223dc59f7fd1f6cd3d858b31509a0c7607b11"
 }

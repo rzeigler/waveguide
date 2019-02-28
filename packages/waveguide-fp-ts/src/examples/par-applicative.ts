@@ -12,4 +12,5 @@ const wait = array.sequence(parApplicative)(waits);
 
 terminal.log("starting").applySecond(wait)
   .chain((i) => terminal.log(`completed`))
+  // tslint:disable-next-line
   .launch((result) => console.log(result));

@@ -45,5 +45,6 @@
   },
   "dependencies": {
     "autobind-decorator": "^2.4.0"
-  }
+  },
+  "gitHead": "c45223dc59f7fd1f6cd3d858b31509a0c7607b11"
 }

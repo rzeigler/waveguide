@@ -32,5 +32,6 @@
   "dependencies": {
     "fp-ts": "^1.14.2",
     "waveguide": "^0.0.3"
-  }
+  },
+  "gitHead": "c45223dc59f7fd1f6cd3d858b31509a0c7607b11"
 }
