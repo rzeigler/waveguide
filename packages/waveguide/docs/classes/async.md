@@ -30,7 +30,7 @@
 
 ⊕ **new Async**(start: *`function`*): [Async](async.md)
 
-*Defined in [iostep.ts:38](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/iostep.ts#L38)*
+*Defined in [iostep.ts:37](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/iostep.ts#L37)*
 
 **Parameters:**
 
@@ -50,7 +50,7 @@ ___
 
 **● _tag**: *"async"* = "async"
 
-*Defined in [iostep.ts:38](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/iostep.ts#L38)*
+*Defined in [iostep.ts:37](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/iostep.ts#L37)*
 
 ___
 <a id="start"></a>
@@ -59,7 +59,7 @@ ___
 
 **● start**: *`function`*
 
-*Defined in [iostep.ts:39](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/iostep.ts#L39)*
+*Defined in [iostep.ts:38](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/iostep.ts#L38)*
 
 #### Type declaration
 ▸(resume: *`function`*): `function`

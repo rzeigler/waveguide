@@ -88,7 +88,7 @@
 
 ⊕ **new IO**(step: *[IOStep](../#iostep)<`E` \| `never`, `A` \| `never`>*): [IO](io.md)
 
-*Defined in [io.ts:164](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L164)*
+*Defined in [io.ts:165](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L165)*
 
 **Parameters:**
 
@@ -108,7 +108,7 @@ ___
 
 **● step**: *[IOStep](../#iostep)<`E` \| `never`, `A` \| `never`>*
 
-*Defined in [io.ts:166](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L166)*
+*Defined in [io.ts:167](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L167)*
 
 ___
 
@@ -120,7 +120,7 @@ ___
 
 ▸ **ap**<`B`>(fab: *[IO](io.md)<`E`, `function`>*): [IO](io.md)<`E`, `B`>
 
-*Defined in [io.ts:210](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L210)*
+*Defined in [io.ts:211](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L211)*
 
 Apply the function produced by fab to the result of this after both fab and this are run in sequence
 
@@ -142,7 +142,7 @@ ___
 
 ▸ **ap_**<`B`,`C`>(this: *[IO](io.md)<`E`, `function`>*, fb: *[IO](io.md)<`E`, `B`>*): [IO](io.md)<`E`, `C`>
 
-*Defined in [io.ts:222](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L222)*
+*Defined in [io.ts:223](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L223)*
 
 **Type parameters:**
 
@@ -164,7 +164,7 @@ ___
 
 ▸ **applyFirst**<`B`>(fb: *[IO](io.md)<`E`, `B`>*): [IO](io.md)<`E`, `A`>
 
-*Defined in [io.ts:234](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L234)*
+*Defined in [io.ts:235](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L235)*
 
 Run this and fb in sequence and take the result of this.
 
@@ -186,7 +186,7 @@ ___
 
 ▸ **applySecond**<`EE`,`B`>(this: *[IO](io.md)<`EE` \| `never`, `A`>*, fb: *[IO](io.md)<`EE`, `B`>*): [IO](io.md)<`EE`, `B`>
 
-*Defined in [io.ts:252](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L252)*
+*Defined in [io.ts:253](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L253)*
 
 Run this and fb in sequence and take the result of fb
 
@@ -210,7 +210,7 @@ ___
 
 ▸ **as**<`B`>(b: *`B`*): [IO](io.md)<`E`, `B`>
 
-*Defined in [io.ts:439](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L439)*
+*Defined in [io.ts:447](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L447)*
 
 Produce an IO that succeeds with b if this IO succeeds with a value.
 
@@ -232,7 +232,7 @@ ___
 
 ▸ **attempt**(): [IO](io.md)<`never`, [Attempt](../#attempt)<`E`, `A`>>
 
-*Defined in [io.ts:320](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L320)*
+*Defined in [io.ts:321](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L321)*
 
 Run this and produce either a Value or a Raise depending on the result
 
@@ -245,7 +245,7 @@ ___
 
 ▸ **chain**<`EE`,`B`>(this: *[IO](io.md)<`EE` \| `never`, `A`>*, f: *`function`*): [IO](io.md)<`EE`, `B`>
 
-*Defined in [io.ts:292](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L292)*
+*Defined in [io.ts:293](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L293)*
 
 **Type parameters:**
 
@@ -267,7 +267,7 @@ ___
 
 ▸ **chainCause**<`AA`,`EE`>(this: *[IO](io.md)<`E`, `AA` \| `never`>*, f: *`function`*): [IO](io.md)<`EE`, `AA`>
 
-*Defined in [io.ts:304](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L304)*
+*Defined in [io.ts:305](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L305)*
 
 Run this and if an error is produced, attempt to recover using f.
 
@@ -293,7 +293,7 @@ ___
 
 ▸ **chainError**<`AA`,`EE`>(this: *[IO](io.md)<`E`, `AA` \| `never`>*, f: *`function`*): [IO](io.md)<`EE`, `AA`>
 
-*Defined in [io.ts:313](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L313)*
+*Defined in [io.ts:314](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L314)*
 
 Run this and if an error is produced, attempt to recover using f.
 
@@ -317,7 +317,7 @@ ___
 
 ▸ **critical**(): [IO](io.md)<`E`, `A`>
 
-*Defined in [io.ts:490](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L490)*
+*Defined in [io.ts:498](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L498)*
 
 Construct an IO that is the uncancellable version of this
 
@@ -330,7 +330,7 @@ ___
 
 ▸ **delay**(millis: *`number`*): [IO](io.md)<`E`, `A`>
 
-*Defined in [io.ts:469](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L469)*
+*Defined in [io.ts:477](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L477)*
 
 Delay the execution of this IO by some time.
 
@@ -349,7 +349,7 @@ ___
 
 ▸ **flatten**<`EE`,`AA`>(this: *[IO](io.md)<`EE` \| `never`, [IO](io.md)<`EE` \| `never`, `AA`>>*): [IO](io.md)<`EE`, `AA`>
 
-*Defined in [io.ts:284](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L284)*
+*Defined in [io.ts:285](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L285)*
 
 Flatten an IO<E, IO<E, A>> into an IO<E, A>
 
@@ -372,7 +372,7 @@ ___
 
 ▸ **forever**(): [IO](io.md)<`E`, `never`>
 
-*Defined in [io.ts:345](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L345)*
+*Defined in [io.ts:346](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L346)*
 
 Execute this action forever (or until interrupted)
 
@@ -385,7 +385,7 @@ ___
 
 ▸ **fork**(): [IO](io.md)<`never`, [Fiber](fiber.md)<`E`, `A`>>
 
-*Defined in [io.ts:506](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L506)*
+*Defined in [io.ts:514](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L514)*
 
 Produce an IO that when run will spawn this as a fiber.
 
@@ -398,7 +398,7 @@ ___
 
 ▸ **launch**(callback?: *`undefined` \| `function`*): `function`
 
-*Defined in [io.ts:522](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L522)*
+*Defined in [io.ts:530](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L530)*
 
 Run this.
 
@@ -419,7 +419,7 @@ ___
 
 ▸ **map**<`B`>(f: *`function`*): [IO](io.md)<`E`, `B`>
 
-*Defined in [io.ts:168](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L168)*
+*Defined in [io.ts:169](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L169)*
 
 **Type parameters:**
 
@@ -437,9 +437,9 @@ ___
 
 ###  map2
 
-▸ **map2**<`EE`,`B`,`C`>(this: *[IO](io.md)<`EE` \| `never`, `A`>*, fb: *[IO](io.md)<`EE`, `B`>*, f: *`function`*): [IO](io.md)<`EE`, `C`>
+▸ **map2**<`EE`,`B`,`C`>(this: *[IO](io.md)<`EE` \| `never`, `A`>*, fb: *[IO](io.md)<`EE` \| `never`, `B`>*, f: *`function`*): [IO](io.md)<`EE`, `C`>
 
-*Defined in [io.ts:177](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L177)*
+*Defined in [io.ts:178](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L178)*
 
 Apply f to the result of both this and fb when run in sequence.
 
@@ -453,7 +453,7 @@ Apply f to the result of both this and fb when run in sequence.
 | Name | Type | Description |
 | ------ | ------ | ------ |
 | this | [IO](io.md)<`EE` \| `never`, `A`> |
-| fb | [IO](io.md)<`EE`, `B`> |  \- |
+| fb | [IO](io.md)<`EE` \| `never`, `B`> |  \- |
 | f | `function` |   |
 
 **Returns:** [IO](io.md)<`EE`, `C`>
@@ -465,7 +465,7 @@ ___
 
 ▸ **mapError**<`F`>(f: *`function`*): [IO](io.md)<`F`, `A`>
 
-*Defined in [io.ts:181](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L181)*
+*Defined in [io.ts:182](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L182)*
 
 **Type parameters:**
 
@@ -483,9 +483,9 @@ ___
 
 ###  onDone
 
-▸ **onDone**<`EE`,`B`>(this: *[IO](io.md)<`EE` \| `never`, `A`>*, always: *[IO](io.md)<`EE`, `B`>*): [IO](io.md)<`EE`, `A`>
+▸ **onDone**<`EE`,`B`>(this: *[IO](io.md)<`EE` \| `never`, `A`>*, always: *[IO](io.md)<`EE` \| `never`, `B`>*): [IO](io.md)<`EE`, `A`>
 
-*Defined in [io.ts:353](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L353)*
+*Defined in [io.ts:354](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L354)*
 
 Ensure that if this IO has begun executing always will always be executed as cleanup.
 
@@ -498,7 +498,7 @@ Ensure that if this IO has begun executing always will always be executed as cle
 | Name | Type | Description |
 | ------ | ------ | ------ |
 | this | [IO](io.md)<`EE` \| `never`, `A`> |
-| always | [IO](io.md)<`EE`, `B`> |   |
+| always | [IO](io.md)<`EE` \| `never`, `B`> |   |
 
 **Returns:** [IO](io.md)<`EE`, `A`>
 
@@ -507,9 +507,9 @@ ___
 
 ###  onError
 
-▸ **onError**<`B`>(error: *[IO](io.md)<`E`, `B`>*): [IO](io.md)<`E`, `A`>
+▸ **onError**<`B`>(error: *[IO](io.md)<`E` \| `never`, `B`>*): [IO](io.md)<`E`, `A`>
 
-*Defined in [io.ts:363](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L363)*
+*Defined in [io.ts:364](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L364)*
 
 Ensure that if this IO fails, error will always be executed.
 
@@ -522,7 +522,7 @@ If error fails the resulting cause will have both errors.
 
 | Name | Type | Description |
 | ------ | ------ | ------ |
-| error | [IO](io.md)<`E`, `B`> |   |
+| error | [IO](io.md)<`E` \| `never`, `B`> |   |
 
 **Returns:** [IO](io.md)<`E`, `A`>
 
@@ -533,7 +533,7 @@ ___
 
 ▸ **onInterrupt**<`EE`,`B`>(this: *[IO](io.md)<`EE` \| `never`, `A`>*, interrupt: *[IO](io.md)<`EE` \| `never`, `B`>*): [IO](io.md)<`EE`, `A`>
 
-*Defined in [io.ts:378](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L378)*
+*Defined in [io.ts:379](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L379)*
 
 **Type parameters:**
 
@@ -555,7 +555,7 @@ ___
 
 ▸ **parAp**<`B`>(fab: *[IO](io.md)<`E`, `function`>*): [IO](io.md)<`E`, `B`>
 
-*Defined in [io.ts:218](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L218)*
+*Defined in [io.ts:219](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L219)*
 
 Apply the function produced by fab to the result of this after both fab and this are run in parallel.
 
@@ -577,7 +577,7 @@ ___
 
 ▸ **parAp_**<`B`,`C`>(this: *[IO](io.md)<`E`, `function`>*, fb: *[IO](io.md)<`E`, `B`>*): [IO](io.md)<`E`, `C`>
 
-*Defined in [io.ts:226](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L226)*
+*Defined in [io.ts:227](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L227)*
 
 **Type parameters:**
 
@@ -599,7 +599,7 @@ ___
 
 ▸ **parApplyFirst**<`EE`,`B`>(this: *[IO](io.md)<`EE` \| `never`, `A`>*, fb: *[IO](io.md)<`EE`, `B`>*): [IO](io.md)<`EE`, `A`>
 
-*Defined in [io.ts:244](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L244)*
+*Defined in [io.ts:245](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L245)*
 
 Run this and fb in parallel and take the result of this.
 
@@ -625,7 +625,7 @@ ___
 
 ▸ **parApplySecond**<`EE`,`B`>(this: *[IO](io.md)<`EE` \| `never`, `A`>*, fb: *[IO](io.md)<`EE`, `B`>*): [IO](io.md)<`EE`, `B`>
 
-*Defined in [io.ts:260](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L260)*
+*Defined in [io.ts:261](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L261)*
 
 Run this and fb in parallel and take the result of fb
 
@@ -649,7 +649,7 @@ ___
 
 ▸ **parMap2**<`EE`,`B`,`C`>(this: *[IO](io.md)<`EE` \| `never`, `A`>*, fb: *[IO](io.md)<`EE`, `B`>*, f: *`function`*): [IO](io.md)<`EE`, `C`>
 
-*Defined in [io.ts:190](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L190)*
+*Defined in [io.ts:191](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L191)*
 
 Apply f to the result of both this and fb run in parallel
 
@@ -675,7 +675,7 @@ ___
 
 ▸ **parProduct**<`EE`,`B`>(this: *[IO](io.md)<`EE` \| `never`, `A`>*, fb: *[IO](io.md)<`EE`, `B`>*): [IO](io.md)<`EE`, [`A`, `B`]>
 
-*Defined in [io.ts:276](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L276)*
+*Defined in [io.ts:277](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L277)*
 
 Run this and fb in parallel and produce a tuple of their results.
 
@@ -699,7 +699,7 @@ ___
 
 ▸ **peek**<`EE`,`B`>(this: *[IO](io.md)<`EE` \| `never`, `A`>*, f: *`function`*): [IO](io.md)<`EE`, `A`>
 
-*Defined in [io.ts:288](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L288)*
+*Defined in [io.ts:289](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L289)*
 
 **Type parameters:**
 
@@ -721,7 +721,7 @@ ___
 
 ▸ **product**<`EE`,`B`>(this: *[IO](io.md)<`EE` \| `never`, `A`>*, fb: *[IO](io.md)<`EE`, `B`>*): [IO](io.md)<`EE`, [`A`, `B`]>
 
-*Defined in [io.ts:268](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L268)*
+*Defined in [io.ts:269](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L269)*
 
 Run this and fb in sequence and produce a tuple of their results.
 
@@ -745,7 +745,7 @@ ___
 
 ▸ **promised**(): `Promise`<`A`>
 
-*Defined in [io.ts:541](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L541)*
+*Defined in [io.ts:549](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L549)*
 
 Run this and return a promise of the result.
 
@@ -760,7 +760,7 @@ ___
 
 ▸ **promisedResult**(): `Promise`<[FiberResult](../#fiberresult)<`E`, `A`>>
 
-*Defined in [io.ts:564](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L564)*
+*Defined in [io.ts:572](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L572)*
 
 Run this and return a promise of the result.
 
@@ -775,7 +775,7 @@ ___
 
 ▸ **race**(other: *[IO](io.md)<`E`, `A`>*): [IO](io.md)<`E`, `A`>
 
-*Defined in [io.ts:447](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L447)*
+*Defined in [io.ts:455](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L455)*
 
 Race this with other. The first result, either success or failure is taken
 
@@ -794,7 +794,7 @@ ___
 
 ▸ **raceOneOf**<`B`>(other: *[IO](io.md)<`E`, `B`>*): [IO](io.md)<`E`, [OneOf](../#oneof)<`A`, `B`>>
 
-*Defined in [io.ts:460](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L460)*
+*Defined in [io.ts:468](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L468)*
 
 Race this with other producing which result was used. The first result either success or failure is taken.
 
@@ -816,7 +816,7 @@ ___
 
 ▸ **resurrect**(): [IO](io.md)<`never`, [Result](../#result)<`E`, `A`>>
 
-*Defined in [io.ts:328](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L328)*
+*Defined in [io.ts:329](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L329)*
 
 Run this and trap all exit cases lifting the Result into the value.
 
@@ -829,7 +829,7 @@ ___
 
 ▸ **slay**<`EE`,`AA`>(this: *[IO](io.md)<`never`, [Result](../#result)<`EE`, `AA`>>*): [IO](io.md)<`EE`, `AA`>
 
-*Defined in [io.ts:337](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L337)*
+*Defined in [io.ts:338](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L338)*
 
 Inverse of resurrect which submerges a Result back into the IO
 
@@ -852,7 +852,7 @@ ___
 
 ▸ **use**<`B`>(release: *`function`*, consume: *`function`*): [IO](io.md)<`E`, `B`>
 
-*Defined in [io.ts:391](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L391)*
+*Defined in [io.ts:392](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L392)*
 
 A resource management construct.
 
@@ -877,7 +877,7 @@ ___
 
 ▸ **use_**<`B`>(release: *`function`*, inner: *[IO](io.md)<`E`, `B`>*): [IO](io.md)<`E`, `B`>
 
-*Defined in [io.ts:402](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L402)*
+*Defined in [io.ts:410](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L410)*
 
 A weaker form of use that does not provide the resource to the continuation Used for cases where the inner effect may depends on the effects of the resource acquisition/release But not the resource itself
 
@@ -900,7 +900,7 @@ ___
 
 ▸ **void**(): [IO](io.md)<`E`, `void`>
 
-*Defined in [io.ts:431](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L431)*
+*Defined in [io.ts:439](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L439)*
 
 Produce an IO that succeeds with void if this IO succeeds with a value
 
@@ -913,7 +913,7 @@ ___
 
 ▸ **when**(test: *[IO](io.md)<`E`, `boolean`>*): [IO](io.md)<`E`, `void`>
 
-*Defined in [io.ts:499](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L499)*
+*Defined in [io.ts:507](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L507)*
 
 Produce an IO that will run this if and only if test produces true.
 
@@ -932,7 +932,7 @@ ___
 
 ▸ **widen**<`AA`>(this: *[IO](io.md)<`E`, `A extends AA ? AA : never`>*): [IO](io.md)<`E`, `AA`>
 
-*Defined in [io.ts:413](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L413)*
+*Defined in [io.ts:421](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L421)*
 
 Widen the result type.
 
@@ -956,7 +956,7 @@ ___
 
 ▸ **widenError**<`EE`>(this: *[IO](io.md)<`E extends EE ? EE : never`, `A`>*): [IO](io.md)<`EE`, `A`>
 
-*Defined in [io.ts:424](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L424)*
+*Defined in [io.ts:432](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L432)*
 
 Widen the error type.
 
@@ -980,7 +980,7 @@ ___
 
 ▸ **yield_**(): [IO](io.md)<`E`, `A`>
 
-*Defined in [io.ts:483](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L483)*
+*Defined in [io.ts:491](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L491)*
 
 Introduce an asynchronous boundary before the execution of this
 
@@ -993,7 +993,7 @@ ___
 
 ▸ **aborted**(abort: *[Abort](abort.md)*): [IO](io.md)<`never`, `never`>
 
-*Defined in [io.ts:74](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L74)*
+*Defined in [io.ts:75](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L75)*
 
 Construct an IO that has aborted with the given reason
 
@@ -1012,7 +1012,7 @@ ___
 
 ▸ **assimilate**<`A`>(thunk: *`function`*): [IO](io.md)<`unknown`, `A`>
 
-*Defined in [io.ts:160](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L160)*
+*Defined in [io.ts:161](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L161)*
 
 Construct an IO from a promise.
 
@@ -1036,7 +1036,7 @@ ___
 
 ▸ **async**<`E`,`A`>(start: *`function`*): [IO](io.md)<`E`, `A`>
 
-*Defined in [io.ts:96](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L96)*
+*Defined in [io.ts:97](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L97)*
 
 Construct an IO from an asynchronous effect.
 
@@ -1061,7 +1061,7 @@ ___
 
 ▸ **asyncCritical**<`E`,`A`>(start: *`function`*): [IO](io.md)<`E`, `A`>
 
-*Defined in [io.ts:104](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L104)*
+*Defined in [io.ts:105](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L105)*
 
 Construct an IO from an asynchronous effect that cannot be cancelled.
 
@@ -1084,7 +1084,7 @@ ___
 
 ▸ **caused**<`E`>(cause: *[Cause](../#cause)<`E`>*): [IO](io.md)<`E`, `never`>
 
-*Defined in [io.ts:84](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L84)*
+*Defined in [io.ts:85](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L85)*
 
 Construct an IO that failed with the given cause.
 
@@ -1108,7 +1108,7 @@ ___
 
 ▸ **delay**(millis: *`number`*): [IO](io.md)<`never`, `void`>
 
-*Defined in [io.ts:122](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L122)*
+*Defined in [io.ts:123](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L123)*
 
 Construct an IO that will succeed with undefined after some duration
 
@@ -1127,7 +1127,7 @@ ___
 
 ▸ **eval**<`A`>(thunk: *`function`*): [IO](io.md)<`never`, `A`>
 
-*Defined in [io.ts:35](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L35)*
+*Defined in [io.ts:36](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L36)*
 
 Construct an IO that when run will evaluate the provided function to produce a value.
 
@@ -1151,7 +1151,7 @@ ___
 
 ▸ **failed**<`E`>(e: *`E`*): [IO](io.md)<`E`, `never`>
 
-*Defined in [io.ts:66](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L66)*
+*Defined in [io.ts:67](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L67)*
 
 Construct an IO that is failed.
 
@@ -1173,7 +1173,7 @@ ___
 
 ▸ **never_**(): [IO](io.md)<`never`, `never`>
 
-*Defined in [io.ts:146](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L146)*
+*Defined in [io.ts:147](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L147)*
 
 Construct an IO that never succeeds or errors. Useful as a base case for racing many IOs.
 
@@ -1186,7 +1186,7 @@ ___
 
 ▸ **of**<`A`>(a: *`A`*): [IO](io.md)<`never`, `A`>
 
-*Defined in [io.ts:13](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L13)*
+*Defined in [io.ts:14](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L14)*
 
 Construct an IO from a pure value.
 
@@ -1208,7 +1208,7 @@ ___
 
 ▸ **pure**<`E`,`A`>(a: *`A`*): [IO](io.md)<`E`, `A`>
 
-*Defined in [io.ts:24](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L24)*
+*Defined in [io.ts:25](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L25)*
 
 Construct an IO from a pure value.
 
@@ -1233,7 +1233,7 @@ ___
 
 ▸ **suspend**<`E`,`A`>(thunk: *`function`*): [IO](io.md)<`E`, `A`>
 
-*Defined in [io.ts:58](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L58)*
+*Defined in [io.ts:59](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L59)*
 
 Construct an IO that when run will produce the next IO to run.
 
@@ -1270,7 +1270,7 @@ ___
 
 ▸ **void**(): [IO](io.md)<`never`, `void`>
 
-*Defined in [io.ts:114](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L114)*
+*Defined in [io.ts:115](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L115)*
 
 Construct an IO that is already succeeded with an undefined value
 
@@ -1283,7 +1283,7 @@ ___
 
 ▸ **yield_**(): [IO](io.md)<`never`, `void`>
 
-*Defined in [io.ts:138](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/io.ts#L138)*
+*Defined in [io.ts:139](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L139)*
 
 Construct an IO that will introduce an asynchronous boundary. Can be used to prevent blocking the runloop for very long synchronous effects.
 

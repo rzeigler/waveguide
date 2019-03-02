@@ -29,7 +29,7 @@
 
 ⊕ **new First**(first: *`A`*): [First](first.md)
 
-*Defined in [result.ts:44](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/result.ts#L44)*
+*Defined in [result.ts:44](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/result.ts#L44)*
 
 **Parameters:**
 
@@ -49,7 +49,7 @@ ___
 
 **● _tag**: *"first"* = "first"
 
-*Defined in [result.ts:44](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/result.ts#L44)*
+*Defined in [result.ts:44](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/result.ts#L44)*
 
 ___
 <a id="first-1"></a>
@@ -58,7 +58,7 @@ ___
 
 **● first**: *`A`*
 
-*Defined in [result.ts:45](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/result.ts#L45)*
+*Defined in [result.ts:45](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/result.ts#L45)*
 
 ___
 

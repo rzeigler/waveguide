@@ -29,7 +29,7 @@
 
 ⊕ **new Failed**(error: *`E`*): [Failed](failed.md)
 
-*Defined in [iostep.ts:23](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/iostep.ts#L23)*
+*Defined in [iostep.ts:22](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/iostep.ts#L22)*
 
 **Parameters:**
 
@@ -49,7 +49,7 @@ ___
 
 **● _tag**: *"failed"* = "failed"
 
-*Defined in [iostep.ts:23](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/iostep.ts#L23)*
+*Defined in [iostep.ts:22](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/iostep.ts#L22)*
 
 ___
 <a id="error"></a>
@@ -58,7 +58,7 @@ ___
 
 **● error**: *`E`*
 
-*Defined in [iostep.ts:24](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/iostep.ts#L24)*
+*Defined in [iostep.ts:23](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/iostep.ts#L23)*
 
 ___
 

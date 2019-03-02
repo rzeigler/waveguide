@@ -33,7 +33,7 @@
 
 **● listeners**: *`Array`<`function`>* =  []
 
-*Defined in [oneshot.ts:3](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/oneshot.ts#L3)*
+*Defined in [oneshot.ts:3](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/oneshot.ts#L3)*
 
 ___
 <a id="value"></a>
@@ -42,7 +42,7 @@ ___
 
 **● value**: *`A` \| `undefined`*
 
-*Defined in [oneshot.ts:2](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/oneshot.ts#L2)*
+*Defined in [oneshot.ts:2](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/oneshot.ts#L2)*
 
 ___
 
@@ -54,7 +54,7 @@ ___
 
 ▸ **isSet**(): `boolean`
 
-*Defined in [oneshot.ts:13](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/oneshot.ts#L13)*
+*Defined in [oneshot.ts:13](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/oneshot.ts#L13)*
 
 **Returns:** `boolean`
 
@@ -65,7 +65,7 @@ ___
 
 ▸ **isUnset**(): `boolean`
 
-*Defined in [oneshot.ts:17](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/oneshot.ts#L17)*
+*Defined in [oneshot.ts:17](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/oneshot.ts#L17)*
 
 **Returns:** `boolean`
 
@@ -76,7 +76,7 @@ ___
 
 ▸ **listen**(f: *`function`*): `void`
 
-*Defined in [oneshot.ts:21](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/oneshot.ts#L21)*
+*Defined in [oneshot.ts:21](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/oneshot.ts#L21)*
 
 **Parameters:**
 
@@ -93,7 +93,7 @@ ___
 
 ▸ **set**(value: *`A`*): `void`
 
-*Defined in [oneshot.ts:5](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/oneshot.ts#L5)*
+*Defined in [oneshot.ts:5](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/oneshot.ts#L5)*
 
 **Parameters:**
 
@@ -110,7 +110,7 @@ ___
 
 ▸ **unlisten**(f: *`function`*): `void`
 
-*Defined in [oneshot.ts:32](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/oneshot.ts#L32)*
+*Defined in [oneshot.ts:32](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/oneshot.ts#L32)*
 
 **Parameters:**
 

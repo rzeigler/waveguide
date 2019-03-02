@@ -30,7 +30,7 @@
 
 ⊕ **new Completed**(result: *[Result](../#result)<`E`, `A`>*): [Completed](completed.md)
 
-*Defined in [result.ts:4](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/result.ts#L4)*
+*Defined in [result.ts:4](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/result.ts#L4)*
 
 **Parameters:**
 
@@ -50,7 +50,7 @@ ___
 
 **● _tag**: *"completed"* = "completed"
 
-*Defined in [result.ts:4](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/result.ts#L4)*
+*Defined in [result.ts:4](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/result.ts#L4)*
 
 ___
 <a id="result"></a>
@@ -59,7 +59,7 @@ ___
 
 **● result**: *[Result](../#result)<`E`, `A`>*
 
-*Defined in [result.ts:5](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/result.ts#L5)*
+*Defined in [result.ts:5](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/result.ts#L5)*
 
 ___
 

@@ -33,7 +33,7 @@
 
 ⊕ **new AsyncFrame**(continuation: *`function`*): [AsyncFrame](asyncframe.md)
 
-*Defined in [runtime.ts:53](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/runtime.ts#L53)*
+*Defined in [runtime.ts:53](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/runtime.ts#L53)*
 
 **Parameters:**
 
@@ -53,7 +53,7 @@ ___
 
 **● continuation**: *`function`*
 
-*Defined in [runtime.ts:53](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/runtime.ts#L53)*
+*Defined in [runtime.ts:53](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/runtime.ts#L53)*
 
 #### Type declaration
 ▸(callback: *`function`*): `function`
@@ -73,7 +73,7 @@ ___
 
 **● interrupted**: *`boolean`*
 
-*Defined in [runtime.ts:52](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/runtime.ts#L52)*
+*Defined in [runtime.ts:52](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/runtime.ts#L52)*
 
 ___
 <a id="proxy"></a>
@@ -82,7 +82,7 @@ ___
 
 **● proxy**: *[ForwardProxy](forwardproxy.md)*
 
-*Defined in [runtime.ts:51](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/runtime.ts#L51)*
+*Defined in [runtime.ts:51](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/runtime.ts#L51)*
 
 ___
 
@@ -94,7 +94,7 @@ ___
 
 ▸ **go**(callback: *`function`*): `void`
 
-*Defined in [runtime.ts:59](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/runtime.ts#L59)*
+*Defined in [runtime.ts:59](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/runtime.ts#L59)*
 
 **Parameters:**
 
@@ -111,7 +111,7 @@ ___
 
 ▸ **interrupt**(): `void`
 
-*Defined in [runtime.ts:68](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/runtime.ts#L68)*
+*Defined in [runtime.ts:68](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/runtime.ts#L68)*
 
 **Returns:** `void`
 

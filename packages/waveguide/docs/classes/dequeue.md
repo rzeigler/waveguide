@@ -37,7 +37,7 @@
 
 ⊕ **new Dequeue**(array: *`ReadonlyArray`<`A`>*): [Dequeue](dequeue.md)
 
-*Defined in queue.ts:7*
+*Defined in [queue.ts:7](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/queue.ts#L7)*
 
 **Parameters:**
 
@@ -57,7 +57,7 @@ ___
 
 **● array**: *`ReadonlyArray`<`A`>*
 
-*Defined in queue.ts:10*
+*Defined in [queue.ts:10](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/queue.ts#L10)*
 
 ___
 <a id="empty"></a>
@@ -66,7 +66,7 @@ ___
 
 **● empty**: *`boolean`*
 
-*Defined in queue.ts:7*
+*Defined in [queue.ts:7](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/queue.ts#L7)*
 
 ___
 <a id="length"></a>
@@ -75,7 +75,7 @@ ___
 
 **● length**: *`number`*
 
-*Defined in queue.ts:6*
+*Defined in [queue.ts:6](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/queue.ts#L6)*
 
 ___
 
@@ -87,7 +87,7 @@ ___
 
 ▸ **offer**(a: *`A`*): [Dequeue](dequeue.md)<`A`>
 
-*Defined in queue.ts:15*
+*Defined in [queue.ts:15](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/queue.ts#L15)*
 
 **Parameters:**
 
@@ -104,7 +104,7 @@ ___
 
 ▸ **push**(a: *`A`*): [Dequeue](dequeue.md)<`A`>
 
-*Defined in queue.ts:19*
+*Defined in [queue.ts:19](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/queue.ts#L19)*
 
 **Parameters:**
 
@@ -121,7 +121,7 @@ ___
 
 ▸ **take**(): [`A` \| `undefined`, [Dequeue](dequeue.md)<`A`>]
 
-*Defined in queue.ts:23*
+*Defined in [queue.ts:23](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/queue.ts#L23)*
 
 **Returns:** [`A` \| `undefined`, [Dequeue](dequeue.md)<`A`>]
 
@@ -132,7 +132,7 @@ ___
 
 ▸ **ofAll**<`A`>(as: *`ReadonlyArray`<`A`>*): [Dequeue](dequeue.md)<`A`>
 
-*Defined in queue.ts:2*
+*Defined in [queue.ts:2](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/queue.ts#L2)*
 
 **Type parameters:**
 

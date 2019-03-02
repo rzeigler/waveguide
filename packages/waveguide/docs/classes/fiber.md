@@ -33,7 +33,7 @@
 
 ⊕ **new Fiber**(runtime: *[Runtime](runtime.md)<`E`, `A`>*): [Fiber](fiber.md)
 
-*Defined in [fiber.ts:30](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/fiber.ts#L30)*
+*Defined in [fiber.ts:30](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/fiber.ts#L30)*
 
 **Parameters:**
 
@@ -53,7 +53,7 @@ ___
 
 **● interrputAndWait**: *[IO](io.md)<`never`, `void`>*
 
-*Defined in [fiber.ts:30](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/fiber.ts#L30)*
+*Defined in [fiber.ts:30](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/fiber.ts#L30)*
 
 Interrupt the fiber and then await for its finalizers to run
 
@@ -64,7 +64,7 @@ ___
 
 **● interrupt**: *[IO](io.md)<`never`, `void`>*
 
-*Defined in [fiber.ts:25](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/fiber.ts#L25)*
+*Defined in [fiber.ts:25](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/fiber.ts#L25)*
 
 Interrupt the fiber
 
@@ -77,7 +77,7 @@ ___
 
 **● join**: *[IO](io.md)<`E`, `A`>*
 
-*Defined in [fiber.ts:12](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/fiber.ts#L12)*
+*Defined in [fiber.ts:12](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/fiber.ts#L12)*
 
 Join on this fiber.
 
@@ -90,7 +90,7 @@ ___
 
 **● runtime**: *[Runtime](runtime.md)<`E`, `A`>*
 
-*Defined in [fiber.ts:32](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/fiber.ts#L32)*
+*Defined in [fiber.ts:32](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/fiber.ts#L32)*
 
 ___
 <a id="wait"></a>
@@ -99,7 +99,7 @@ ___
 
 **● wait**: *[IO](io.md)<`never`, [FiberResult](../#fiberresult)<`E`, `A`>>*
 
-*Defined in [fiber.ts:17](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/fiber.ts#L17)*
+*Defined in [fiber.ts:17](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/fiber.ts#L17)*
 
 Wait for fiber completion by complete, failure, or interruption
 

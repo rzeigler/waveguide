@@ -29,7 +29,7 @@
 
 ▸ **apply**(a: *`unknown`*): [IO](../classes/io.md)<`unknown`, `unknown`>
 
-*Defined in [runtime.ts:14](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/runtime.ts#L14)*
+*Defined in [runtime.ts:14](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/runtime.ts#L14)*
 
 Encodes the normal invocation of the call stack where a value is received and the continuation must be processed
 

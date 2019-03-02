@@ -32,7 +32,7 @@
 
 ⊕ **new Abort**(error: *`unknown`*, more?: *`ReadonlyArray`<[Cause](../#cause)<`unknown`>>*): [Abort](abort.md)
 
-*Defined in [result.ts:34](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/result.ts#L34)*
+*Defined in [result.ts:34](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/result.ts#L34)*
 
 **Parameters:**
 
@@ -53,7 +53,7 @@ ___
 
 **● _tag**: *"abort"* = "abort"
 
-*Defined in [result.ts:34](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/result.ts#L34)*
+*Defined in [result.ts:34](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/result.ts#L34)*
 
 ___
 <a id="error"></a>
@@ -62,7 +62,7 @@ ___
 
 **● error**: *`unknown`*
 
-*Defined in [result.ts:35](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/result.ts#L35)*
+*Defined in [result.ts:35](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/result.ts#L35)*
 
 ___
 <a id="more"></a>
@@ -71,7 +71,7 @@ ___
 
 **● more**: *`ReadonlyArray`<[Cause](../#cause)<`unknown`>>*
 
-*Defined in [result.ts:35](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/result.ts#L35)*
+*Defined in [result.ts:35](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/result.ts#L35)*
 
 ___
 
@@ -83,7 +83,7 @@ ___
 
 ▸ **and**(cause: *[Cause](../#cause)<`unknown`>*): [Cause](../#cause)<`unknown`>
 
-*Defined in [result.ts:36](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/result.ts#L36)*
+*Defined in [result.ts:36](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/result.ts#L36)*
 
 **Parameters:**
 

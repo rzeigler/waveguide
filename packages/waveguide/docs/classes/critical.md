@@ -30,7 +30,7 @@
 
 ⊕ **new Critical**(io: *[IO](io.md)<`E`, `A`>*): [Critical](critical.md)
 
-*Defined in [iostep.ts:43](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/iostep.ts#L43)*
+*Defined in [iostep.ts:42](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/iostep.ts#L42)*
 
 **Parameters:**
 
@@ -50,7 +50,7 @@ ___
 
 **● _tag**: *"critical"* = "critical"
 
-*Defined in [iostep.ts:43](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/iostep.ts#L43)*
+*Defined in [iostep.ts:42](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/iostep.ts#L42)*
 
 ___
 <a id="io"></a>
@@ -59,7 +59,7 @@ ___
 
 **● io**: *[IO](io.md)<`E`, `A`>*
 
-*Defined in [iostep.ts:44](https://github.com/rzeigler/waveguide/blob/c6446d5/packages/waveguide/src/iostep.ts#L44)*
+*Defined in [iostep.ts:43](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/iostep.ts#L43)*
 
 ___
 
