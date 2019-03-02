@@ -351,7 +351,7 @@ export class IO<E, A> {
    * Ensure that if this IO has begun executing always will always be executed as cleanup.
    * @param always
    */
-  public onDone<EE, B>(this: IO<EE | never, A>, always: IO<EE, B>): IO<EE, A> {
+  public onDone<EE, B>(this: IO<EE | never, A>, always: IO<EE | never, B>): IO<EE, A> {
     return new IO(new OnDone(this, always));
   }
 
@@ -361,7 +361,7 @@ export class IO<E, A> {
    * If error fails the resulting cause will have both errors.
    * @param error
    */
-  public onError<B>(error: IO<E, B>): IO<E, A> {
+  public onError<B>(error: IO<E | never, B>): IO<E, A> {
     return this.chainCause((cause: Cause<E>) =>
         error.resurrect()
           .widenError<E>()
@@ -393,6 +393,7 @@ export class IO<E, A> {
     return Ref.alloc<IO<never, void>>(IO.void())
       .widenError<E>()
       .chain((ref: Ref<IO<never, void>>) =>
+        // Resource acquisition and setting of the ref is critical
         this.chain((r) => ref.set(release(r)).as(r).widenError<E>()).critical()
           .chain(consume)
           .onDone(ref.get.flatten().widenError<E>())
