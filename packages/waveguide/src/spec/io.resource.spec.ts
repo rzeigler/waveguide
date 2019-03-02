@@ -48,7 +48,7 @@ describe("Runtime", () => {
     it("should finalize resources even in the case of errors", () => {
       const ref = Ref.unsafeAlloc(42);
       const add1 = ref.modify((n) => n + 1).widenError<string>();
-      const sub1 = ref.modify((n) => n - 1).void().widenError<string>();
+      const sub1 = ref.modify((n) => n - 1).void();
       const fiberIO = add1.delay(20).use_((_) => sub1.delay(20), IO.failed("Boom!"));
       const io = fiberIO.fork()
         .chain((fiber) => fiber.join.attempt().applySecond(ref.get));

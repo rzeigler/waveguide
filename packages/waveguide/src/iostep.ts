@@ -11,8 +11,7 @@ export type IOStep<E, A> =
   | Chain<E, any, A>
   | ChainError<E, any, A>
   | OnDone<E, any, A>
-  | OnInterrupted<E, any, A>
-  | Use<E, any, A>;
+  | OnInterrupted<E, any, A>;
 
 export class Of<A> {
   public readonly _tag: "of" = "of";
@@ -62,11 +61,4 @@ export class OnDone<E, B, A> {
 export class OnInterrupted<E, B, A> {
   public readonly _tag: "oninterrupted" = "oninterrupted";
   constructor(public readonly first: IO<E, A>, public readonly interupted: IO<E, B>) { }
-}
-
-export class Use<E, R, A> {
-  public readonly _tag: "use" = "use";
-  constructor(public readonly resource: IO<E, R>,
-              public readonly release: (r: R) => IO<E, void>,
-              public readonly consume: (r: R) => IO<E, A>) { }
 }

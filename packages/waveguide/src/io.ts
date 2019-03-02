@@ -1,7 +1,8 @@
 import { Deferred } from "./deferred";
 import { Fiber } from "./fiber";
 import { Async, Caused, Chain, ChainError, Critical, Failed, IOStep,
-         Of, OnDone, OnInterrupted, Suspend, Use } from "./iostep";
+         Of, OnDone, OnInterrupted, Suspend } from "./iostep";
+import { Ref } from "./ref";
 import { Abort, Attempt, Cause, FiberResult, First, OneOf, Raise, Result, Second, Value } from "./result";
 import { Runtime } from "./runtime";
 
@@ -192,8 +193,8 @@ export class IO<E, A> {
     // Deferred has the property of ensuring the stack is unwound on wait and this is desirable
     return Deferred.alloc<A>().widenError<EE>().chain((left) =>
       Deferred.alloc<B>().widenError<EE>().chain((right) =>
-        this.fork().widenError<EE>().use((fiba) => fiba.interrupt.widenError<EE>(), (fiba) =>
-          fb.fork().widenError<EE>().use((fibb) => fibb.interrupt.widenError<EE>(), (fibb) =>
+        this.fork().widenError<EE>().use((fiba) => fiba.interrupt, (fiba) =>
+          fb.fork().widenError<EE>().use((fibb) => fibb.interrupt, (fibb) =>
             fiba.join.peek((v) => left.fill(v).widenError<EE>())
               .applySecond(fibb.join.peek((v) => right.fill(v).widenError<EE>()))
           )
@@ -388,8 +389,14 @@ export class IO<E, A> {
    * @param release a function producing a resource release IO
    * @param consume a function producing the IO to continue with
    */
-  public use<B>(release: (a: A) => IO<E, void>, consume: (a: A) => IO<E, B>): IO<E, B> {
-    return new IO(new Use(this, release, consume));
+  public use<B>(release: (a: A) => IO<never, void>, consume: (a: A) => IO<E, B>): IO<E, B> {
+    return Ref.alloc<IO<never, void>>(IO.void())
+      .widenError<E>()
+      .chain((ref: Ref<IO<never, void>>) =>
+        this.chain((r) => ref.set(release(r)).as(r).widenError<E>()).critical()
+          .chain(consume)
+          .onDone(ref.get.flatten().widenError<E>())
+      );
   }
 
   /**
@@ -399,7 +406,7 @@ export class IO<E, A> {
    * @param release
    * @param inner
    */
-  public use_<B>(release: (a: A) => IO<E, void>, inner: IO<E, B>): IO<E, B> {
+  public use_<B>(release: (a: A) => IO<never, void>, inner: IO<E, B>): IO<E, B> {
     return this.use(release, (_) => inner);
   }
 

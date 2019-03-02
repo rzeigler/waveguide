@@ -228,23 +228,6 @@ export class Runtime<E, A> {
       this.callFrames.push(new InterruptFrame(
         this.enterCritical.applySecond(current.step.interupted).applySecond(this.leaveCritical)));
       return current.step.first;
-    } else if (current.step._tag === "use") {
-      const use = current.step;
-      return this.enterCritical.applySecond(current.step.resource)
-        .resurrect()
-        .widenError<unknown>()
-        .chain((result) => IO.suspend(() => {
-          // We always leave critical sections
-          this.criticalSections--;
-          if (result._tag === "value") {
-            this.callFrames.push(new FinalizeFrame(
-              this.enterCritical.applySecond(use.release(result.value)).applySecond(this.leaveCritical)));
-            this.callFrames.push(new ChainFrame(use.consume));
-            return IO.of(result.value) as unknown as IO<unknown, unknown>;
-          }
-          // Push these things onto the call stack to ensure that we can correctly consume them on subsequent runs
-          return IO.caused(result) as IO<unknown, unknown>;
-        }));
     } else {
       throw new Error(`Bug: Unrecognized step tag: ${(current.step as any)._tag}`);
     }
