@@ -11,6 +11,7 @@
     "test": "mocha lib/**/*.spec.js",
     "test-watch": "mocha --watch --reporter min lib/**/*.spec.js",
     "lint": "tslint --project .",
+    "docs": "typedoc --ignoreCompilerErrors --theme markdown",
     "prepublishOnly": "npm run clean && npm run lint && npm run build && npm run test"
   },
   "keywords": [
@@ -41,6 +42,8 @@
     "rimraf": "^2.6.3",
     "source-map-support": "^0.5.10",
     "tslint": "^5.12.1",
+    "typedoc": "^0.14.2",
+    "typedoc-plugin-markdown": "^1.1.27",
     "typescript": "^3.3.3"
   },
   "dependencies": {

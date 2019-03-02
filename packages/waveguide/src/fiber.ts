@@ -4,18 +4,31 @@ import { Runtime } from "./runtime";
 
 export class Fiber<E, A> {
   /**
-   * Join on the fiber.
-   * This will block the current fiber and await the result of the target
+   * Join on this fiber.
+   *
+   * Logically blocks calling fiber until a result is ready.
+   * If the target fiber is interrupted this will trigger an abort.
    */
   public readonly join: IO<E, A>;
+
   /**
-   * Wait for fiber completion by complete, failure, or termination
+   * Wait for fiber completion by complete, failure, or interruption
    */
-  public readonly wait: IO<never, void>;
+  public readonly wait: IO<never, FiberResult<E, A>>;
+
   /**
    * Interrupt the fiber
+   *
+   * This immediately returns (there are performance considerations when interrupting many fibers and waiting on them)
+   * If you need to ensure that the target fiber has finished its cleanup use interruptAndWait
    */
   public readonly interrupt: IO<never, void>;
+
+  /**
+   * Interrupt the fiber and then await for its finalizers to run
+   */
+  public readonly interrputAndWait: IO<never, void>;
+
   constructor(public readonly runtime: Runtime<E, A>) {
     this.join = IO.async((callback) => {
       function listener(result: FiberResult<E, A>) {
@@ -23,7 +36,7 @@ export class Fiber<E, A> {
           callback(result.result);
         }
         // Is this the correct way to handle this?
-        callback(new Abort(new Error("Bug: Join on interrupted fiber")));
+        callback(new Abort(new Error("Join on interrupted fiber")));
       }
       runtime.result.listen(listener);
       return () => {
@@ -32,8 +45,8 @@ export class Fiber<E, A> {
     });
 
     this.wait = IO.async((callback) => {
-      function listener(_: FiberResult<E, A>) {
-        callback(new Value(undefined));
+      function listener(r: FiberResult<E, A>) {
+        callback(new Value(r));
       }
       runtime.result.listen(listener);
       return () => {
@@ -45,5 +58,7 @@ export class Fiber<E, A> {
     this.interrupt = IO.eval(() => {
       this.runtime.interrupt();
     });
+
+    this.interrputAndWait = this.interrupt.applyFirst(this.wait);
   }
 }

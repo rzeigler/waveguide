@@ -1,12 +1,18 @@
-# Waveguide
-Waveguide is a set of modules provided datatypes for encoding effects on Javascript platforms inspired by projects like [Cats Effect](https://github.com/typelevel/cats-effect), and [ZIO](https://github.com/scalaz/scalaz-zio). This is the core module which provides the effect type IO.
+# waveguide
+
+[![npm version](https://badge.fury.io/js/waveguide.svg)](https://badge.fury.io/js/waveguide)
+
+Waveguide is a set of modules provided datatypes for encoding effects on Javascript platforms inspired by projects like [Cats Effect](https://github.com/typelevel/cats-effect), and [ZIO](https://github.com/scalaz/scalaz-zio). 
+This is the core module which provides the effect type IO as well as a number of concurrency primatives.
 
 IO is:
+- Lazy. Work is not done until explicitly asked for and interruption can be used to stop work that is no longer needed.
+- Unifies synchronous and asynchronous effects. The core runloop will run until an asynchronous boundary is encountered and then suspend. It is always possible to manually insert asynchronous boundaries manually to avoid blocking the main thread 
+- Resource safe. Exposes a number of primitives for working with resources
+- Concurrent. Exposes a logical fiber threading model with support for joins and interrupts.
 
-- Lazy
-- Supports synchronous and asynchronous effects
-- Exposes a bracketing resource management api
-- Has a fiber concurrency model for parallel actions
+
+For more information see the [docs](./docs/README.md)
 
 ## Getting Started
 ```
@@ -14,66 +20,33 @@ import { IO } from "waveguide"
 ```
 
 ## Constructing an IO
-There are a number of static methods on IO that can be used.
+There are a number of ways of constructing IOs.
+`IO.of` and `IO.failed` allow creating IOs from know values.
+Additionally, `IO.eval` and `IO.suspend` create IOs from side effecting functions.
+`IO.async` creates an asynchronous IO and `IO.assimilate` creates an IO from a promise factory.
 
-### A Pure Value
-```
-IO.of<number>(42)
-```
-or if you want to declare an error that will never happen for typechecker reasons
-```
-IO.pure<string, number>(42)
-```
 
-### An Error
-```
-IO.failed<string>("boom!");
-```
+## Using an IO
+`IO<E, A>` is a monad and exposes the relevant functions in a naming scheme similar to [fp-ts](https://github.com/gcanti/fp-ts/)
+There are parallel variants of a number of functions like ap, applyFirst/Second, and map2.
+Furthermore, there are a several resource acquisition functions such as `bracket` and `ensuring` which guarantee IO actions happen in the fact of errors or interuption.
+These respect the 'critical' method which marks an IO as a critical section and as such should be interruptible.
 
-### An Infallibe Sync Effect
-```
-let n = 1;
-IO.eval<number>(() => ++n);
-```
+## Fibers
+An `IO<E, A>` may be converted to a fiber using `fork()`.
+The result being an `IO<never, Fiber<E, A>>`.
+The IO action is now running in the background and can be interrupted, waited, or joined.
+`interrupt` sends an interrupt to a fiber causing it to halt once it leaves any critical sections it may be in.
+A fiber will always run its finalizers even in the face of interruption.
+`join` will halt the progress of the current fiber until the result of the target fiber is known.
+`wait` will await the termination of a fiber either by interruption or completion. 
+In particular, if you need to know when a fiber has finished its finalizers after being interrupted, you may use `wait`.
 
-### A Suspended Effect
-Runs an infallible synchronous effect to produce the next effect.
-The next effect may be any IO.
-```
-let add: boolean = false;
-let n = 0;
-IO.suspend(() => add ? IO.eval(() => ++n) : IO.eval(() => --n));
-```
+## Running
+IOs are lazy so they don't actually do anything until they are interpreted.
+`launch` will begin running a fiber and returns a cancellation action.
+`promised` will return a promise of the result of the fiber and will not resolve in the face of interruption.
+`promisedResult` will return a promise of a FiberResult.
 
-### An Asynchronous Effect
-IO.async<E, A> will create an asynchronous effect.
-Client code is expected to provide a continuation that when invoked with a callback will return a cancellation effect.
-It has the signature:
-
-`public static async<E, A>(start: (resume: (result: Result<E, A>) => void) => (() => void)): IO<E, A`
-
-Result<E, A> is a union type for encoding effect results. There are 3 possibilities, `Value<A>`, `Raise<E>`, and `Abort`. See [result.ts](./src/result.ts) for more.
-
-As an example, consider a simplified implementation of IO.delay which produces an `IO<never, void>`. 
-
-```
-public static delay(millis: number): IO<never, void> {
-    return new IO(new Async((callback) => {
-        function go() {
-            callback(new Value(undefined));
-        }
-        const id = setTimeout(go, millis)
-        return () => {
-          cancelTimeout(id);
-        };
-    }));
-}
-```
-
-If your action is uncancellable, return a noop and use the `critical()` combinator which marks this as uncancellable.
-
-### A Promise
-```
-IO.assimilate(() => Promise.resolve(42))
-```
-assimilate produces uncancellable IO actions. If you are using something like bluebird you should call yourself.
+## Concurrency Abstractions
+Waveguide also provides Ref (synchronous mutable cell), Deferred (set once asynchronous cell), and Semaphore.

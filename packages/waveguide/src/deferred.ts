@@ -4,55 +4,55 @@ import { OneShot } from "./oneshot";
 import { Value } from "./result";
 
 /**
- * A deferred structure.
- * A deferred may be set at most one time.;
- * Additional attempts to set will cause an Abort with a Bug message from OneShot
- * A deferred may be awaited on for a value
+ * An asynchronous value cell that starts empty and may be filled at most one time.
  */
 export class Deferred<A> {
-  /**
-   * Allocate a new deferred cell.
-   * The optional autoyield parameter controls the behavior of the read side of the deferred.
-   * Because of the nature of callbacks and the fact that a set is a fundamentally synchronous action
-   * that may occur at some time in the future, it is possible that the fiber setting the deferred
-   * may pause and drive all the fibers reading from the deferred until their first asynchronous boundary.
-   * If this is undesirable, then set autoyield to true which will insert an asynchronous boundary on the read side
-   * @param autoyield
-   */
-  public static alloc<A>(autoyield: boolean = false): IO<never, Deferred<A>> {
-    return IO.eval(() => Deferred.unsafeAlloc<A>(autoyield));
+
+  public static alloc<A>(): IO<never, Deferred<A>> {
+    return IO.eval(() => Deferred.unsafeAlloc<A>());
   }
 
-  public static unsafeAlloc<A>(autoyield: boolean = false): Deferred<A> {
-    return new Deferred(autoyield);
+  public static unsafeAlloc<A>(): Deferred<A> {
+    return new Deferred();
   }
 
-  public get: IO<never, A>;
-  public isSet: IO<never, boolean>;
-  public isUnset: IO<never, boolean>;
+  public wait: IO<never, A>;
+  public isFull: IO<never, boolean>;
+  public isEmpty: IO<never, boolean>;
   private oneshot: OneShot<A>;
 
-  private constructor(autoyield: boolean) {
+  private constructor() {
     this.oneshot = new OneShot<A>();
-    this.isSet = IO.eval(() => this.oneshot.isSet());
-    this.isUnset = IO.eval(() => !this.oneshot.isSet());
-    const get = IO.async<never, A>((resume) => {
+    this.isFull = IO.eval(() => this.oneshot.isSet());
+    this.isEmpty = IO.eval(() => !this.oneshot.isSet());
+    this.wait = IO.async<never, A>((resume) => {
+      let id: number | undefined;
       function listener(a: A) {
-        resume(new Value(a));
+        // Don't deliver the notification until the next tick.
+        // This prevents stack overflows at the fill/wait rendezvous where one fiber's runloop
+        // will drive another fiber's runloop above it on the stack
+        // This behavior will cause the stack to grow.
+        // Because one of the use cases of Deferred is for implementing racing we need to ensure
+        // we can support an arbitrary number of such interactions.
+        id = setTimeout(() => {
+          resume(new Value(a));
+        }, 0);
       }
       this.oneshot.listen(listener);
       return () => {
         this.oneshot.unlisten(listener);
+        if (id) {
+          clearTimeout(id);
+        }
       };
     });
-    this.get = autoyield ? get.yield_() : get;
   }
 
   @boundMethod
-  public set(a: A): IO<never, void> {
+  public fill(a: A): IO<never, void> {
     return IO.eval(() => {
       if (this.oneshot.isSet()) {
-        throw new Error("Bug: Deferred has already been set");
+        throw new Error("Bug: Deferred has already been filled");
       }
       this.oneshot.set(a);
     });

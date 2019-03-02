@@ -10,8 +10,9 @@ export type IOStep<E, A> =
   | Critical<E, A>
   | Chain<E, any, A>
   | ChainError<E, any, A>
-  | Finally<E, any, A>
-  | Bracket<E, any, A>;
+  | OnDone<E, any, A>
+  | OnInterrupted<E, any, A>
+  | Use<E, any, A>;
 
 export class Of<A> {
   public readonly _tag: "of" = "of";
@@ -53,13 +54,18 @@ export class Chain<E, Left, A> {
   constructor(public readonly left: IO<E, Left>, public readonly chain: (left: Left) => IO<E, A>) { }
 }
 
-export class Finally<E, B, A> {
-  public readonly _tag: "finally" = "finally";
+export class OnDone<E, B, A> {
+  public readonly _tag: "ondone" = "ondone";
   constructor(public readonly first: IO<E, A>, public readonly always: IO<E, B>) { }
 }
 
-export class Bracket<E, R, A> {
-  public readonly _tag: "bracket" = "bracket";
+export class OnInterrupted<E, B, A> {
+  public readonly _tag: "oninterrupted" = "oninterrupted";
+  constructor(public readonly first: IO<E, A>, public readonly interupted: IO<E, B>) { }
+}
+
+export class Use<E, R, A> {
+  public readonly _tag: "use" = "use";
   constructor(public readonly resource: IO<E, R>,
               public readonly release: (r: R) => IO<E, void>,
               public readonly consume: (r: R) => IO<E, A>) { }

@@ -1,16 +1,16 @@
 import { array } from "fp-ts/lib/Array";
 import "source-map-support/register";
 import { IO, terminal } from "waveguide";
-import { parApplicative } from "../index";
+import { parallelApplicative } from "../index";
 
 const waits = [];
 for (let i = 0; i < 10000; i++) {
   waits.push(IO.of(i).delay(Math.floor(Math.random() * 1000)));
 }
 
-const wait = array.sequence(parApplicative)(waits);
+const wait = array.sequence(parallelApplicative)(waits);
 
 terminal.log("starting").applySecond(wait)
-  .chain((i) => terminal.log(`completed`))
+  .applySecond(terminal.log(`completed`))
   // tslint:disable-next-line
   .launch((result) => console.log(result));

@@ -1,5 +1,8 @@
 import { IO } from "./io";
 
+/**
+ * A synchronous mutable reference cell that always contains a value
+ */
 export class Ref<A> {
   public static alloc<A>(a: A): IO<never, Ref<A>> {
     return IO.eval(() => Ref.unsafeAlloc<A>(a));

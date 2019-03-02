@@ -4,9 +4,9 @@ import { IO } from "./io";
 import { OneShot } from "./oneshot";
 import { Abort, Cause, Completed, FiberResult, interrupted, Raise, Result, Value } from "./result";
 
-export type Frame = ChainFrame | ErrorFrame | FinalizeFrame;
+type Frame = ChainFrame | ErrorFrame | FinalizeFrame | InterruptFrame;
 
-export interface Call {
+interface Call {
   /**
    * Encodes the normal invocation of the call stack where a value is received
    * and the continuation must be processed
@@ -14,7 +14,7 @@ export interface Call {
   apply(a: unknown): IO<unknown, unknown>;
 }
 
-export class ChainFrame implements Call {
+class ChainFrame implements Call {
   public readonly _tag: "chain" = "chain";
   constructor(public readonly f: (a: unknown) => IO<unknown, unknown>) { }
   /**
@@ -25,21 +25,31 @@ export class ChainFrame implements Call {
   }
 }
 
-export class ErrorFrame implements Call {
+class ErrorFrame implements Call {
   public readonly _tag: "error" = "error";
   constructor(public readonly f: (cause: Cause<unknown>) => IO<unknown, unknown>) { }
   /**
    * Normal processing of error frames means pass the value through directly
    */
   public apply(a: unknown): IO<unknown, unknown> {
-    return IO.of(a) as unknown as IO<unknown, unknown>;
+    return IO.pure(a);
+  }
+}
+
+class InterruptFrame implements Call {
+  public readonly _tag: "interrupt" = "interrupt";
+  constructor(public readonly io: IO<unknown, unknown>) { }
+  /**
+   * Normal processing of interrupt frames mean we do nothign
+   */
+  public apply(a: unknown): IO<unknown, unknown> {
+    return IO.pure(a);
   }
 }
 
 class AsyncFrame {
   private proxy: ForwardProxy;
   private interrupted: boolean;
-  private unwinding: boolean = false;
   private continuation: (callback: (result: Result<unknown, unknown>) => void) => () => void;
   constructor(continuation: (callback: (result: Result<unknown, unknown>) => void) => () => void) {
     this.proxy = new ForwardProxy();
@@ -48,23 +58,17 @@ class AsyncFrame {
   }
   public go(callback: (result: Result<unknown, unknown>) => void): void {
     const adapted = (result: Result<unknown, unknown>) => {
-      this.unwinding = true;
-      // Attempt to ensure that we are in fact unwinding the stack
-      setTimeout(() => {
-        if (!this.interrupted) {
-          this.interrupted = true;
-          callback(result);
-        }
-      }, 0);
+      if (!this.interrupted) {
+        this.interrupted = true;
+        callback(result);
+      }
     };
     this.proxy.fill(this.continuation(adapted));
   }
   public interrupt(): void {
     this.interrupted = true;
     // Only deliver the cancel invoke if we h aven't been delivered a result
-    if (!this.unwinding) {
-      this.proxy.invoke();
-    }
+    this.proxy.invoke();
   }
 }
 
@@ -209,19 +213,23 @@ export class Runtime<E, A> {
       return;
     } else if (current.step._tag === "critical") {
       this.criticalSections++;
-      return current.step.io.ensuring(this.leaveCritical);
+      return current.step.io.onDone(this.leaveCritical);
     } else if (current.step._tag === "chain") {
       this.callFrames.push(new ChainFrame(current.step.chain));
       return current.step.left;
     } else if (current.step._tag === "chainerror") {
       this.callFrames.push(new ErrorFrame(current.step.chain));
       return current.step.left;
-    } else if (current.step._tag === "finally") {
+    } else if (current.step._tag === "ondone") {
       this.callFrames.push(new FinalizeFrame(
         this.enterCritical.applySecond(current.step.always).applySecond(this.leaveCritical)));
       return current.step.first;
-    } else if (current.step._tag === "bracket") {
-      const bracket = current.step;
+    } else if (current.step._tag === "oninterrupted") {
+      this.callFrames.push(new InterruptFrame(
+        this.enterCritical.applySecond(current.step.interupted).applySecond(this.leaveCritical)));
+      return current.step.first;
+    } else if (current.step._tag === "use") {
+      const use = current.step;
       return this.enterCritical.applySecond(current.step.resource)
         .resurrect()
         .widenError<unknown>()
@@ -230,8 +238,8 @@ export class Runtime<E, A> {
           this.criticalSections--;
           if (result._tag === "value") {
             this.callFrames.push(new FinalizeFrame(
-              this.enterCritical.applySecond(bracket.release(result.value)).applySecond(this.leaveCritical)));
-            this.callFrames.push(new ChainFrame(bracket.consume));
+              this.enterCritical.applySecond(use.release(result.value)).applySecond(this.leaveCritical)));
+            this.callFrames.push(new ChainFrame(use.consume));
             return IO.of(result.value) as unknown as IO<unknown, unknown>;
           }
           // Push these things onto the call stack to ensure that we can correctly consume them on subsequent runs
@@ -301,10 +309,10 @@ export class Runtime<E, A> {
 
   @boundMethod
   private unwindInterrupt(): IO<unknown, unknown> | undefined {
-    const finalizers: FinalizeFrame[] = [];
+    const finalizers: Array<FinalizeFrame | InterruptFrame> = [];
     while (this.callFrames.length > 0) {
       const candidate = this.callFrames.pop();
-      if (candidate && candidate._tag === "finalize") {
+      if (candidate && (candidate._tag === "finalize" || candidate._tag === "interrupt")) {
         finalizers.push(candidate);
       }
     }
