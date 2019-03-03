@@ -1,9 +1,4 @@
-export type FiberResult<E, A> = Completed<E, A> | Interrupted;
-
-export class Completed<E, A> {
-  public readonly _tag: "completed" = "completed";
-  constructor(public readonly result: Result<E, A>) { }
-}
+export type FiberResult<E, A> = Interrupted | Result<E, A>;
 
 export class Interrupted {
   public readonly _tag: "interrupted" = "interrupted";

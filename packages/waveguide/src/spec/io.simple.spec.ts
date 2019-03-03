@@ -2,7 +2,7 @@ import { IO } from "../io";
 import { Raise, Value } from "../result";
 import { equiv, equivIO } from "./lib.spec";
 
-describe("Runtime", () => {
+describe("IO", () => {
   describe("simple expressions", () => {
     it("should eval of", () => {
       return equiv(IO.of(42), new Value(42));

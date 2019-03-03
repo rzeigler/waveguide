@@ -55,10 +55,10 @@ export class Chain<E, Left, A> {
 
 export class OnDone<E, B, A> {
   public readonly _tag: "ondone" = "ondone";
-  constructor(public readonly first: IO<E, A>, public readonly always: IO<E, B>) { }
+  constructor(public readonly first: IO<E, A>, public readonly always: IO<never, B>) { }
 }
 
 export class OnInterrupted<E, B, A> {
   public readonly _tag: "oninterrupted" = "oninterrupted";
-  constructor(public readonly first: IO<E, A>, public readonly interupted: IO<E, B>) { }
+  constructor(public readonly first: IO<E, A>, public readonly interupted: IO<never, B>) { }
 }

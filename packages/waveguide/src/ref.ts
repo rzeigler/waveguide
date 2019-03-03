@@ -19,10 +19,18 @@ export class Ref<A> {
       this.a = a;
     });
   }
-  public modify(f: (a: A) => A): IO<never, A> {
+  public update(f: (a: A) => A): IO<never, A> {
     return IO.eval(() => {
       this.a = f(this.a);
       return this.a;
+    });
+  }
+
+  public modify<B>(f: (a: A) => [B, A]): IO<never, B> {
+    return IO.eval(() => {
+      const [ret, next] = f(this.a);
+      this.a = next;
+      return ret;
     });
   }
 }

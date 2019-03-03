@@ -6,7 +6,7 @@ describe("Deferred", () => {
   it("should block until fulfilled", () => {
     const io = Deferred.alloc<number>()
       .chain((defer) =>
-        defer.fill(100).delay(1000).fork()
+        defer.fill(100).delay(100).fork()
           .applySecond(defer.wait)
       );
     equiv(io, new Value(100));

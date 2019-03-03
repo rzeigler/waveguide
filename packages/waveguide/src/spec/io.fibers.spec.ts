@@ -3,7 +3,7 @@ import { Ref } from "../ref";
 import { Value } from "../result";
 import { equiv, equivIO } from "./lib.spec";
 
-describe("Runtime", () => {
+describe("IO", () => {
   describe("fibers", () => {
     it("spawn/join should be equivalent to simple", () => {
       const base = IO.of(42).delay(10);
@@ -16,6 +16,12 @@ describe("Runtime", () => {
       const io = handle.fork()
         .chain((fiber) => fiber.interrupt.delay(10).applySecond(ref.get.delay(60)));
       return equiv(io, new Value(42));
+    });
+    it("interruption of a complete fiber should do nothing", () => {
+      const io = IO.of(42).fork()
+        .chain((fib) => fib.wait.product(fib.interruptAndWait))
+        .map(([r1, r2]) => r1._tag === r2._tag);
+      return equiv(io, new Value(true));
     });
   });
 });

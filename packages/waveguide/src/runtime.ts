@@ -2,7 +2,7 @@ import { boundMethod } from "autobind-decorator";
 import { ForwardProxy } from "./forwardproxy";
 import { IO } from "./io";
 import { OneShot } from "./oneshot";
-import { Abort, Cause, Completed, FiberResult, interrupted, Raise, Result, Value } from "./result";
+import { Abort, Cause, FiberResult, interrupted, Raise, Result, Value } from "./result";
 
 type Frame = ChainFrame | ErrorFrame | FinalizeFrame | InterruptFrame;
 
@@ -94,13 +94,13 @@ export class Runtime<E, A> {
   private interrupted: boolean = false;
   private suspended: boolean = true;
 
-  private enterCritical: IO<unknown, unknown> = IO.eval(() => {
+  private enterCritical: IO<never, unknown> = IO.eval(() => {
     this.criticalSections++;
-  }).widenError<unknown>();
+  });
 
-  private leaveCritical: IO<unknown, unknown> = IO.eval(() => {
+  private leaveCritical: IO<never, unknown> = IO.eval(() => {
     this.criticalSections--;
-  }).widenError<unknown>();
+  });
 
   public start(io: IO<E, A>): void {
     if (this.started) {
@@ -184,7 +184,7 @@ export class Runtime<E, A> {
      * On unwind, the supervised fiber will attempt to complete here and get a multiple sets error
      */
     if (this.result.isUnset()) {
-      this.result.set(new Completed(result as Result<E, A>));
+      this.result.set(result as Result<E, A>);
     }
   }
 
@@ -213,7 +213,8 @@ export class Runtime<E, A> {
       return;
     } else if (current.step._tag === "critical") {
       this.criticalSections++;
-      return current.step.io.onDone(this.leaveCritical);
+      return current.step.io
+        .ensuring(this.leaveCritical as unknown as IO<never, unknown>);
     } else if (current.step._tag === "chain") {
       this.callFrames.push(new ChainFrame(current.step.chain));
       return current.step.left;
@@ -222,11 +223,15 @@ export class Runtime<E, A> {
       return current.step.left;
     } else if (current.step._tag === "ondone") {
       this.callFrames.push(new FinalizeFrame(
-        this.enterCritical.applySecond(current.step.always).applySecond(this.leaveCritical)));
+        this.enterCritical
+          .applySecond(current.step.always)
+          .applySecond(this.leaveCritical) as unknown as IO<unknown, unknown>));
       return current.step.first;
     } else if (current.step._tag === "oninterrupted") {
       this.callFrames.push(new InterruptFrame(
-        this.enterCritical.applySecond(current.step.interupted).applySecond(this.leaveCritical)));
+        this.enterCritical
+        .applySecond(current.step.interupted)
+        .applySecond(this.leaveCritical) as unknown as IO<unknown, unknown>));
       return current.step.first;
     } else {
       throw new Error(`Bug: Unrecognized step tag: ${(current.step as any)._tag}`);

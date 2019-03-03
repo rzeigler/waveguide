@@ -27,13 +27,13 @@ export class Fiber<E, A> {
   /**
    * Interrupt the fiber and then await for its finalizers to run
    */
-  public readonly interrputAndWait: IO<never, void>;
+  public readonly interruptAndWait: IO<never, FiberResult<E, A>>;
 
   constructor(public readonly runtime: Runtime<E, A>) {
     this.join = IO.async((callback) => {
       function listener(result: FiberResult<E, A>) {
-        if (result._tag === "completed") {
-          callback(result.result);
+        if (result._tag !== "interrupted") {
+          callback(result);
         }
         // Is this the correct way to handle this?
         callback(new Abort(new Error("Join on interrupted fiber")));
@@ -59,6 +59,6 @@ export class Fiber<E, A> {
       this.runtime.interrupt();
     });
 
-    this.interrputAndWait = this.interrupt.applyFirst(this.wait);
+    this.interruptAndWait = this.interrupt.applySecond(this.wait);
   }
 }

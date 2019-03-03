@@ -3,6 +3,10 @@ export class Dequeue<A> {
     return new Dequeue(as);
   }
 
+  public static empty<A>(): Dequeue<A> {
+    return new Dequeue([]);
+  }
+
   public length: number;
   public empty: boolean;
 

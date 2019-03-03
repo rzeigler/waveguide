@@ -193,8 +193,8 @@ export class IO<E, A> {
     // Deferred has the property of ensuring the stack is unwound on wait and this is desirable
     return Deferred.alloc<A>().widenError<EE>().chain((left) =>
       Deferred.alloc<B>().widenError<EE>().chain((right) =>
-        this.fork().widenError<EE>().use((fiba) => fiba.interrupt, (fiba) =>
-          fb.fork().widenError<EE>().use((fibb) => fibb.interrupt, (fibb) =>
+        this.fork().widenError<EE>().bracket((fiba) => fiba.interrupt, (fiba) =>
+          fb.fork().widenError<EE>().bracket((fibb) => fibb.interrupt, (fibb) =>
             fiba.join.peek((v) => left.fill(v).widenError<EE>())
               .applySecond(fibb.join.peek((v) => right.fill(v).widenError<EE>()))
           )
@@ -250,7 +250,7 @@ export class IO<E, A> {
    * Run this and fb in sequence and take the result of fb
    * @param fb
    */
-  public applySecond<EE, B>(this: IO<EE | never, A>, fb: IO<EE, B>): IO<EE, B> {
+  public applySecond<B>(fb: IO<E | never, B>): IO<E, B> {
     return this.map2(fb, (_, b) => b);
   }
 
@@ -266,7 +266,7 @@ export class IO<E, A> {
    * Run this and fb in sequence and produce a tuple of their results.
    * @param fb
    */
-  public product<EE, B>(this: IO<EE | never, A>, fb: IO<EE, B>): IO<EE, [A, B]> {
+  public product<B>(fb: IO<E, B>): IO<E, [A, B]> {
     return this.map2(fb, (a, b) => [a, b] as [A, B]);
   }
 
@@ -282,12 +282,20 @@ export class IO<E, A> {
    * Flatten an IO<E, IO<E, A>> into an IO<E, A>
    * @param this
    */
-  public flatten<EE, AA>(this: IO<EE | never, IO<EE | never, AA>>): IO<EE, AA> {
+  public flatten<AA>(this: IO<E | never, IO<E | never, AA>>): IO<E, AA> {
     return this.chain((io) => io);
   }
 
-  public peek<EE, B>(this: IO<EE | never, A>, f: (a: A) => IO<EE, B>): IO<EE, A> {
+  public peek<B>(f: (a: A) => IO<E | never, B>): IO<E, A> {
     return this.chain((a) => f(a).as(a));
+  }
+
+  public peekError<B>(f: (e: E) => IO<never, B>): IO<E, A> {
+    return this.chainError((e) => f(e).widenError<E>().applySecond(IO.failed(e)));
+  }
+
+  public peekCause<B>(f: (cause: Cause<E>) => IO<never, B>): IO<E, A> {
+    return this.chainCause((cause) => f(cause).widenError<E>().applySecond(IO.caused(cause)));
   }
 
   public chain<EE, B>(this: IO<EE | never, A>, f: (a: A) => IO<EE, B>): IO<EE, B> {
@@ -351,32 +359,11 @@ export class IO<E, A> {
    * Ensure that if this IO has begun executing always will always be executed as cleanup.
    * @param always
    */
-  public onDone<EE, B>(this: IO<EE | never, A>, always: IO<EE | never, B>): IO<EE, A> {
+  public ensuring<B>(always: IO<never, B>): IO<E, A> {
     return new IO(new OnDone(this, always));
   }
 
-  /**
-   * Ensure that if this IO fails, error will always be executed.
-   *
-   * If error fails the resulting cause will have both errors.
-   * @param error
-   */
-  public onError<B>(error: IO<E | never, B>): IO<E, A> {
-    return this.chainCause((cause: Cause<E>) =>
-        error.resurrect()
-          .widenError<E>()
-          .chain((r) => {
-            if (r._tag === "value") {
-              return IO.caused(cause);
-            } else if (r._tag === "raise") {
-              return IO.caused(cause.and(r) as Cause<E>);
-            } else {
-              return IO.caused(cause.and(r) as Cause<E>);
-            }
-          }));
-  }
-
-  public onInterrupt<EE, B>(this: IO<EE | never, A>, interrupt: IO<EE | never, B>): IO<EE, A> {
+  public interrupted<B>(interrupt: IO<never, B>): IO<E, A> {
     return new IO(new OnInterrupted(this, interrupt));
   }
 
@@ -389,14 +376,40 @@ export class IO<E, A> {
    * @param release a function producing a resource release IO
    * @param consume a function producing the IO to continue with
    */
-  public use<B>(release: (a: A) => IO<never, void>, consume: (a: A) => IO<E, B>): IO<E, B> {
+  public bracket<B>(release: (a: A) => IO<never, void>, consume: (a: A) => IO<E, B>): IO<E, B> {
     return Ref.alloc<IO<never, void>>(IO.void())
       .widenError<E>()
-      .chain((ref: Ref<IO<never, void>>) =>
+      .chain((ref) =>
         // Resource acquisition and setting of the ref is critical
         this.chain((r) => ref.set(release(r)).as(r).widenError<E>()).critical()
           .chain(consume)
-          .onDone(ref.get.flatten().widenError<E>())
+          .ensuring(ref.get.flatten())
+      );
+  }
+
+  /**
+   * A resource management construct
+   *
+   * Treat this action as producgina resource.
+   * If this is successful, the release will always be executed following the IO produced by consume
+   * even on error or interrupt.
+   * The release and acquisition are critical sections
+   * @param release
+   * @param consume
+   */
+  public bracketExit<B>(release: (a: A, result: FiberResult<E, B>) => IO<never, void>,
+                        consume: (a: A) => IO<E, B>): IO<E, B> {
+    return Ref.alloc<IO<never, void>>(IO.void())
+      .widenError<E>()
+      .chain((cleanup) =>
+        this
+        .chain((resource) =>
+          consume(resource).fork().widenError<E>()
+            .peek((fib) =>
+              cleanup.set(fib.interruptAndWait
+                .chain((result) => release(resource, result))).widenError<E>())).critical()
+        .chain((fib) => fib.join)
+        .ensuring(cleanup.get.flatten())
       );
   }
 
@@ -408,7 +421,7 @@ export class IO<E, A> {
    * @param inner
    */
   public use_<B>(release: (a: A) => IO<never, void>, inner: IO<E, B>): IO<E, B> {
-    return this.use(release, (_) => inner);
+    return this.bracket(release, (_) => inner);
   }
 
   /**
@@ -456,8 +469,8 @@ export class IO<E, A> {
     return Deferred.alloc<Result<E, A>>()
       .chain((deferred) =>
         raceInto(deferred, this)
-          .use_(fiberInterrupt, raceInto(deferred, other)
-            .use_(fiberInterrupt, deferred.wait)))
+          .use_((fiba) => fiba.interrupt, raceInto(deferred, other)
+            .use_((fibb) => fibb.interrupt, deferred.wait)))
       .slay();
   }
 
@@ -516,7 +529,7 @@ export class IO<E, A> {
       const runtime = new Runtime<E, A>();
       runtime.start(this);
       return new Fiber(runtime);
-    }).yield_();
+    }).yield_(); // Yield. This prevents spawning many fibers in through folding from consume stack
   }
 
   /**
@@ -550,12 +563,10 @@ export class IO<E, A> {
     return new Promise((resolve, reject) => {
       const runtime = new Runtime<E, A>();
       runtime.result.listen((result) => {
-        if (result._tag === "completed") {
-          if (result.result._tag === "value") {
-            resolve(result.result.value);
-          } else {
-            reject(result.result.error);
-          }
+        if (result._tag === "value") {
+          resolve(result.value);
+        } else if (result._tag === "raise" || result._tag === "abort") {
+          return reject(result.error);
         }
         // Don't resolve for interrupts
       });

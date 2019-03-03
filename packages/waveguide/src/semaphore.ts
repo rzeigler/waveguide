@@ -5,8 +5,8 @@ import { Ref } from "./ref";
 import { Abort, First, OneOf, Second } from "./result";
 
 // State is either a list of waits or the amount remaining
-type Pending = [number, Deferred<void>];
-type State = OneOf<Dequeue<Pending>, number>;
+type Reservation = [number, Deferred<void>];
+type State = OneOf<Dequeue<Reservation>, number>;
 
 function sanityCheck(permits: number): IO<never, void> {
   if (permits < 0) {
@@ -15,6 +15,10 @@ function sanityCheck(permits: number): IO<never, void> {
     return IO.aborted(new Abort(new Error("Bug: permits must be integers")));
   }
   return IO.void();
+}
+
+class Acquire {
+  constructor(public readonly wait: IO<never, void>, public readonly restore: IO<never, void>) { }
 }
 
 /**
@@ -33,6 +37,16 @@ export class Semaphore {
       .map((sref) => new Semaphore(sref));
   }
 
+  public static unsafeAlloc(permits: number): Semaphore {
+    if (permits < 0) {
+      throw new Error("Bug: permits may not be negative");
+    }
+    if (Math.round(permits) !== permits) {
+      throw new Error("Bug: permits may not be negative");
+    }
+    return new Semaphore(Ref.unsafeAlloc(new Second(permits)));
+  }
+
   public readonly acquire: IO<never, void> = this.acquireN(1);
   public readonly release: IO<never, void> = this.releaseN(1);
   public readonly count: IO<never, number> = this.ref.get
@@ -43,7 +57,7 @@ export class Semaphore {
   public withPermitsN<E, A>(permits: number, io: IO<E, A>): IO<E, A> {
     return this.acquireN(permits)
       .widenError<E>()
-      .applySecond(io.onDone(this.releaseN(permits).widenError<E>()));
+      .applySecond(io.ensuring(this.releaseN(permits)));
   }
 
   public withPermit<E, A>(io: IO<E, A>): IO<E, A> {
@@ -52,16 +66,8 @@ export class Semaphore {
 
   public acquireN(permits: number): IO<never, void> {
     /* Construct an IO action that will block the calling fiber appropriately*/
-    const acquire = this.ref.get
-      .chain((state) => {
-        if (state._tag === "first") {
-          return IO.aborted(new Abort("boom!"));
-        } else {
-          return IO.aborted(new Abort("boom!"));
-        }
-      });
-    return sanityCheck(permits)
-      .applySecond(acquire);
+
+    return sanityCheck(permits);
   }
 
   public releaseN(permits: number): IO<never, void> {
