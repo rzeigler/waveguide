@@ -63,12 +63,8 @@ describe("Semaphore", () => {
     const io = fiber1.fork()
       .chain((fib1) => fiber2.fork()
         .chain((fib2) => moved.get
-          .chain((initial) =>  terminal.log("fib1 to interrupt")
-            .applySecond(fib1.interruptAndWait)
-            .applySecond(terminal.log("fib1 interrupted"))
-            .applySecond(sem.count.chain((c) => terminal.log(`${c} available`)))
+          .chain((initial) =>  fib1.interruptAndWait
             .applySecond(fib2.join)
-            .applySecond(terminal.log("fib2 joined"))
             .applySecond(moved.get.product(sem.count))
             .map((pair) => [initial, ...pair]))));
     return equiv(io, new Value([0, 2, 0]));

@@ -569,7 +569,7 @@ export class IO<E, A> {
       const runtime = new Runtime<E, A>();
       runtime.start(this);
       return new Fiber(runtime);
-    }).yield_(); // Yield. This prevents spawning many fibers in through folding from consume stack
+    }); // Yield. This prevents spawning many fibers in through folding from consume stack
   }
 
   /**
