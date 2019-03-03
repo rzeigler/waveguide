@@ -1,3 +1,17 @@
+// Copyright 2019 Ryan Zeigler
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 // tslint:disable-next-line
 import "source-map-support/register";
 
@@ -49,13 +63,13 @@ function handler(req: http.IncomingMessage, res: http.ServerResponse): IO<never,
 }
 
 const go: IO<never, number> =
-  Server.alloc().use((server) => terminal.log("shutting down").applySecond(server.drain()), (server) =>
+  Server.alloc().bracket((server) => terminal.log("shutting down").applySecond(server.drain()), (server) =>
     server.setHandler(handler)
       .applySecond(server.listen(4545))
       .applySecond(terminal.log("listening on 4545"))
       .applySecond(IO.never_())
   )
-  .onDone(terminal.log("shut down"))
+  .ensuring(terminal.log("shut down"))
   .as(0);
 
 main(go);

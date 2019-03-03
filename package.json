@@ -5,6 +5,7 @@
     "husky": "^1.3.1",
     "lerna": "^3.13.0"
   },
+  "license": "AL2",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/rzeigler/waveguide.git"

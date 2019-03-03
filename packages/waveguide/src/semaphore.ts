@@ -1,8 +1,22 @@
+// Copyright 2019 Ryan Zeigler
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 import { Deferred } from "./deferred";
 import { IO } from "./io";
 import { Dequeue } from "./queue";
 import { Ref } from "./ref";
-import { Abort, First, OneOf, Second } from "./result";
+import { Abort, FiberResult, First, OneOf, Second } from "./result";
 
 // State is either a list of waits or the amount remaining
 type Reservation = [number, Deferred<void>];
@@ -23,8 +37,6 @@ class Acquire {
 
 /**
  * Semaphore for IO
- * Based loosely on
- * https://github.com/scalaz/scalaz-zio/blob/master/core/shared/src/main/scala/scalaz/zio/Semaphore.scala
  */
 export class Semaphore {
   /**
@@ -65,7 +77,15 @@ export class Semaphore {
   }
 
   public acquireN(permits: number): IO<never, void> {
-    /* Construct an IO action that will block the calling fiber appropriately*/
+// Based on the https://github.com/scalaz/scalaz-zio/blob/master/core/shared/src/main/scala/scalaz/zio/Semaphore.scala
+    function restore(acquire: Acquire, exit: FiberResult<never, void>) {
+      if (exit._tag === "interrupted") {
+        return acquire.restore;
+      }
+      return IO.void();
+    }
+
+    const reserve = permits === 0 ? new Acquire(IO.void(), IO.void()) : new Acquire(IO.void(), IO.void());
 
     return sanityCheck(permits);
   }

@@ -10,7 +10,7 @@
   ],
   "author": "Ryan Zeigler <zeiglerr@gmail.com>",
   "homepage": "https://github.com/rzeigler/waveguide#readme",
-  "license": "MIT",
+  "license": "AL2",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "repository": {

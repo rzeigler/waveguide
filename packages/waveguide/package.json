@@ -28,7 +28,7 @@
     "url": "git+https://github.com/rzeigler/waveguide.git"
   },
   "author": "Ryan Zeigler",
-  "license": "MIT",
+  "license": "AL2",
   "devDependencies": {
     "@types/chai": "^4.1.7",
     "@types/chai-as-promised": "^7.1.0",
@@ -48,6 +48,5 @@
   },
   "dependencies": {
     "autobind-decorator": "^2.4.0"
-  },
-  "gitHead": "c45223dc59f7fd1f6cd3d858b31509a0c7607b11"
+  }
 }

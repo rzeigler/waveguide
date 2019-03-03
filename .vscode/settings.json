@@ -1,0 +1,6 @@
+{
+  "licenser.license": "AL2",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.tslint": true
+  }
+}
