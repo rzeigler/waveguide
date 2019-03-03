@@ -37,4 +37,24 @@ describe("OneShot", () => {
     one.set("b");
     expect(result).to.equal(undefined);
   });
+  it("should allow setting undefined as a value that trigger", () => {
+    let fired = false;
+    const one = new OneShot<undefined>();
+    const listen = (_: void) => {
+      fired = true;
+    };
+    one.listen(listen);
+    one.set(undefined);
+    expect(fired).to.equal(true);
+  });
+  it("should allow setting undefined as a value that triggers late listens", () => {
+    let fired = false;
+    const one = new OneShot<undefined>();
+    const listen = (_: void) => {
+      fired = true;
+    };
+    one.set(undefined);
+    one.listen(listen);
+    expect(fired).to.equal(true);
+  });
 });

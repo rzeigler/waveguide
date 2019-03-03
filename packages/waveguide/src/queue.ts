@@ -17,6 +17,10 @@ export class Dequeue<A> {
     return new Dequeue(as);
   }
 
+  public static of<A>(a: A): Dequeue<A> {
+    return new Dequeue([a]);
+  }
+
   public static empty<A>(): Dequeue<A> {
     return new Dequeue([]);
   }
@@ -30,15 +34,15 @@ export class Dequeue<A> {
     this.empty = this.length === 0;
   }
 
-  public offer(a: A): Dequeue<A> {
+  public enqueue(a: A): Dequeue<A> {
     return new Dequeue([...this.array, a]);
   }
 
-  public push(a: A): Dequeue<A> {
+  public enqueueFront(a: A): Dequeue<A> {
     return new Dequeue([a, ...this.array]);
   }
 
-  public take(): [A | undefined, Dequeue<A>] {
+  public dequeue(): [A | undefined, Dequeue<A>] {
     if (this.empty) {
       return [undefined, this];
     }

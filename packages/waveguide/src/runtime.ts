@@ -61,6 +61,23 @@ class InterruptFrame implements Call {
   }
 }
 
+class FinalizeFrame implements Call {
+  public readonly _tag: "finalize" = "finalize";
+  /**
+   * Construct a finalize frame.
+   * The contract is that this IO should interoperate with the runtime critical segments
+   * @param io
+   */
+  constructor(public readonly io: IO<unknown, unknown>) { }
+  /**
+   * Normal processing of finalize frames means invoke the finalizer and then
+   * return the the value
+   */
+  public apply(a: unknown): IO<unknown, unknown> {
+    return this.io.as(a);
+  }
+}
+
 class AsyncFrame {
   private proxy: ForwardProxy;
   private interrupted: boolean;
@@ -83,18 +100,6 @@ class AsyncFrame {
     this.interrupted = true;
     // Only deliver the cancel invoke if we h aven't been delivered a result
     this.proxy.invoke();
-  }
-}
-
-export class FinalizeFrame implements Call {
-  public readonly _tag: "finalize" = "finalize";
-  constructor(public readonly io: IO<unknown, unknown>) { }
-  /**
-   * Normal processing of finalize frames means invoke the finalizer and then
-   * return the the value
-   */
-  public apply(a: unknown): IO<unknown, unknown> {
-    return this.io.as(a);
   }
 }
 

@@ -43,6 +43,8 @@ export class Fiber<E, A> {
    */
   public readonly interruptAndWait: IO<never, FiberResult<E, A>>;
 
+  public readonly result: IO<never, FiberResult<E, A> | undefined>;
+
   constructor(public readonly runtime: Runtime<E, A>) {
     this.join = IO.async((callback) => {
       function listener(result: FiberResult<E, A>) {
@@ -74,5 +76,9 @@ export class Fiber<E, A> {
     });
 
     this.interruptAndWait = this.interrupt.applySecond(this.wait);
+
+    this.result = IO.eval(() => {
+      return runtime.result.get();
+    });
   }
 }

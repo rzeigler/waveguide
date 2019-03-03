@@ -14,28 +14,37 @@
 
 export class OneShot<A> {
   private value: A | undefined;
-  private listeners: Array<(a: A) => void> = [];
+  // Track set state with a boolean.
+  // This is important to make OneShot<void> work, which is needed to make Deferred<void> work
+  private wasSet: boolean = false;
+  private listeners: Array<(a: A) => void>;
+
+  constructor() {
+    this.listeners = [];
+  }
 
   public set(value: A) {
-    if (this.value) {
+    if (this.wasSet) {
       throw new Error("Bug: OneShot has already been set");
     }
+    this.wasSet = true;
     this.value = value;
     this.listeners.forEach((l) => l(value));
   }
 
+  public count(): number {
+    return this.listeners.length;
+  }
+
   public isSet(): boolean {
-    return this.value !== undefined;
+    return this.wasSet;
   }
 
   public isUnset(): boolean {
-    return this.value === undefined;
+    return !this.isSet();
   }
 
   public listen(f: (a: A) => void): void {
-    if (this.listeners.findIndex((l) => l === f) >= 0) {
-      throw new Error("Bug: OneShot is already notifying that listener");
-    }
     if (this.isSet()) {
       f(this.value!);
     } else {
@@ -45,5 +54,9 @@ export class OneShot<A> {
 
   public unlisten(f: (a: A) => void): void {
     this.listeners = this.listeners.filter((l) => l !== f);
+  }
+
+  public get(): A | undefined {
+    return this.value;
   }
 }

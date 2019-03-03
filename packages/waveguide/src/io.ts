@@ -20,6 +20,8 @@ import { Ref } from "./ref";
 import { Abort, Attempt, Cause, FiberResult, First, OneOf, Raise, Result, Second, Value } from "./result";
 import { Runtime } from "./runtime";
 
+export type UIO<A> = IO<never, A>;
+
 export class IO<E, A> {
   /**
    * Construct an IO from a pure value.
@@ -126,6 +128,7 @@ export class IO<E, A> {
   /**
    * Construct an IO that is already succeeded with an undefined value
    */
+  // TODO: This should probably be a constant
   public static void(): IO<never, void> {
     return IO.of(undefined);
   }
@@ -495,6 +498,29 @@ export class IO<E, A> {
   public raceOneOf<B>(other: IO<E, B>): IO<E, OneOf<A, B>> {
     return this.map<OneOf<A, B>>((a) => new First(a))
       .race(other.map((b) => new Second(b)));
+  }
+
+  /**
+   * Run this IO with a timeout.
+   *
+   * If this succeeds before the timeout, produces a First<A>,
+   * otherwise, interrupts this and produces a Second<Void>
+   * @param millis
+   */
+  public timeoutOneOf(millis: number): IO<E, OneOf<A, void>> {
+    return this.raceOneOf(IO.delay(millis).widenError<E>());
+  }
+
+  /**
+   * Run this IO with a timeout.
+   *
+   * If this succeeds before the timeout, produces an A,
+   * otherwise, interrupts this and produces undefined
+   * @param millis
+   */
+  public timeout(millis: number): IO<E, A | undefined> {
+    return this.map<A | undefined>((a) => a)
+      .race(IO.delay(millis).widenError<E>().as(undefined));
   }
 
   /**

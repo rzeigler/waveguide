@@ -41,7 +41,7 @@ export class Deferred<A> {
     this.isEmpty = IO.eval(() => !this.oneshot.isSet());
     this.wait = IO.async<never, A>((resume) => {
       let id: number | undefined;
-      function listener(a: A) {
+      const listener = (a: A) => {
         // Don't deliver the notification until the next tick.
         // This prevents stack overflows at the fill/wait rendezvous where one fiber's runloop
         // will drive another fiber's runloop above it on the stack
@@ -51,7 +51,7 @@ export class Deferred<A> {
         id = setTimeout(() => {
           resume(new Value(a));
         }, 0);
-      }
+      };
       this.oneshot.listen(listener);
       return () => {
         this.oneshot.unlisten(listener);
