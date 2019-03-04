@@ -32,7 +32,7 @@
 
 ⊕ **new ChainError**(left: *[IO](io.md)<`LeftError`, `A`>*, chain: *`function`*): [ChainError](chainerror.md)
 
-*Defined in [iostep.ts:47](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/iostep.ts#L47)*
+*Defined in [iostep.ts:75](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/iostep.ts#L75)*
 
 **Parameters:**
 
@@ -53,7 +53,7 @@ ___
 
 **● _tag**: *"chainerror"* = "chainerror"
 
-*Defined in [iostep.ts:47](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/iostep.ts#L47)*
+*Defined in [iostep.ts:75](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/iostep.ts#L75)*
 
 ___
 <a id="chain"></a>
@@ -62,7 +62,7 @@ ___
 
 **● chain**: *`function`*
 
-*Defined in [iostep.ts:48](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/iostep.ts#L48)*
+*Defined in [iostep.ts:76](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/iostep.ts#L76)*
 
 #### Type declaration
 ▸(error: *[Cause](../#cause)<`LeftError`>*): [IO](io.md)<`E`, `A`>
@@ -82,7 +82,7 @@ ___
 
 **● left**: *[IO](io.md)<`LeftError`, `A`>*
 
-*Defined in [iostep.ts:48](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/iostep.ts#L48)*
+*Defined in [iostep.ts:76](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/iostep.ts#L76)*
 
 ___
 

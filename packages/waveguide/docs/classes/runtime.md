@@ -50,7 +50,7 @@
 
 **● asyncFrame**: *[AsyncFrame](asyncframe.md) \| `undefined`*
 
-*Defined in [runtime.ts:91](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/runtime.ts#L91)*
+*Defined in [runtime.ts:110](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L110)*
 
 ___
 <a id="callframes"></a>
@@ -59,7 +59,7 @@ ___
 
 **● callFrames**: *[Frame](../#frame)[]* =  []
 
-*Defined in [runtime.ts:92](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/runtime.ts#L92)*
+*Defined in [runtime.ts:111](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L111)*
 
 ___
 <a id="criticalsections"></a>
@@ -68,18 +68,18 @@ ___
 
 **● criticalSections**: *`number`* = 0
 
-*Defined in [runtime.ts:93](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/runtime.ts#L93)*
+*Defined in [runtime.ts:112](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L112)*
 
 ___
 <a id="entercritical"></a>
 
 ### `<Private>` enterCritical
 
-**● enterCritical**: *[IO](io.md)<`unknown`, `unknown`>* =  IO.eval(() => {
+**● enterCritical**: *[IO](io.md)<`never`, `unknown`>* =  IO.eval(() => {
     this.criticalSections++;
-  }).widenError<unknown>()
+  })
 
-*Defined in [runtime.ts:97](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/runtime.ts#L97)*
+*Defined in [runtime.ts:116](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L116)*
 
 ___
 <a id="interrupted"></a>
@@ -88,18 +88,18 @@ ___
 
 **● interrupted**: *`boolean`* = false
 
-*Defined in [runtime.ts:94](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/runtime.ts#L94)*
+*Defined in [runtime.ts:113](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L113)*
 
 ___
 <a id="leavecritical"></a>
 
 ### `<Private>` leaveCritical
 
-**● leaveCritical**: *[IO](io.md)<`unknown`, `unknown`>* =  IO.eval(() => {
+**● leaveCritical**: *[IO](io.md)<`never`, `unknown`>* =  IO.eval(() => {
     this.criticalSections--;
-  }).widenError<unknown>()
+  })
 
-*Defined in [runtime.ts:101](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/runtime.ts#L101)*
+*Defined in [runtime.ts:120](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L120)*
 
 ___
 <a id="result"></a>
@@ -108,7 +108,7 @@ ___
 
 **● result**: *[OneShot](oneshot.md)<[FiberResult](../#fiberresult)<`E`, `A`>>* =  new OneShot()
 
-*Defined in [runtime.ts:88](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/runtime.ts#L88)*
+*Defined in [runtime.ts:107](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L107)*
 
 ___
 <a id="started"></a>
@@ -117,7 +117,7 @@ ___
 
 **● started**: *`boolean`* = false
 
-*Defined in [runtime.ts:90](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/runtime.ts#L90)*
+*Defined in [runtime.ts:109](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L109)*
 
 ___
 <a id="suspended"></a>
@@ -126,7 +126,7 @@ ___
 
 **● suspended**: *`boolean`* = true
 
-*Defined in [runtime.ts:95](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/runtime.ts#L95)*
+*Defined in [runtime.ts:114](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L114)*
 
 ___
 
@@ -138,7 +138,7 @@ ___
 
 ▸ **complete**(result: *[Result](../#result)<`unknown`, `unknown`>*): `void`
 
-*Defined in [runtime.ts:179](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/runtime.ts#L179)*
+*Defined in [runtime.ts:198](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L198)*
 
 **Parameters:**
 
@@ -155,7 +155,7 @@ ___
 
 ▸ **contextSwitch**(continuation: *`function`*, resume: *`function`*, complete: *`function`*): `void`
 
-*Defined in [runtime.ts:237](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/runtime.ts#L237)*
+*Defined in [runtime.ts:261](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L261)*
 
 **Parameters:**
 
@@ -174,7 +174,7 @@ ___
 
 ▸ **interrupt**(): `void`
 
-*Defined in [runtime.ts:113](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/runtime.ts#L113)*
+*Defined in [runtime.ts:132](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L132)*
 
 **Returns:** `void`
 
@@ -185,7 +185,7 @@ ___
 
 ▸ **interruptComplete**(_: *[Result](../#result)<`unknown`, `unknown`>*): `void`
 
-*Defined in [runtime.ts:192](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/runtime.ts#L192)*
+*Defined in [runtime.ts:211](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L211)*
 
 **Parameters:**
 
@@ -202,7 +202,7 @@ ___
 
 ▸ **interruptFinalize**(): `void`
 
-*Defined in [runtime.ts:161](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/runtime.ts#L161)*
+*Defined in [runtime.ts:180](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L180)*
 
 **Returns:** `void`
 
@@ -213,7 +213,7 @@ ___
 
 ▸ **interruptLoop**(io: *[IO](io.md)<`unknown`, `unknown`>*, resume: *`function`*): `void`
 
-*Defined in [runtime.ts:171](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/runtime.ts#L171)*
+*Defined in [runtime.ts:190](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L190)*
 
 **Parameters:**
 
@@ -231,7 +231,7 @@ ___
 
 ▸ **interruptLoopResume**(next: *[IO](io.md)<`unknown`, `unknown`>*): `void`
 
-*Defined in [runtime.ts:142](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/runtime.ts#L142)*
+*Defined in [runtime.ts:161](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L161)*
 
 **Parameters:**
 
@@ -248,7 +248,7 @@ ___
 
 ▸ **loop**(io: *[IO](io.md)<`unknown`, `unknown`>*, resume: *`function`*): `void`
 
-*Defined in [runtime.ts:147](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/runtime.ts#L147)*
+*Defined in [runtime.ts:166](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L166)*
 
 **Parameters:**
 
@@ -266,7 +266,7 @@ ___
 
 ▸ **loopResume**(next: *[IO](io.md)<`unknown`, `unknown`>*): `void`
 
-*Defined in [runtime.ts:137](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/runtime.ts#L137)*
+*Defined in [runtime.ts:156](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L156)*
 
 **Parameters:**
 
@@ -283,7 +283,7 @@ ___
 
 ▸ **popFrame**(result: *`unknown`*, complete: *`function`*): [IO](io.md)<`unknown`, `unknown`> \| `undefined`
 
-*Defined in [runtime.ts:253](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/runtime.ts#L253)*
+*Defined in [runtime.ts:277](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L277)*
 
 **Parameters:**
 
@@ -301,7 +301,7 @@ ___
 
 ▸ **start**(io: *[IO](io.md)<`E`, `A`>*): `void`
 
-*Defined in [runtime.ts:105](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/runtime.ts#L105)*
+*Defined in [runtime.ts:124](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L124)*
 
 **Parameters:**
 
@@ -318,7 +318,7 @@ ___
 
 ▸ **step**(current: *[IO](io.md)<`unknown`, `unknown`>*, resume: *`function`*, complete: *`function`*): [IO](io.md)<`unknown`, `unknown`> \| `undefined`
 
-*Defined in [runtime.ts:196](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/runtime.ts#L196)*
+*Defined in [runtime.ts:215](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L215)*
 
 **Parameters:**
 
@@ -337,7 +337,7 @@ ___
 
 ▸ **unwindError**(cause: *[Cause](../#cause)<`unknown`>*, complete: *`function`*): [IO](io.md)<`unknown`, `unknown`> \| `undefined`
 
-*Defined in [runtime.ts:264](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/runtime.ts#L264)*
+*Defined in [runtime.ts:288](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L288)*
 
 **Parameters:**
 
@@ -355,7 +355,7 @@ ___
 
 ▸ **unwindInterrupt**(): [IO](io.md)<`unknown`, `unknown`> \| `undefined`
 
-*Defined in [runtime.ts:294](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/runtime.ts#L294)*
+*Defined in [runtime.ts:318](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L318)*
 
 **Returns:** [IO](io.md)<`unknown`, `unknown`> \| `undefined`
 

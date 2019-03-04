@@ -20,7 +20,9 @@
 
 ### Methods
 
+* [withPermit](mutex.md#withpermit)
 * [alloc](mutex.md#alloc)
+* [unsafeAlloc](mutex.md#unsafealloc)
 
 ---
 
@@ -32,7 +34,7 @@
 
 ⊕ **new Mutex**(sem: *[Semaphore](semaphore.md)*): [Mutex](mutex.md)
 
-*Defined in [mutex.ts:10](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/mutex.ts#L10)*
+*Defined in [mutex.ts:28](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/mutex.ts#L28)*
 
 **Parameters:**
 
@@ -52,7 +54,7 @@ ___
 
 **● acquire**: *[IO](io.md)<`never`, `void`>*
 
-*Defined in [mutex.ts:9](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/mutex.ts#L9)*
+*Defined in [mutex.ts:27](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/mutex.ts#L27)*
 
 ___
 <a id="release"></a>
@@ -61,7 +63,7 @@ ___
 
 **● release**: *[IO](io.md)<`never`, `void`>*
 
-*Defined in [mutex.ts:10](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/mutex.ts#L10)*
+*Defined in [mutex.ts:28](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/mutex.ts#L28)*
 
 ___
 <a id="sem"></a>
@@ -70,21 +72,53 @@ ___
 
 **● sem**: *[Semaphore](semaphore.md)*
 
-*Defined in [mutex.ts:12](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/mutex.ts#L12)*
+*Defined in [mutex.ts:30](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/mutex.ts#L30)*
 
 ___
 
 ## Methods
 
+<a id="withpermit"></a>
+
+###  withPermit
+
+▸ **withPermit**<`E`,`A`>(io: *[IO](io.md)<`E`, `A`>*): [IO](io.md)<`E`, `A`>
+
+*Defined in [mutex.ts:35](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/mutex.ts#L35)*
+
+**Type parameters:**
+
+#### E 
+#### A 
+**Parameters:**
+
+| Name | Type |
+| ------ | ------ |
+| io | [IO](io.md)<`E`, `A`> |
+
+**Returns:** [IO](io.md)<`E`, `A`>
+
+___
 <a id="alloc"></a>
 
 ### `<Static>` alloc
 
 ▸ **alloc**(): [IO](io.md)<`never`, [Mutex](mutex.md)>
 
-*Defined in [mutex.ts:5](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/mutex.ts#L5)*
+*Defined in [mutex.ts:19](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/mutex.ts#L19)*
 
 **Returns:** [IO](io.md)<`never`, [Mutex](mutex.md)>
+
+___
+<a id="unsafealloc"></a>
+
+### `<Static>` unsafeAlloc
+
+▸ **unsafeAlloc**(): [Mutex](mutex.md)
+
+*Defined in [mutex.ts:23](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/mutex.ts#L23)*
+
+**Returns:** [Mutex](mutex.md)
 
 ___
 

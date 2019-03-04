@@ -2,7 +2,7 @@
 
 # Class: Semaphore
 
-Semaphore for IO Based loosely on [https://github.com/scalaz/scalaz-zio/blob/master/core/shared/src/main/scala/scalaz/zio/Semaphore.scala](https://github.com/scalaz/scalaz-zio/blob/master/core/shared/src/main/scala/scalaz/zio/Semaphore.scala)
+Semaphore for IO
 
 ## Hierarchy
 
@@ -18,8 +18,8 @@ Semaphore for IO Based loosely on [https://github.com/scalaz/scalaz-zio/blob/mas
 
 * [acquire](semaphore.md#acquire)
 * [count](semaphore.md#count)
-* [ref](semaphore.md#ref)
 * [release](semaphore.md#release)
+* [state](semaphore.md#state)
 
 ### Methods
 
@@ -28,6 +28,7 @@ Semaphore for IO Based loosely on [https://github.com/scalaz/scalaz-zio/blob/mas
 * [withPermit](semaphore.md#withpermit)
 * [withPermitsN](semaphore.md#withpermitsn)
 * [alloc](semaphore.md#alloc)
+* [unsafeAlloc](semaphore.md#unsafealloc)
 
 ---
 
@@ -37,15 +38,15 @@ Semaphore for IO Based loosely on [https://github.com/scalaz/scalaz-zio/blob/mas
 
 ### `<Private>` constructor
 
-⊕ **new Semaphore**(ref: *[Ref](ref.md)<[State](../#state)>*): [Semaphore](semaphore.md)
+⊕ **new Semaphore**(state: *[Ref](ref.md)<[State](../#state)>*): [Semaphore](semaphore.md)
 
-*Defined in [semaphore.ts:39](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/semaphore.ts#L39)*
+*Defined in [semaphore.ts:66](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/semaphore.ts#L66)*
 
 **Parameters:**
 
 | Name | Type |
 | ------ | ------ |
-| ref | [Ref](ref.md)<[State](../#state)> |
+| state | [Ref](ref.md)<[State](../#state)> |
 
 **Returns:** [Semaphore](semaphore.md)
 
@@ -59,26 +60,17 @@ ___
 
 **● acquire**: *[IO](io.md)<`never`, `void`>* =  this.acquireN(1)
 
-*Defined in [semaphore.ts:36](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/semaphore.ts#L36)*
+*Defined in [semaphore.ts:63](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/semaphore.ts#L63)*
 
 ___
 <a id="count"></a>
 
 ###  count
 
-**● count**: *[IO](io.md)<`never`, `number`>* =  this.ref.get
-    .map(count)
+**● count**: *[IO](io.md)<`never`, `number`>* =  this.state.get
+    .map(countPermits)
 
-*Defined in [semaphore.ts:38](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/semaphore.ts#L38)*
-
-___
-<a id="ref"></a>
-
-### `<Private>` ref
-
-**● ref**: *[Ref](ref.md)<[State](../#state)>*
-
-*Defined in [semaphore.ts:41](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/semaphore.ts#L41)*
+*Defined in [semaphore.ts:65](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/semaphore.ts#L65)*
 
 ___
 <a id="release"></a>
@@ -87,7 +79,16 @@ ___
 
 **● release**: *[IO](io.md)<`never`, `void`>* =  this.releaseN(1)
 
-*Defined in [semaphore.ts:37](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/semaphore.ts#L37)*
+*Defined in [semaphore.ts:64](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/semaphore.ts#L64)*
+
+___
+<a id="state"></a>
+
+### `<Private>` state
+
+**● state**: *[Ref](ref.md)<[State](../#state)>*
+
+*Defined in [semaphore.ts:68](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/semaphore.ts#L68)*
 
 ___
 
@@ -99,7 +100,7 @@ ___
 
 ▸ **acquireN**(permits: *`number`*): [IO](io.md)<`never`, `void`>
 
-*Defined in [semaphore.ts:53](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/semaphore.ts#L53)*
+*Defined in [semaphore.ts:80](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/semaphore.ts#L80)*
 
 **Parameters:**
 
@@ -116,7 +117,7 @@ ___
 
 ▸ **releaseN**(permits: *`number`*): [IO](io.md)<`never`, `void`>
 
-*Defined in [semaphore.ts:67](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/semaphore.ts#L67)*
+*Defined in [semaphore.ts:88](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/semaphore.ts#L88)*
 
 **Parameters:**
 
@@ -133,7 +134,7 @@ ___
 
 ▸ **withPermit**<`E`,`A`>(io: *[IO](io.md)<`E`, `A`>*): [IO](io.md)<`E`, `A`>
 
-*Defined in [semaphore.ts:49](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/semaphore.ts#L49)*
+*Defined in [semaphore.ts:76](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/semaphore.ts#L76)*
 
 **Type parameters:**
 
@@ -154,7 +155,7 @@ ___
 
 ▸ **withPermitsN**<`E`,`A`>(permits: *`number`*, io: *[IO](io.md)<`E`, `A`>*): [IO](io.md)<`E`, `A`>
 
-*Defined in [semaphore.ts:43](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/semaphore.ts#L43)*
+*Defined in [semaphore.ts:70](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/semaphore.ts#L70)*
 
 **Type parameters:**
 
@@ -176,7 +177,7 @@ ___
 
 ▸ **alloc**(permits: *`number`*): [IO](io.md)<`never`, [Semaphore](semaphore.md)>
 
-*Defined in [semaphore.ts:31](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/semaphore.ts#L31)*
+*Defined in [semaphore.ts:48](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/semaphore.ts#L48)*
 
 Create a new semaphore with the given number of permits
 
@@ -187,6 +188,23 @@ Create a new semaphore with the given number of permits
 | permits | `number` |  The number of permits the semaphore should start with |
 
 **Returns:** [IO](io.md)<`never`, [Semaphore](semaphore.md)>
+
+___
+<a id="unsafealloc"></a>
+
+### `<Static>` unsafeAlloc
+
+▸ **unsafeAlloc**(permits: *`number`*): [Semaphore](semaphore.md)
+
+*Defined in [semaphore.ts:53](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/semaphore.ts#L53)*
+
+**Parameters:**
+
+| Name | Type |
+| ------ | ------ |
+| permits | `number` |
+
+**Returns:** [Semaphore](semaphore.md)
 
 ___
 

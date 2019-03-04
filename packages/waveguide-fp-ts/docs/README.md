@@ -20,6 +20,7 @@ Contains Monad2, Applicative2 (for parallelization), Monoid (racing semantics), 
 
 ### Functions
 
+* [fromOneOf](#fromoneof)
 * [getMonoid](#getmonoid)
 * [getParallelMonoid](#getparallelmonoid)
 * [getParallelSemigroup](#getparallelsemigroup)
@@ -27,6 +28,7 @@ Contains Monad2, Applicative2 (for parallelization), Monoid (racing semantics), 
 * [getSemigroup](#getsemigroup)
 * [map](#map)
 * [of](#of)
+* [optionally](#optionally)
 
 ### Object literals
 
@@ -43,20 +45,45 @@ Contains Monad2, Applicative2 (for parallelization), Monoid (racing semantics), 
 
 **● URI**: *"IO"* = "IO"
 
-*Defined in [index.ts:8](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide-fp-ts/src/index.ts#L8)*
-*Defined in [index.ts:9](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide-fp-ts/src/index.ts#L9)*
+*Defined in [index.ts:22](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide-fp-ts/src/index.ts#L22)*
+*Defined in [index.ts:23](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide-fp-ts/src/index.ts#L23)*
 
 ___
 
 ## Functions
 
+<a id="fromoneof"></a>
+
+###  fromOneOf
+
+▸ **fromOneOf**<`E`,`A`>(oneOf: *`OneOf`<`E`, `A`>*): `Either`<`E`, `A`>
+
+*Defined in [index.ts:125](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide-fp-ts/src/index.ts#L125)*
+
+Convert a OneOf into an Either.
+
+First -> Left, Second -> Right.
+
+**Type parameters:**
+
+#### E 
+#### A 
+**Parameters:**
+
+| Name | Type | Description |
+| ------ | ------ | ------ |
+| oneOf | `OneOf`<`E`, `A`> |   |
+
+**Returns:** `Either`<`E`, `A`>
+
+___
 <a id="getmonoid"></a>
 
 ###  getMonoid
 
 ▸ **getMonoid**<`L`,`A`>(M: *`Monoid`<`A`>*): `Monoid`<`IO`<`L`, `A`>>
 
-*Defined in [index.ts:76](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide-fp-ts/src/index.ts#L76)*
+*Defined in [index.ts:90](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide-fp-ts/src/index.ts#L90)*
 
 Get a monoid for IO<E, A> given a monoid for A that runs in sequence
 
@@ -79,7 +106,7 @@ ___
 
 ▸ **getParallelMonoid**<`L`,`A`>(M: *`Monoid`<`A`>*): `Monoid`<`IO`<`L`, `A`>>
 
-*Defined in [index.ts:87](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide-fp-ts/src/index.ts#L87)*
+*Defined in [index.ts:101](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide-fp-ts/src/index.ts#L101)*
 
 Get a monoid for IO<E, A> given a monoid for A that runs in sequence
 
@@ -102,7 +129,7 @@ ___
 
 ▸ **getParallelSemigroup**<`L`,`A`>(S: *`Semigroup`<`A`>*): `Semigroup`<`IO`<`L`, `A`>>
 
-*Defined in [index.ts:66](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide-fp-ts/src/index.ts#L66)*
+*Defined in [index.ts:80](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide-fp-ts/src/index.ts#L80)*
 
 Get a semigroup for IO<E, A> given a semigroup for A that runs in parallel
 
@@ -125,7 +152,7 @@ ___
 
 ▸ **getRaceMonoid**<`L`,`A`>(): `Monoid`<`IO`<`L`, `A`>>
 
-*Defined in [index.ts:45](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide-fp-ts/src/index.ts#L45)*
+*Defined in [index.ts:59](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide-fp-ts/src/index.ts#L59)*
 
 Get a monoid for IO<E, A> that combines actions by racing them.
 
@@ -143,7 +170,7 @@ ___
 
 ▸ **getSemigroup**<`L`,`A`>(S: *`Semigroup`<`A`>*): `Semigroup`<`IO`<`L`, `A`>>
 
-*Defined in [index.ts:56](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide-fp-ts/src/index.ts#L56)*
+*Defined in [index.ts:70](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide-fp-ts/src/index.ts#L70)*
 
 Get a semigroup for IO<E, A> given a semigroup for A.
 
@@ -166,7 +193,7 @@ ___
 
 ▸ **map**<`L`,`A`,`B`>(fa: *`IO`<`L`, `A`>*, f: *`function`*): `IO`<`L`, `B`>
 
-*Defined in [index.ts:17](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide-fp-ts/src/index.ts#L17)*
+*Defined in [index.ts:31](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide-fp-ts/src/index.ts#L31)*
 
 **Type parameters:**
 
@@ -189,7 +216,7 @@ ___
 
 ▸ **of**<`L`,`A`>(a: *`A`*): `IO`<`L`, `A`>
 
-*Defined in [index.ts:19](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide-fp-ts/src/index.ts#L19)*
+*Defined in [index.ts:33](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide-fp-ts/src/index.ts#L33)*
 
 **Type parameters:**
 
@@ -204,6 +231,29 @@ ___
 **Returns:** `IO`<`L`, `A`>
 
 ___
+<a id="optionally"></a>
+
+###  optionally
+
+▸ **optionally**<`E`,`A`>(io: *`IO`<`E`, `A` \| `null` \| `undefined`>*): `IO`<`E`, `Option`<`A`>>
+
+*Defined in [index.ts:115](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide-fp-ts/src/index.ts#L115)*
+
+fromNullable lifted over the IO type
+
+**Type parameters:**
+
+#### E 
+#### A 
+**Parameters:**
+
+| Name | Type | Description |
+| ------ | ------ | ------ |
+| io | `IO`<`E`, `A` \| `null` \| `undefined`> |   |
+
+**Returns:** `IO`<`E`, `Option`<`A`>>
+
+___
 
 ## Object literals
 
@@ -213,7 +263,7 @@ ___
 
 **monad**: *`object`*
 
-*Defined in [index.ts:24](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide-fp-ts/src/index.ts#L24)*
+*Defined in [index.ts:38](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide-fp-ts/src/index.ts#L38)*
 
 Get the Monad instance for an IO<E, A>
 
@@ -223,7 +273,7 @@ Get the Monad instance for an IO<E, A>
 
 **● URI**: *"IO"*
 
-*Defined in [index.ts:25](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide-fp-ts/src/index.ts#L25)*
+*Defined in [index.ts:39](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide-fp-ts/src/index.ts#L39)*
 
 ___
 <a id="monad.map"></a>
@@ -232,7 +282,7 @@ ___
 
 **● map**: *[map]()*
 
-*Defined in [index.ts:26](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide-fp-ts/src/index.ts#L26)*
+*Defined in [index.ts:40](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide-fp-ts/src/index.ts#L40)*
 
 ___
 <a id="monad.of"></a>
@@ -241,7 +291,7 @@ ___
 
 **● of**: *[of]()*
 
-*Defined in [index.ts:27](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide-fp-ts/src/index.ts#L27)*
+*Defined in [index.ts:41](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide-fp-ts/src/index.ts#L41)*
 
 ___
 <a id="monad.ap"></a>
@@ -250,7 +300,7 @@ ___
 
 ▸ **ap**<`L`,`A`,`B`>(fab: *`IO`<`L`, `function`>*, fa: *`IO`<`L`, `A`>*): `IO`<`L`, `B`>
 
-*Defined in [index.ts:28](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide-fp-ts/src/index.ts#L28)*
+*Defined in [index.ts:42](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide-fp-ts/src/index.ts#L42)*
 
 **Type parameters:**
 
@@ -273,7 +323,7 @@ ___
 
 ▸ **chain**<`L`,`A`,`B`>(fa: *`IO`<`L`, `A`>*, f: *`function`*): `IO`<`L`, `B`>
 
-*Defined in [index.ts:29](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide-fp-ts/src/index.ts#L29)*
+*Defined in [index.ts:43](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide-fp-ts/src/index.ts#L43)*
 
 **Type parameters:**
 
@@ -298,7 +348,7 @@ ___
 
 **parallelApplicative**: *`object`*
 
-*Defined in [index.ts:35](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide-fp-ts/src/index.ts#L35)*
+*Defined in [index.ts:49](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide-fp-ts/src/index.ts#L49)*
 
 Get a parallel applicative instance for IO<E, A>
 
@@ -308,7 +358,7 @@ Get a parallel applicative instance for IO<E, A>
 
 **● URI**: *"IO"*
 
-*Defined in [index.ts:36](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide-fp-ts/src/index.ts#L36)*
+*Defined in [index.ts:50](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide-fp-ts/src/index.ts#L50)*
 
 ___
 <a id="parallelapplicative.map"></a>
@@ -317,7 +367,7 @@ ___
 
 **● map**: *[map]()*
 
-*Defined in [index.ts:37](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide-fp-ts/src/index.ts#L37)*
+*Defined in [index.ts:51](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide-fp-ts/src/index.ts#L51)*
 
 ___
 <a id="parallelapplicative.of"></a>
@@ -326,7 +376,7 @@ ___
 
 **● of**: *[of]()*
 
-*Defined in [index.ts:38](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide-fp-ts/src/index.ts#L38)*
+*Defined in [index.ts:52](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide-fp-ts/src/index.ts#L52)*
 
 ___
 <a id="parallelapplicative.ap"></a>
@@ -335,7 +385,7 @@ ___
 
 ▸ **ap**<`L`,`A`,`B`>(fab: *`IO`<`L`, `function`>*, fa: *`IO`<`L`, `A`>*): `IO`<`L`, `B`>
 
-*Defined in [index.ts:39](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide-fp-ts/src/index.ts#L39)*
+*Defined in [index.ts:53](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide-fp-ts/src/index.ts#L53)*
 
 **Type parameters:**
 

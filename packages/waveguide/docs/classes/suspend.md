@@ -30,7 +30,7 @@
 
 ⊕ **new Suspend**(thunk: *`function`*): [Suspend](suspend.md)
 
-*Defined in [iostep.ts:32](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/iostep.ts#L32)*
+*Defined in [iostep.ts:60](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/iostep.ts#L60)*
 
 **Parameters:**
 
@@ -50,7 +50,7 @@ ___
 
 **● _tag**: *"suspend"* = "suspend"
 
-*Defined in [iostep.ts:32](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/iostep.ts#L32)*
+*Defined in [iostep.ts:60](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/iostep.ts#L60)*
 
 ___
 <a id="thunk"></a>
@@ -59,7 +59,7 @@ ___
 
 **● thunk**: *`function`*
 
-*Defined in [iostep.ts:33](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/iostep.ts#L33)*
+*Defined in [iostep.ts:61](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/iostep.ts#L61)*
 
 #### Type declaration
 ▸(): [IO](io.md)<`E`, `A`>

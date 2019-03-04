@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { IO } from "waveguide";
+import { IO, OneOf } from "waveguide";
 export { IO } from "waveguide";
 import { Applicative2 } from "fp-ts/lib/Applicative";
 import { Monad2 } from "fp-ts/lib/Monad";
@@ -103,4 +103,28 @@ export function getParallelMonoid<L, A>(M: Monoid<A>): Monoid<IO<L, A>> {
     ...getParallelSemigroup(M),
     empty: IO.of(M.empty)
   };
+}
+
+import { Either, left, right } from "fp-ts/lib/Either";
+import { fromNullable, Option } from "fp-ts/lib/Option";
+
+/**
+ * fromNullable lifted over the IO type
+ * @param io
+ */
+export function optionally<E, A>(io: IO<E, A | null | undefined>): IO<E, Option<A>> {
+  return io.map(fromNullable);
+}
+
+/**
+ * Convert a OneOf into an Either.
+ *
+ * First -> Left, Second -> Right.
+ * @param oneOf
+ */
+export function fromOneOf<E, A>(oneOf: OneOf<E, A>): Either<E, A> {
+  if (oneOf._tag === "first") {
+    return left(oneOf.first);
+  }
+  return right(oneOf.second);
 }

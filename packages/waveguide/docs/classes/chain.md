@@ -32,7 +32,7 @@
 
 ⊕ **new Chain**(left: *[IO](io.md)<`E`, `Left`>*, chain: *`function`*): [Chain](chain.md)
 
-*Defined in [iostep.ts:52](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/iostep.ts#L52)*
+*Defined in [iostep.ts:80](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/iostep.ts#L80)*
 
 **Parameters:**
 
@@ -53,7 +53,7 @@ ___
 
 **● _tag**: *"chain"* = "chain"
 
-*Defined in [iostep.ts:52](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/iostep.ts#L52)*
+*Defined in [iostep.ts:80](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/iostep.ts#L80)*
 
 ___
 <a id="chain-1"></a>
@@ -62,7 +62,7 @@ ___
 
 **● chain**: *`function`*
 
-*Defined in [iostep.ts:53](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/iostep.ts#L53)*
+*Defined in [iostep.ts:81](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/iostep.ts#L81)*
 
 #### Type declaration
 ▸(left: *`Left`*): [IO](io.md)<`E`, `A`>
@@ -82,7 +82,7 @@ ___
 
 **● left**: *[IO](io.md)<`E`, `Left`>*
 
-*Defined in [iostep.ts:53](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/iostep.ts#L53)*
+*Defined in [iostep.ts:81](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/iostep.ts#L81)*
 
 ___
 

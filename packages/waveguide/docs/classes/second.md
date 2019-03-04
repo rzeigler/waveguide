@@ -29,7 +29,7 @@
 
 ⊕ **new Second**(second: *`B`*): [Second](second.md)
 
-*Defined in [result.ts:49](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/result.ts#L49)*
+*Defined in [result.ts:58](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/result.ts#L58)*
 
 **Parameters:**
 
@@ -49,7 +49,7 @@ ___
 
 **● _tag**: *"second"* = "second"
 
-*Defined in [result.ts:49](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/result.ts#L49)*
+*Defined in [result.ts:58](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/result.ts#L58)*
 
 ___
 <a id="second-1"></a>
@@ -58,7 +58,7 @@ ___
 
 **● second**: *`B`*
 
-*Defined in [result.ts:50](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/result.ts#L50)*
+*Defined in [result.ts:59](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/result.ts#L59)*
 
 ___
 

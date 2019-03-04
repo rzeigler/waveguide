@@ -58,7 +58,6 @@ Waveguide also provides Ref (synchronous mutable cell), Deferred (set once async
 * [Chain](classes/chain.md)
 * [ChainError](classes/chainerror.md)
 * [ChainFrame](classes/chainframe.md)
-* [Completed](classes/completed.md)
 * [Critical](classes/critical.md)
 * [Deferred](classes/deferred.md)
 * [Dequeue](classes/dequeue.md)
@@ -83,6 +82,7 @@ Waveguide also provides Ref (synchronous mutable cell), Deferred (set once async
 * [Semaphore](classes/semaphore.md)
 * [Suspend](classes/suspend.md)
 * [Terminal](classes/terminal.md)
+* [Ticket](classes/ticket.md)
 * [Value](classes/value.md)
 
 ### Interfaces
@@ -97,9 +97,10 @@ Waveguide also provides Ref (synchronous mutable cell), Deferred (set once async
 * [Frame](#frame)
 * [IOStep](#iostep)
 * [OneOf](#oneof)
-* [Pending](#pending)
+* [Reservation](#reservation)
 * [Result](#result)
 * [State](#state)
+* [UIO](#uio)
 
 ### Variables
 
@@ -109,11 +110,12 @@ Waveguide also provides Ref (synchronous mutable cell), Deferred (set once async
 ### Functions
 
 * [compositeCause](#compositecause)
-* [count](#count)
+* [countPermits](#countpermits)
 * [createCompositeFinalizer](#createcompositefinalizer)
 * [fiberInterrupt](#fiberinterrupt)
 * [raceInto](#raceinto)
 * [sanityCheck](#sanitycheck)
+* [ticketN](#ticketn)
 
 ---
 
@@ -125,7 +127,7 @@ Waveguide also provides Ref (synchronous mutable cell), Deferred (set once async
 
 **Ƭ Attempt**: *[Raise](classes/raise.md)<`E`> \| [Value](classes/value.md)<`A`>*
 
-*Defined in [result.ts:16](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/result.ts#L16)*
+*Defined in [result.ts:25](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/result.ts#L25)*
 
 ___
 <a id="cause"></a>
@@ -134,16 +136,16 @@ ___
 
 **Ƭ Cause**: *[Raise](classes/raise.md)<`E`> \| [Abort](classes/abort.md)*
 
-*Defined in [result.ts:23](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/result.ts#L23)*
+*Defined in [result.ts:32](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/result.ts#L32)*
 
 ___
 <a id="fiberresult"></a>
 
 ###  FiberResult
 
-**Ƭ FiberResult**: *[Completed](classes/completed.md)<`E`, `A`> \| [Interrupted](classes/interrupted.md)*
+**Ƭ FiberResult**: *[Interrupted](classes/interrupted.md) \| [Result](#result)<`E`, `A`>*
 
-*Defined in [result.ts:1](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/result.ts#L1)*
+*Defined in [result.ts:15](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/result.ts#L15)*
 
 ___
 <a id="frame"></a>
@@ -152,7 +154,7 @@ ___
 
 **Ƭ Frame**: *[ChainFrame](classes/chainframe.md) \| [ErrorFrame](classes/errorframe.md) \| [FinalizeFrame](classes/finalizeframe.md) \| [InterruptFrame](classes/interruptframe.md)*
 
-*Defined in [runtime.ts:7](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/runtime.ts#L7)*
+*Defined in [runtime.ts:21](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L21)*
 
 ___
 <a id="iostep"></a>
@@ -161,7 +163,7 @@ ___
 
 **Ƭ IOStep**: *[Of](classes/of.md)<`A`> \| [Failed](classes/failed.md)<`E`> \| [Caused](classes/caused.md)<`E`> \| [Suspend](classes/suspend.md)<`E`, `A`> \| [Async](classes/async.md)<`E`, `A`> \| [Critical](classes/critical.md)<`E`, `A`> \| [Chain](classes/chain.md)<`E`, `any`, `A`> \| [ChainError](classes/chainerror.md)<`E`, `any`, `A`> \| [OnDone](classes/ondone.md)<`E`, `any`, `A`> \| [OnInterrupted](classes/oninterrupted.md)<`E`, `any`, `A`>*
 
-*Defined in [iostep.ts:4](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/iostep.ts#L4)*
+*Defined in [iostep.ts:32](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/iostep.ts#L32)*
 
 ___
 <a id="oneof"></a>
@@ -170,16 +172,16 @@ ___
 
 **Ƭ OneOf**: *[First](classes/first.md)<`A`> \| [Second](classes/second.md)<`B`>*
 
-*Defined in [result.ts:41](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/result.ts#L41)*
+*Defined in [result.ts:50](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/result.ts#L50)*
 
 ___
-<a id="pending"></a>
+<a id="reservation"></a>
 
-###  Pending
+###  Reservation
 
-**Ƭ Pending**: *[`number`, [Deferred](classes/deferred.md)<`void`>]*
+**Ƭ Reservation**: *[`number`, [Deferred](classes/deferred.md)<`void`>]*
 
-*Defined in [semaphore.ts:8](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/semaphore.ts#L8)*
+*Defined in [semaphore.ts:23](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/semaphore.ts#L23)*
 
 ___
 <a id="result"></a>
@@ -188,16 +190,25 @@ ___
 
 **Ƭ Result**: *[Cause](#cause)<`E`> \| [Value](classes/value.md)<`A`>*
 
-*Defined in [result.ts:14](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/result.ts#L14)*
+*Defined in [result.ts:23](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/result.ts#L23)*
 
 ___
 <a id="state"></a>
 
 ###  State
 
-**Ƭ State**: *[OneOf](#oneof)<[Dequeue](classes/dequeue.md)<[Pending](#pending)>, `number`>*
+**Ƭ State**: *[OneOf](#oneof)<[Dequeue](classes/dequeue.md)<[Reservation](#reservation)>, `number`>*
 
-*Defined in [semaphore.ts:9](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/semaphore.ts#L9)*
+*Defined in [semaphore.ts:24](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/semaphore.ts#L24)*
+
+___
+<a id="uio"></a>
+
+###  UIO
+
+**Ƭ UIO**: *[IO](classes/io.md)<`never`, `A`>*
+
+*Defined in [io.ts:23](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/io.ts#L23)*
 
 ___
 
@@ -209,7 +220,7 @@ ___
 
 **● interrupted**: *[Interrupted](classes/interrupted.md)* =  new Interrupted()
 
-*Defined in [result.ts:12](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/result.ts#L12)*
+*Defined in [result.ts:21](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/result.ts#L21)*
 
 ___
 <a id="terminal"></a>
@@ -218,7 +229,7 @@ ___
 
 **● terminal**: *[Terminal](classes/terminal.md)* =  new Terminal()
 
-*Defined in [terminal.ts:17](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/terminal.ts#L17)*
+*Defined in [terminal.ts:31](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/terminal.ts#L31)*
 
 ___
 
@@ -230,7 +241,7 @@ ___
 
 ▸ **compositeCause**(base: *[Cause](#cause)<`unknown`>*): `(Anonymous function)`
 
-*Defined in [runtime.ts:326](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/runtime.ts#L326)*
+*Defined in [runtime.ts:350](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L350)*
 
 **Parameters:**
 
@@ -241,13 +252,13 @@ ___
 **Returns:** `(Anonymous function)`
 
 ___
-<a id="count"></a>
+<a id="countpermits"></a>
 
-###  count
+###  countPermits
 
-▸ **count**(state: *[State](#state)*): `number`
+▸ **countPermits**(state: *[State](#state)*): `number`
 
-*Defined in [semaphore.ts:109](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/semaphore.ts#L109)*
+*Defined in [semaphore.ts:117](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/semaphore.ts#L117)*
 
 **Parameters:**
 
@@ -264,7 +275,7 @@ ___
 
 ▸ **createCompositeFinalizer**(cause: *[Cause](#cause)<`unknown`>*, finalizers: *[FinalizeFrame](classes/finalizeframe.md)[]*): [IO](classes/io.md)<`unknown`, `unknown`>
 
-*Defined in [runtime.ts:318](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/runtime.ts#L318)*
+*Defined in [runtime.ts:342](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L342)*
 
 Create a single composite uninterruptible finalizer
 
@@ -285,7 +296,7 @@ ___
 
 ▸ **fiberInterrupt**<`E`,`A`>(fiber: *[Fiber](classes/fiber.md)<`E`, `A`>*): [IO](classes/io.md)<`never`, `void`>
 
-*Defined in [io.ts:589](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L589)*
+*Defined in [io.ts:640](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/io.ts#L640)*
 
 **Type parameters:**
 
@@ -306,7 +317,7 @@ ___
 
 ▸ **raceInto**<`E`,`A`>(defer: *[Deferred](classes/deferred.md)<[Result](#result)<`E`, `A`>>*, io: *[IO](classes/io.md)<`E`, `A`>*): [IO](classes/io.md)<`never`, [Fiber](classes/fiber.md)<`never`, `void`>>
 
-*Defined in [io.ts:581](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/io.ts#L581)*
+*Defined in [io.ts:632](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/io.ts#L632)*
 
 **Type parameters:**
 
@@ -328,7 +339,7 @@ ___
 
 ▸ **sanityCheck**(permits: *`number`*): [IO](classes/io.md)<`never`, `void`>
 
-*Defined in [semaphore.ts:11](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/semaphore.ts#L11)*
+*Defined in [semaphore.ts:26](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/semaphore.ts#L26)*
 
 **Parameters:**
 
@@ -337,6 +348,25 @@ ___
 | permits | `number` |
 
 **Returns:** [IO](classes/io.md)<`never`, `void`>
+
+___
+<a id="ticketn"></a>
+
+###  ticketN
+
+▸ **ticketN**(sem: *[Semaphore](classes/semaphore.md)*, permits: *`number`*, state: *[Ref](classes/ref.md)<[OneOf](#oneof)<[Dequeue](classes/dequeue.md)<[Reservation](#reservation)>, `number`>>*): [IO](classes/io.md)<`never`, [Ticket](classes/ticket.md)>
+
+*Defined in [semaphore.ts:129](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/semaphore.ts#L129)*
+
+**Parameters:**
+
+| Name | Type |
+| ------ | ------ |
+| sem | [Semaphore](classes/semaphore.md) |
+| permits | `number` |
+| state | [Ref](classes/ref.md)<[OneOf](#oneof)<[Dequeue](classes/dequeue.md)<[Reservation](#reservation)>, `number`>> |
+
+**Returns:** [IO](classes/io.md)<`never`, [Ticket](classes/ticket.md)>
 
 ___
 

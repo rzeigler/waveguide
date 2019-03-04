@@ -34,7 +34,7 @@
 
 ⊕ **new Raise**(error: *`E`*, more?: *`ReadonlyArray`<[Cause](../#cause)<`E`>>*): [Raise](raise.md)
 
-*Defined in [result.ts:26](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/result.ts#L26)*
+*Defined in [result.ts:35](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/result.ts#L35)*
 
 **Parameters:**
 
@@ -55,7 +55,7 @@ ___
 
 **● _tag**: *"raise"* = "raise"
 
-*Defined in [result.ts:26](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/result.ts#L26)*
+*Defined in [result.ts:35](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/result.ts#L35)*
 
 ___
 <a id="error"></a>
@@ -64,7 +64,7 @@ ___
 
 **● error**: *`E`*
 
-*Defined in [result.ts:27](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/result.ts#L27)*
+*Defined in [result.ts:36](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/result.ts#L36)*
 
 ___
 <a id="more"></a>
@@ -73,7 +73,7 @@ ___
 
 **● more**: *`ReadonlyArray`<[Cause](../#cause)<`E`>>*
 
-*Defined in [result.ts:27](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/result.ts#L27)*
+*Defined in [result.ts:36](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/result.ts#L36)*
 
 ___
 
@@ -85,7 +85,7 @@ ___
 
 ▸ **and**(cause: *[Cause](../#cause)<`E`>*): [Cause](../#cause)<`E`>
 
-*Defined in [result.ts:28](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/result.ts#L28)*
+*Defined in [result.ts:37](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/result.ts#L37)*
 
 **Parameters:**
 

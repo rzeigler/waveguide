@@ -29,7 +29,7 @@
 
 ⊕ **new Value**(value: *`A`*): [Value](value.md)
 
-*Defined in [result.ts:19](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/result.ts#L19)*
+*Defined in [result.ts:28](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/result.ts#L28)*
 
 **Parameters:**
 
@@ -49,7 +49,7 @@ ___
 
 **● _tag**: *"value"* = "value"
 
-*Defined in [result.ts:19](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/result.ts#L19)*
+*Defined in [result.ts:28](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/result.ts#L28)*
 
 ___
 <a id="value-1"></a>
@@ -58,7 +58,7 @@ ___
 
 **● value**: *`A`*
 
-*Defined in [result.ts:20](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/result.ts#L20)*
+*Defined in [result.ts:29](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/result.ts#L29)*
 
 ___
 

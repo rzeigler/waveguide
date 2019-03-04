@@ -25,7 +25,7 @@
 
 **● IO**: *`IO`<`L`, `A`>*
 
-*Defined in [index.ts:13](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide-fp-ts/src/index.ts#L13)*
+*Defined in [index.ts:27](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide-fp-ts/src/index.ts#L27)*
 
 ___
 

@@ -30,16 +30,16 @@
 
 ###  constructor
 
-⊕ **new OnDone**(first: *[IO](io.md)<`E`, `A`>*, always: *[IO](io.md)<`E`, `B`>*): [OnDone](ondone.md)
+⊕ **new OnDone**(first: *[IO](io.md)<`E`, `A`>*, always: *[IO](io.md)<`never`, `B`>*): [OnDone](ondone.md)
 
-*Defined in [iostep.ts:57](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/iostep.ts#L57)*
+*Defined in [iostep.ts:85](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/iostep.ts#L85)*
 
 **Parameters:**
 
 | Name | Type |
 | ------ | ------ |
 | first | [IO](io.md)<`E`, `A`> |
-| always | [IO](io.md)<`E`, `B`> |
+| always | [IO](io.md)<`never`, `B`> |
 
 **Returns:** [OnDone](ondone.md)
 
@@ -53,16 +53,16 @@ ___
 
 **● _tag**: *"ondone"* = "ondone"
 
-*Defined in [iostep.ts:57](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/iostep.ts#L57)*
+*Defined in [iostep.ts:85](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/iostep.ts#L85)*
 
 ___
 <a id="always"></a>
 
 ###  always
 
-**● always**: *[IO](io.md)<`E`, `B`>*
+**● always**: *[IO](io.md)<`never`, `B`>*
 
-*Defined in [iostep.ts:58](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/iostep.ts#L58)*
+*Defined in [iostep.ts:86](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/iostep.ts#L86)*
 
 ___
 <a id="first"></a>
@@ -71,7 +71,7 @@ ___
 
 **● first**: *[IO](io.md)<`E`, `A`>*
 
-*Defined in [iostep.ts:58](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/iostep.ts#L58)*
+*Defined in [iostep.ts:86](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/iostep.ts#L86)*
 
 ___
 

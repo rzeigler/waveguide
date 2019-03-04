@@ -39,7 +39,7 @@ An asynchronous value cell that starts empty and may be filled at most one time.
 
 ⊕ **new Deferred**(): [Deferred](deferred.md)
 
-*Defined in [deferred.ts:22](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/deferred.ts#L22)*
+*Defined in [deferred.ts:36](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/deferred.ts#L36)*
 
 **Returns:** [Deferred](deferred.md)
 
@@ -53,7 +53,7 @@ ___
 
 **● isEmpty**: *[IO](io.md)<`never`, `boolean`>*
 
-*Defined in [deferred.ts:21](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/deferred.ts#L21)*
+*Defined in [deferred.ts:35](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/deferred.ts#L35)*
 
 ___
 <a id="isfull"></a>
@@ -62,7 +62,7 @@ ___
 
 **● isFull**: *[IO](io.md)<`never`, `boolean`>*
 
-*Defined in [deferred.ts:20](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/deferred.ts#L20)*
+*Defined in [deferred.ts:34](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/deferred.ts#L34)*
 
 ___
 <a id="oneshot"></a>
@@ -71,7 +71,7 @@ ___
 
 **● oneshot**: *[OneShot](oneshot.md)<`A`>*
 
-*Defined in [deferred.ts:22](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/deferred.ts#L22)*
+*Defined in [deferred.ts:36](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/deferred.ts#L36)*
 
 ___
 <a id="wait"></a>
@@ -80,7 +80,7 @@ ___
 
 **● wait**: *[IO](io.md)<`never`, `A`>*
 
-*Defined in [deferred.ts:19](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/deferred.ts#L19)*
+*Defined in [deferred.ts:33](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/deferred.ts#L33)*
 
 ___
 
@@ -92,7 +92,7 @@ ___
 
 ▸ **fill**(a: *`A`*): [IO](io.md)<`never`, `void`>
 
-*Defined in [deferred.ts:52](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/deferred.ts#L52)*
+*Defined in [deferred.ts:66](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/deferred.ts#L66)*
 
 **Parameters:**
 
@@ -109,7 +109,7 @@ ___
 
 ▸ **alloc**<`A`>(): [IO](io.md)<`never`, [Deferred](deferred.md)<`A`>>
 
-*Defined in [deferred.ts:11](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/deferred.ts#L11)*
+*Defined in [deferred.ts:25](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/deferred.ts#L25)*
 
 **Type parameters:**
 
@@ -124,7 +124,7 @@ ___
 
 ▸ **unsafeAlloc**<`A`>(): [Deferred](deferred.md)<`A`>
 
-*Defined in [deferred.ts:15](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/deferred.ts#L15)*
+*Defined in [deferred.ts:29](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/deferred.ts#L29)*
 
 **Type parameters:**
 

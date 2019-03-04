@@ -25,6 +25,7 @@ A synchronous mutable reference cell that always contains a value
 
 * [modify](ref.md#modify)
 * [set](ref.md#set)
+* [update](ref.md#update)
 * [alloc](ref.md#alloc)
 * [unsafeAlloc](ref.md#unsafealloc)
 
@@ -38,7 +39,7 @@ A synchronous mutable reference cell that always contains a value
 
 ⊕ **new Ref**(a: *`A`*): [Ref](ref.md)
 
-*Defined in [ref.ts:15](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/ref.ts#L15)*
+*Defined in [ref.ts:29](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/ref.ts#L29)*
 
 **Parameters:**
 
@@ -58,7 +59,7 @@ ___
 
 **● a**: *`A`*
 
-*Defined in [ref.ts:16](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/ref.ts#L16)*
+*Defined in [ref.ts:30](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/ref.ts#L30)*
 
 ___
 <a id="get"></a>
@@ -67,7 +68,7 @@ ___
 
 **● get**: *[IO](io.md)<`never`, `A`>* =  IO.eval(() => this.a)
 
-*Defined in [ref.ts:15](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/ref.ts#L15)*
+*Defined in [ref.ts:29](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/ref.ts#L29)*
 
 ___
 
@@ -77,17 +78,20 @@ ___
 
 ###  modify
 
-▸ **modify**(f: *`function`*): [IO](io.md)<`never`, `A`>
+▸ **modify**<`B`>(f: *`function`*): [IO](io.md)<`never`, `B`>
 
-*Defined in [ref.ts:22](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/ref.ts#L22)*
+*Defined in [ref.ts:43](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/ref.ts#L43)*
 
+**Type parameters:**
+
+#### B 
 **Parameters:**
 
 | Name | Type |
 | ------ | ------ |
 | f | `function` |
 
-**Returns:** [IO](io.md)<`never`, `A`>
+**Returns:** [IO](io.md)<`never`, `B`>
 
 ___
 <a id="set"></a>
@@ -96,7 +100,7 @@ ___
 
 ▸ **set**(a: *`A`*): [IO](io.md)<`never`, `void`>
 
-*Defined in [ref.ts:17](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/ref.ts#L17)*
+*Defined in [ref.ts:31](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/ref.ts#L31)*
 
 **Parameters:**
 
@@ -107,13 +111,30 @@ ___
 **Returns:** [IO](io.md)<`never`, `void`>
 
 ___
+<a id="update"></a>
+
+###  update
+
+▸ **update**(f: *`function`*): [IO](io.md)<`never`, `A`>
+
+*Defined in [ref.ts:36](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/ref.ts#L36)*
+
+**Parameters:**
+
+| Name | Type |
+| ------ | ------ |
+| f | `function` |
+
+**Returns:** [IO](io.md)<`never`, `A`>
+
+___
 <a id="alloc"></a>
 
 ### `<Static>` alloc
 
 ▸ **alloc**<`A`>(a: *`A`*): [IO](io.md)<`never`, [Ref](ref.md)<`A`>>
 
-*Defined in [ref.ts:7](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/ref.ts#L7)*
+*Defined in [ref.ts:21](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/ref.ts#L21)*
 
 **Type parameters:**
 
@@ -133,7 +154,7 @@ ___
 
 ▸ **unsafeAlloc**<`A`>(a: *`A`*): [Ref](ref.md)<`A`>
 
-*Defined in [ref.ts:11](https://github.com/rzeigler/waveguide/blob/79b3787/packages/waveguide/src/ref.ts#L11)*
+*Defined in [ref.ts:25](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/ref.ts#L25)*
 
 **Type parameters:**
 
