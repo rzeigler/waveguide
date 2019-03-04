@@ -1,6 +1,6 @@
 {
   "name": "waveguide-fp-ts",
-  "version": "0.0.4",
+  "version": "0.1.0",
   "description": "Type definitions for waveguide using fp-ts",
   "author": "Ryan Zeigler <zeiglerr@gmail.com>",
   "homepage": "https://github.com/rzeigler/waveguide#readme",
@@ -28,13 +28,13 @@
     "rimraf": "^2.6.3",
     "source-map-support": "^0.5.10",
     "tslint": "^5.12.1",
-    "typescript": "^3.3.3",
     "typedoc": "^0.14.2",
-    "typedoc-plugin-markdown": "^1.1.27"
+    "typedoc-plugin-markdown": "^1.1.27",
+    "typescript": "^3.3.3"
   },
   "dependencies": {
     "fp-ts": "^1.14.2",
-    "waveguide": "^0.0.4"
+    "waveguide": "^0.1.0"
   },
   "gitHead": "c45223dc59f7fd1f6cd3d858b31509a0c7607b11"
 }
