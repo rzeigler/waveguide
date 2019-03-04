@@ -1,6 +1,7 @@
 # Waveguide
 
 Waveguide is a set of modules provides an effect type (IO) and concurrency primitives in Typescript.
+IO abstracts over both synchronous and asynchronous effects and provides a resource tracking model and fiber based concurrency.
 Inspired by projects like [Cats Effect](https://github.com/typelevel/cats-effect), and [ZIO](https://github.com/scalaz/scalaz-zio).
 
 The provided packages are:
