@@ -69,4 +69,10 @@ describe("Semaphore", () => {
             .map((pair) => [initial, ...pair]))));
     return equiv(io, new Value([0, 2, 0]));
   });
+  it("withPermit should return all taken permits", () => {
+    const sem = Semaphore.unsafeAlloc(2);
+    const io = sem.withPermitsN(2, IO.of(42))
+      .product(sem.count);
+    return equiv(io, new Value([42, 2]));
+  });
 });
