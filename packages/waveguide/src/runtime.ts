@@ -134,17 +134,7 @@ export class Runtime<E, A> {
       this.interrupted = true;
       if (this.criticalSections === 0) {
         this.asyncFrame!.interrupt();
-        /**
-         * It is possible for interrupts to be delivered synchronously
-         * As an example, consider the of setting a Deferred.
-         * The setting fiber will 'pause' in its run loop to advance the run loop of any listeners without technically
-         * being suspended
-         * If any of those listeners interrupt the setting fiber, we need to ensure we only finalize once.
-         * As such, the contract of suspended is that it is only set to true during callback boundaries
-         * and it is set to false before any additional work is done
-         * We assume if we aren't suspended, then the run loop will detect the interrupt on its next step
-         * and run the finalizer there
-         */
+        /* In case runloops are stacked for some reason */
         if (this.suspended) {
           this.interruptFinalize();
         }
