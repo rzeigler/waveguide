@@ -13,8 +13,8 @@
 // limitations under the License.
 
 import { Deferred } from "./deferred";
+import { Dequeue } from "./internal/queue";
 import { IO, UIO } from "./io";
-import { Dequeue } from "./queue";
 import { Ref } from "./ref";
 import { Abort, FiberResult, First, OneOf, Second } from "./result";
 import { terminal } from "./terminal";

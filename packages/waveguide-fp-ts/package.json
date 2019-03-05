@@ -15,10 +15,11 @@
     "clean": "rimraf lib/",
     "build": "tsc",
     "build-watch": "nodemon -w src/ -e ts -x tsc",
+    "build-full": "npm run clean && npm run lint && npm run build",
     "test": "exit 0",
     "lint": "tslint --project .",
     "docs": "typedoc --ignoreCompilerErrors --theme markdown",
-    "prepublishOnly": "npm run clean && npm run lint && npm run build"
+    "prepublishOnly": "npm run build-full"
   },
   "bugs": {
     "url": "https://github.com/rzeigler/waveguide/issues"

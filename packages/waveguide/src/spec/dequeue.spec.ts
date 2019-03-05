@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import { expect } from "chai";
-import { Dequeue } from "../queue";
+import { Dequeue } from "../internal/queue";
 
 describe("Dequeue", () => {
   it("should provide dequeue", () => {
