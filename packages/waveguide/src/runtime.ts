@@ -134,9 +134,10 @@ export class Runtime<E, A> {
       this.interrupted = true;
       if (this.criticalSections === 0) {
         this.asyncFrame!.interrupt();
-        /* In case runloops are stacked for some reason */
         if (this.suspended) {
           this.interruptFinalize();
+        } else {
+          throw new Error("Bug: Interrupted a running fiber. Run loops should not be able to stack this way.");
         }
       }
     }
@@ -162,6 +163,21 @@ export class Runtime<E, A> {
      * We were interrupted so determine if we need to switch to the finalize loop
      */
     if (current) {
+      /**
+       * Ensure that if current is an ensuring or interrupt we have pushed the cleanup action before we finalize.
+       * TODO: Share this code with the runloop?
+       */
+      if (current.step._tag === "oninterrupted") {
+        this.callFrames.push(new InterruptFrame(
+          this.enterCritical
+          .applySecond(current.step.interupted)
+          .applySecond(this.leaveCritical) as unknown as IO<unknown, unknown>));
+      } else if (current.step._tag === "ondone") {
+        this.callFrames.push(new FinalizeFrame(
+          this.enterCritical
+            .applySecond(current.step.always)
+            .applySecond(this.leaveCritical) as unknown as IO<unknown, unknown>));
+      }
       this.interruptFinalize();
     }
   }

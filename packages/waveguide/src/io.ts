@@ -20,6 +20,11 @@ import { Ref } from "./ref";
 import { Abort, Attempt, Cause, FiberResult, First, OneOf, Raise, Result, Second, Value } from "./result";
 import { Runtime } from "./runtime";
 
+/**
+ * Unexception IO.
+ *
+ * A type alias for IO<never, A> which is an IO that cannot fail (though it can abort)
+ */
 export type UIO<A> = IO<never, A>;
 
 export class IO<E, A> {
@@ -373,13 +378,27 @@ export class IO<E, A> {
   }
 
   /**
-   * Ensure that if this IO has begun executing always will always be executed as cleanup.
+   * Ensure that once the returned IO has begun executing always will always be executed
+   * regardless of error or interrupt.
+   *
+   * It is important to note that 'begun executing' refers to the IO action being next to execute
+   * for the runloop. It is theoretically possible for the returned IO to be 'begun' executing
+   * (and thus always be registered as a cleanup action) without 'this' IO every actually starting.
+   * This is an interaction between asynchronous boundaries and critical sections, but you must account for it.
    * @param always
    */
   public ensuring<B>(always: IO<never, B>): IO<E, A> {
     return new IO(new OnDone(this, always));
   }
 
+  /*
+   * Ensure that once the returned IO has begun executing interrupt will be executed in the face of interrupt.
+   *
+   * It is important to note that 'begun executing' refers to the IO action being next to execute
+   * for the runloop. It is theoretically possible for the returned IO to be 'begun' executing
+   * (and thus always be registered as a cleanup action) without 'this' IO every actually starting.
+   * This is an interaction between asynchronous boundaries and critical sections, but you must account for it.
+   */
   public interrupted<B>(interrupt: IO<never, B>): IO<E, A> {
     return new IO(new OnInterrupted(this, interrupt));
   }
