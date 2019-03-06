@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import { Deferred } from "./deferred";
+import { assert, isGt } from "./internal/assert";
 import { Dequeue } from "./internal/queue";
 import { IO } from "./io";
 import { Ref } from "./ref";
@@ -26,10 +27,26 @@ export interface AsyncQueue<A> {
 
 type State<A> = OneOf<Dequeue<Deferred<A>>, Dequeue<A>>;
 
+type EnqueueStrategy<A> = (a: A, current: Second<Dequeue<A>>) => Second<Dequeue<A>>;
+
+const unboundedStrategy =
+  <A>(a: A, current: Second<Dequeue<A>>): Second<Dequeue<A>> => new Second(current.second.enqueue(a));
+
+const droppingStrategy = (max: number) => <A>(a: A, current: Second<Dequeue<A>>): Second<Dequeue<A>> =>
+  current.second.length >= max ? current : new Second(current.second.enqueue(a));
+
+const slidingStrategy = (max: number) => <A>(a: A, current: Second<Dequeue<A>>): Second<Dequeue<A>> => {
+  if (current.second.length >= max) {
+    const [_, queue] = current.second.dequeue();
+    return new Second(queue.enqueue(a));
+  }
+  return new Second(current.second.enqueue(a));
+};
+
 class AsyncQueueImpl<A> implements AsyncQueue<A> {
   public readonly count: IO<never, number>;
   public readonly take: IO<never, A>;
-  constructor(private readonly state: Ref<State<A>>) {
+  constructor(private readonly state: Ref<State<A>>, private readonly enqueue: EnqueueStrategy<A>) {
     this.count = state.get.map(queueCount);
     this.take = makeTicket(this, state).bracketExit(cleanupTicket, (ticket) => ticket.take);
   }
@@ -43,14 +60,47 @@ class AsyncQueueImpl<A> implements AsyncQueue<A> {
         }
         return [IO.void(), new Second(Dequeue.of(a))];
       }
-      return [IO.void(), new Second(current.second.enqueue(a))];
+      return [IO.void(), this.enqueue(a, current)];
     }).flatten();
   }
 }
 
+export function unsafeUnboundedQueue<A>(): AsyncQueue<A> {
+  return new AsyncQueueImpl(Ref.unsafeAlloc<State<A>>(new Second(Dequeue.empty())), unboundedStrategy);
+}
+
+/**
+ * Create IO for a Queue<A> with unbounded length.
+ */
 export function unboundedQueue<A>(): IO<never, AsyncQueue<A>> {
   return Ref.alloc<State<A>>(new Second(Dequeue.empty()))
-    .map((ref) => new AsyncQueueImpl(ref));
+    .map((ref) => new AsyncQueueImpl(ref, unboundedStrategy));
+}
+
+export type OverflowStrategy = "slide" | "drop";
+
+/**
+ * Create an IO for a Queue<A> with bounded length.
+ *
+ * The available strategies are:
+ *
+ * "slide" - the oldest item in the queue should be discarded
+ * "drop" - the offerred item should be discarded (not added)
+ *
+ * Regardless of strategy the offer IO will always produce void immediately.
+ * For a queue that semantically blocks the oferring fiber until space is available see {@link blockingQueue<A>()};
+ *
+ * @param strategy strategy for what to do when an offer would go over the maximum
+ * @param max maximum size of this queue
+ */
+export function boundedQueue<A>(strategy: OverflowStrategy, max: number): IO<never, AsyncQueue<A>> {
+  return assert(max, isGt(0), "Bug: Max queue size must be > 0")
+    .applySecond(Ref.alloc<State<A>>(new Second(Dequeue.empty()))
+      .map((ref) => new AsyncQueueImpl(ref, strategy === "slide" ? slidingStrategy(max) : droppingStrategy(max))));
+}
+
+export function blockingQueue<A>(max: number): IO<never, AsyncQueue<A>> {
+  return IO.aborted(new Abort("not yet implemented"));
 }
 
 function queueCount<A>(state: State<A>): number {
