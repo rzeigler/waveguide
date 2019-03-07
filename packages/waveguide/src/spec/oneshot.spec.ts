@@ -14,7 +14,7 @@
 
 import { expect } from "chai";
 
-import { OneShot } from "../oneshot";
+import { OneShot } from "../internal/oneshot";
 
 describe("OneShot", () => {
   it("should invoke continuations on set", () => {

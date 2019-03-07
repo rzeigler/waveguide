@@ -1,6 +1,3 @@
-import { IO } from "../io";
-import { Abort } from "../result";
-
 // Copyright 2019 Ryan Zeigler
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,6 +11,9 @@ import { Abort } from "../result";
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+import { IO } from "../io";
+import { Abort } from "../result";
 
 export function assert<A>(a: A, prop: (a: A) => boolean, msg: string): IO<never, void> {
   if (prop(a)) {

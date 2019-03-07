@@ -13,10 +13,10 @@
 // limitations under the License.
 
 import { boundMethod } from "autobind-decorator";
+import { IO } from "../io";
+import { Abort, Cause, FiberResult, interrupted, Raise, Result, Value } from "../result";
 import { ForwardProxy } from "./forwardproxy";
-import { IO } from "./io";
 import { OneShot } from "./oneshot";
-import { Abort, Cause, FiberResult, interrupted, Raise, Result, Value } from "./result";
 
 type Frame = ChainFrame | ErrorFrame | FinalizeFrame | InterruptFrame;
 

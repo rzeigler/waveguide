@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { Runtime } from "./internal/runtime";
 import { IO } from "./io";
-import { Abort, FiberResult, Result, Value } from "./result";
-import { Runtime } from "./runtime";
+import { Abort, FiberResult, Value } from "./result";
 
 export class Fiber<E, A> {
   /**

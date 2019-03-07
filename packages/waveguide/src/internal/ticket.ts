@@ -12,25 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { IO } from "waveguide";
+import { IO } from "../io";
+import { FiberResult } from "../result";
 
-export function main(io: IO<never, number>): void {
-  const interrupt = io.launch((result) => {
+/**
+ * Provides encapsulation mechanism for blocking waits that should perform cleanup when interrupted
+ */
+export class Ticket<A> {
+  public static cleanup<A>(ticket: Ticket<A>, result: FiberResult<never, A>) {
     if (result._tag === "interrupted") {
-      process.exit(0);
-    } else {
-      if (result._tag === "value") {
-        process.exit(result.value);
-      } else {
-        process.exit(-1);
-      }
+      return ticket.cleanup;
     }
-  });
-  process.on("SIGINT", interrupt);
-  process.on("SIGTERM", interrupt);
-  process.on("uncaughtException", (e) => {
-    // tslint:disable-next-line
-    console.error("uncaught exception: ", e);
-    interrupt();
-  });
+    return IO.void();
+  }
+  constructor(public readonly wait: IO<never, A>, public readonly cleanup: IO<never, void>) { }
 }

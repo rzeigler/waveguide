@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { IO, Runtime } from "waveguide";
+import { IO } from "waveguide";
 
 export function main(io: IO<never, never>): void {
-  const runtime = new Runtime<never, never>();
+  const interrupt = io.launch();
   window.addEventListener("unload", () => {
-    runtime.interrupt();
+    interrupt();
   });
-  runtime.start(io);
 }

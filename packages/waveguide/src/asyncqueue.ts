@@ -15,6 +15,7 @@
 import { Deferred } from "./deferred";
 import { assert, isGt } from "./internal/assert";
 import { Dequeue } from "./internal/queue";
+import { Ticket } from "./internal/ticket";
 import { IO } from "./io";
 import { Ref } from "./ref";
 import { Abort, FiberResult, First, OneOf, Second } from "./result";
@@ -48,7 +49,7 @@ class AsyncQueueImpl<A> implements AsyncQueue<A> {
   public readonly take: IO<never, A>;
   constructor(private readonly state: Ref<State<A>>, private readonly enqueue: EnqueueStrategy<A>) {
     this.count = state.get.map(queueCount);
-    this.take = makeTicket(this, state).bracketExit(cleanupTicket, (ticket) => ticket.take);
+    this.take = makeTicket(this, state).bracketExit(Ticket.cleanup, (ticket) => ticket.wait);
   }
 
   public offer(a: A): IO<never, void> {
@@ -111,17 +112,6 @@ function queueCount<A>(state: State<A>): number {
     return -1 * state.first.length;
   }
   return state.second.length;
-}
-
-class Ticket<A> {
-  constructor(public readonly take: IO<never, A>, public readonly unregister: IO<never, void>) { }
-}
-
-function cleanupTicket<A>(ticket: Ticket<A>, exit: FiberResult<never, A>): IO<never, void> {
-  if (exit._tag === "interrupted") {
-    return ticket.unregister;
-  }
-  return IO.void();
 }
 
 function makeTicket<A>(queue: AsyncQueue<A>, state: Ref<State<A>>): IO<never, Ticket<A>> {

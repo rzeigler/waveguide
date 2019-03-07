@@ -14,10 +14,10 @@
 
 import { Deferred } from "./deferred";
 import { Dequeue } from "./internal/queue";
+import { Ticket } from "./internal/ticket";
 import { IO, UIO } from "./io";
 import { Ref } from "./ref";
-import { Abort, FiberResult, First, OneOf, Second } from "./result";
-import { terminal } from "./terminal";
+import { Abort, First, OneOf, Second } from "./result";
 
 // State is either a list of waits or the amount remaining
 type Reservation = [number, Deferred<void>];
@@ -31,11 +31,6 @@ function sanityCheck(permits: number): IO<never, void> {
   }
   return IO.void();
 }
-
-class Ticket {
-  constructor(public readonly wait: IO<never, void>, public readonly restore: IO<never, void>) { }
-}
-
 /**
  * Semaphore for IO
  */
@@ -78,11 +73,8 @@ export class Semaphore {
   }
 
   public acquireN(permits: number): IO<never, void> {
-    const cleanup = (ticket: Ticket, result: FiberResult<never, void>): IO<never, void> =>
-      result._tag === "interrupted" ? ticket.restore : IO.void();
-
     return sanityCheck(permits)
-      .applySecond(ticketN(this, permits, this.state).bracketExit(cleanup, (ticket) => ticket.wait));
+      .applySecond(ticketN(this, permits, this.state).bracketExit(Ticket.cleanup, (ticket) => ticket.wait));
   }
 
   public releaseN(permits: number): IO<never, void> {
@@ -126,7 +118,9 @@ function countPermits(state: State): number {
   return state.second;
 }
 
-function ticketN(sem: Semaphore, permits: number, state: Ref<OneOf<Dequeue<Reservation>, number>>): IO<never, Ticket> {
+function ticketN(sem: Semaphore,
+                 permits: number,
+                 state: Ref<OneOf<Dequeue<Reservation>, number>>): IO<never, Ticket<void>> {
   // We need to go into the queue and remove all permits we can infer were allocated and remove the reservation
   function unqueue(gate: Deferred<void>): UIO<void> {
     return state.modify((current) => {

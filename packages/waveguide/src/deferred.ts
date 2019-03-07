@@ -13,8 +13,8 @@
 // limitations under the License.
 
 import { boundMethod } from "autobind-decorator";
+import { OneShot } from "./internal/oneshot";
 import { IO } from "./io";
-import { OneShot } from "./oneshot";
 import { Value } from "./result";
 
 /**

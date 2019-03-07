@@ -14,11 +14,11 @@
 
 import { Deferred } from "./deferred";
 import { Fiber } from "./fiber";
+import { Runtime } from "./internal/runtime";
 import { Async, Caused, Chain, ChainError, Critical, Failed, IOStep,
          Of, OnDone, OnInterrupted, Suspend } from "./iostep";
 import { Ref } from "./ref";
 import { Abort, Attempt, Cause, FiberResult, First, OneOf, Raise, Result, Second, Value } from "./result";
-import { Runtime } from "./runtime";
 
 /**
  * Unexception IO.

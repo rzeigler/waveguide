@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// TODO: Use a proper persistent queue implementation. This gets pretty slow when adding tons of items.
 export class Dequeue<A> {
   public static ofAll<A>(as: ReadonlyArray<A>): Dequeue<A> {
     return new Dequeue(as);
