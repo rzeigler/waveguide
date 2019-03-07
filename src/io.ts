@@ -3,6 +3,8 @@
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
+import { Either, left, right } from "fp-ts/lib/Either";
+import { none, Option, some } from "fp-ts/lib/Option";
 import { Deferred } from "./deferred";
 import { Fiber } from "./fiber";
 import {
@@ -19,7 +21,7 @@ import {
   Suspend } from "./internal/iostep";
 import { Runtime } from "./internal/runtime";
 import { Ref } from "./ref";
-import { Abort, Attempt, Cause, FiberResult, First, OneOf, Raise, Result, Second, Value } from "./result";
+import { Abort, Attempt, Cause, FiberResult, Raise, Result, Value } from "./result";
 
 /**
  * Unexception IO.
@@ -214,15 +216,15 @@ export class IO<E, A> {
   public parMap2<EE, B, C>(this: IO<EE | never, A>, fb: IO<EE, B>, f: (a: A, b: B) => C): IO<EE, C> {
     // Go through deferreds for the purposes of stack safety
     // Deferred has the property of ensuring the stack is unwound on wait and this is desirable
-    return Deferred.alloc<A>().widenError<EE>().chain((left) =>
-      Deferred.alloc<B>().widenError<EE>().chain((right) =>
+    return Deferred.alloc<A>().widenError<EE>().chain((leftInto) =>
+      Deferred.alloc<B>().widenError<EE>().chain((rightInto) =>
         this.fork().widenError<EE>().bracket((fiba) => fiba.interrupt, (fiba) =>
           fb.fork().widenError<EE>().bracket((fibb) => fibb.interrupt, (fibb) =>
-            fiba.join.peek((v) => left.fill(v).widenError<EE>())
-              .applySecond(fibb.join.peek((v) => right.fill(v).widenError<EE>()))
+            fiba.join.peek((v) => leftInto.fill(v).widenError<EE>())
+              .applySecond(fibb.join.peek((v) => rightInto.fill(v).widenError<EE>()))
           )
         )
-        .applySecond(left.wait.map2(right.wait, f).widenError<EE>())
+        .applySecond(leftInto.wait.map2(rightInto.wait, f).widenError<EE>())
       )
     );
   }
@@ -515,20 +517,9 @@ export class IO<E, A> {
    * Race this with other producing which result was used. The first result either success or failure is taken.
    * @param other
    */
-  public raceOneOf<B>(other: IO<E, B>): IO<E, OneOf<A, B>> {
-    return this.map<OneOf<A, B>>((a) => new First(a))
-      .race(other.map((b) => new Second(b)));
-  }
-
-  /**
-   * Run this IO with a timeout.
-   *
-   * If this succeeds before the timeout, produces a First<A>,
-   * otherwise, interrupts this and produces a Second<Void>
-   * @param millis
-   */
-  public timeoutOneOf(millis: number): IO<E, OneOf<A, void>> {
-    return this.raceOneOf(IO.delay(millis).widenError<E>());
+  public raceOneOf<B>(other: IO<E, B>): IO<E, Either<A, B>> {
+    return this.map<Either<A, B>>(left)
+      .race(other.map<Either<A, B>>(right));
   }
 
   /**
@@ -538,9 +529,9 @@ export class IO<E, A> {
    * otherwise, interrupts this and produces undefined
    * @param millis
    */
-  public timeout(millis: number): IO<E, A | undefined> {
-    return this.map<A | undefined>((a) => a)
-      .race(IO.delay(millis).widenError<E>().as(undefined));
+  public timeout(millis: number): IO<E, Option<A>> {
+    return this.raceOneOf(IO.delay(millis).widenError<E>())
+      .map((result) => result.fold(some, (_) => none));
   }
 
   /**

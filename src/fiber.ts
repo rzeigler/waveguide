@@ -3,6 +3,7 @@
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
+import { Option } from "fp-ts/lib/Option";
 import { Runtime } from "./internal/runtime";
 import { IO } from "./io";
 import { Abort, FiberResult, Value } from "./result";
@@ -34,7 +35,7 @@ export class Fiber<E, A> {
    */
   public readonly interruptAndWait: IO<never, FiberResult<E, A>>;
 
-  public readonly result: IO<never, FiberResult<E, A> | undefined>;
+  public readonly result: IO<never, Option<FiberResult<E, A>>>;
 
   constructor(public readonly runtime: Runtime<E, A>) {
     this.join = IO.async((callback) => {

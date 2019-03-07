@@ -37,16 +37,3 @@ export class Abort {
     return new Abort(this.error, [...this.more, cause]);
   }
 }
-
-// TODO: Remove this in favor of fp-ts
-export type OneOf<A, B> = First<A> | Second<B>;
-
-export class First<A> {
-  public readonly _tag: "first" = "first";
-  constructor(public readonly first: A) {}
-}
-
-export class Second<B> {
-  public readonly _tag: "second" = "second";
-  constructor(public readonly second: B) { }
-}

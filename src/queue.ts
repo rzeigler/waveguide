@@ -3,19 +3,43 @@
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
+import { assert, isGt } from "./internal/assert";
+import { Dequeue } from "./internal/dequeue";
+
+export interface AsyncQueue<A> {
+  readonly count: IO<never, number>;
+  readonly take: IO<never, A>;
+  offer(a: A): IO<never, void>;
+}
+
+export interface FiniteAsyncQueue<A> extends AsyncQueue<Option<A>> {
+  close: IO<never, void>;
+}
+
+export type OverflowStrategy = "slide" | "drop";
+
+export function unboundedNonBlockingQueue<A>(): IO<never, AsyncQueue<A>> {
+  return Ref.alloc<NonBlockingState<A>>(right(Dequeue.empty()))
+    .map((state) => new NonBlockingQueue(state, unboundedStrategy));
+}
+
+export function boundedNonBlockingQueue<A>(max: number, strategy: OverflowStrategy): IO<never, AsyncQueue<A>> {
+  return assert(max, isGt(0), "Bug: Max queue size must be > 0")
+    .applySecond(Ref.alloc<NonBlockingState<A>>(right(Dequeue.empty())))
+    .map((state) => new NonBlockingQueue(state,  strategy === "slide" ? slidingStrategy(max) : droppingStrategy(max)));
+}
+
 import { Either, left, right } from "fp-ts/lib/Either";
-import { Deferred } from "../deferred";
-import { Dequeue } from "../internal/queue";
-import { Ticket } from "../internal/ticket";
-import { IO } from "../io";
-import { Ref } from "../ref";
-import { Abort, First, OneOf, Second } from "../result";
-import { AsyncQueue } from "./common";
+import { Option } from "fp-ts/lib/Option";
+import { Deferred } from "./deferred";
+import { Ticket } from "./internal/ticket";
+import { IO } from "./io";
+import { Ref } from "./ref";
 
 export type Available<A> = Dequeue<A>;
 export type Waiting<A> = Dequeue<Deferred<A>>;
 
-export type State<A> = Either<Waiting<A>, Available<A>>;
+export type NonBlockingState<A> = Either<Waiting<A>, Available<A>>;
 
 export type EnqueueStrategy<A> = (a: A, current: Dequeue<A>) => Dequeue<A>;
 
@@ -41,7 +65,7 @@ export class NonBlockingQueue<A> implements AsyncQueue<A> {
   public readonly count: IO<never, number>;
   public readonly take: IO<never, A>;
 
-  constructor(private readonly state: Ref<State<A>>, private readonly enqueue: EnqueueStrategy<A>) {
+  constructor(private readonly state: Ref<NonBlockingState<A>>, private readonly enqueue: EnqueueStrategy<A>) {
     function unregister(deferred: Deferred<A>): IO<never, void> {
       return state.update((current) =>
         current.fold(
@@ -53,7 +77,7 @@ export class NonBlockingQueue<A> implements AsyncQueue<A> {
     const makeTicket = Deferred.alloc<A>()
       .chain((deferred) =>
         state.modify((current) =>
-          current.fold<[Ticket<A>, State<A>]>(
+          current.fold<[Ticket<A>, NonBlockingState<A>]>(
             (waiting) => [new Ticket(deferred.wait, unregister(deferred)), left(waiting.enqueue(deferred))],
             (available) => {
               const [next, queue] = available.dequeue();
@@ -73,7 +97,7 @@ export class NonBlockingQueue<A> implements AsyncQueue<A> {
   public offer(a: A): IO<never, void> {
     return this.state
       .modify((current) =>
-        current.fold<[IO<never, void>, State<A>]>(
+        current.fold<[IO<never, void>, NonBlockingState<A>]>(
           (waiting) => {
             const [next, queue] = waiting.dequeue();
             if (next) {
@@ -87,7 +111,7 @@ export class NonBlockingQueue<A> implements AsyncQueue<A> {
   }
 }
 
-function queueCount<A>(state: State<A>): number {
+function queueCount<A>(state: NonBlockingState<A>): number {
   return state.fold(
     (waiting) => waiting.empty ? 0 : -1 * waiting.length,
     (available) => available.length

@@ -4,7 +4,7 @@
 // https://opensource.org/licenses/MIT
 
 import { expect } from "chai";
-import { Dequeue } from "../../internal/queue";
+import { Dequeue } from "../../internal/dequeue";
 
 describe("Dequeue", () => {
   it("should provide dequeue", () => {

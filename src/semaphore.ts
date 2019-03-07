@@ -3,16 +3,17 @@
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
+import { Either, left, right } from "fp-ts/lib/Either";
 import { Deferred } from "./deferred";
-import { Dequeue } from "./internal/queue";
+import { Dequeue } from "./internal/dequeue";
 import { Ticket } from "./internal/ticket";
 import { IO, UIO } from "./io";
 import { Ref } from "./ref";
-import { Abort, First, OneOf, Second } from "./result";
+import { Abort } from "./result";
 
 // State is either a list of waits or the amount remaining
 type Reservation = [number, Deferred<void>];
-type State = OneOf<Dequeue<Reservation>, number>;
+type State = Either<Dequeue<Reservation>, number>;
 
 function sanityCheck(permits: number): IO<never, void> {
   if (permits < 0) {
@@ -32,7 +33,7 @@ export class Semaphore {
    * @return         [description]
    */
   public static alloc(permits: number): IO<never, Semaphore> {
-    return sanityCheck(permits).applySecond(Ref.alloc(new Second(permits)))
+    return sanityCheck(permits).applySecond(Ref.alloc<State>(right(permits)))
       .map((sref) => new Semaphore(sref));
   }
 
@@ -43,7 +44,7 @@ export class Semaphore {
     if (Math.round(permits) !== permits) {
       throw new Error("Bug: permits may not be negative");
     }
-    return new Semaphore(Ref.unsafeAlloc(new Second(permits)));
+    return new Semaphore(Ref.unsafeAlloc(right(permits)));
   }
 
   public readonly acquire: IO<never, void> = this.acquireN(1);
@@ -72,81 +73,75 @@ export class Semaphore {
     return sanityCheck(permits)
       .applySecond(permits === 0 ?
         IO.void() :
-        this.state.modify((current) => {
-          if (current._tag === "second") {
-            return [IO.void(), new Second(current.second + permits)];
-          }
-          const [pending, nextQueue] = current.first.dequeue();
-          if (pending) {
-            const [needed, gate] = pending;
-            if (needed >= permits) {
-              return [
-                (permits > needed ? this.releaseN(permits - needed) : IO.void())
-                  .applySecond(gate.fill(undefined)),
-                new First(nextQueue)
-              ];
-            }
-            return [
-              IO.void(),
-              new First(nextQueue.enqueueFront([needed - permits, gate]))
-            ];
-          }
-          // We have 0 permits because we had an empty queue
-          return [IO.void(), new Second(permits)];
-        }).flatten()).critical();
+        this.state.modify((current) =>
+          current.fold<[IO<never, void>, State]>(
+            (waiting) => {
+              const [pending, next] = waiting.dequeue();
+              if (pending) {
+                const [needed, gate] = pending;
+                if (needed >= permits) {
+                  return [
+                    gate.fill(undefined)
+                      .applyFirst(permits > needed ? this.releaseN(permits - needed) : IO.void()),
+                    left(next) as State
+                  ];
+                }
+                return [
+                  IO.void(),
+                  left(next.enqueueFront([needed - permits, gate])) as State
+                ];
+              }
+              return [IO.void(), right(permits)];
+            },
+            (available) => [IO.void(), right(available + permits) as State]
+          )
+        ).flatten().critical());
   }
 }
 
 function countPermits(state: State): number {
-  if (state._tag === "first") {
+  return state.fold(
     // Javascript has a -0 and it breaks chai deep equals
-    if (state.first.empty) {
-      return 0;
-    }
-    return -1 * state.first.array.map((p) => p[0])
-      .reduce((p, c) => p + c, 0);
-  }
-  return state.second;
+    (waiting) => waiting.empty ? 0 : -1 * waiting.length,
+    (available) => available
+  );
 }
 
 function ticketN(sem: Semaphore,
                  permits: number,
-                 state: Ref<OneOf<Dequeue<Reservation>, number>>): IO<never, Ticket<void>> {
+                 state: Ref<Either<Dequeue<Reservation>, number>>): IO<never, Ticket<void>> {
   // We need to go into the queue and remove all permits we can infer were allocated and remove the reservation
-  function unqueue(gate: Deferred<void>): UIO<void> {
-    return state.modify((current) => {
-      // Not in the queue, release all tickets
-      if (current._tag === "second") {
-        return [sem.releaseN(permits), new Second(current.second + permits) as State];
-      }
-      const reserved = current.first.array.find((rsv) => rsv[1] === gate);
-      // Found in the queue, release permits - pending and remove the gate from the queu
-      if (reserved) {
-        const [pending] = reserved;
-        const filtered = Dequeue.ofAll(current.first.array.filter((rsv) => rsv[1] !== gate));
-        return [sem.releaseN(permits - pending), new First(filtered) as State];
-      }
-      // Not found in the queue, release all the ticket
-      return [sem.releaseN(permits), current as State];
-    }).flatten().critical();
+  function unqueue(gate: Deferred<void>): IO<never, void> {
+    return state.modify((current) =>
+      current.fold<[IO<never, void>, State]>(
+        (waiting) => {
+          const reserved = waiting.array.find((rsv) => rsv[1] === gate);
+          if (reserved) {
+            const pending = reserved[0];
+            const filtered = Dequeue.ofAll(waiting.array.filter((rsv) => rsv[1] !== gate));
+            return [sem.releaseN(permits - pending), left(filtered)];
+          }
+          // Not in queue, release everything
+          return [sem.releaseN(permits), left(waiting)];
+        },
+        // Not in queue, release everything
+        (available) => [sem.releaseN(permits), right(available)]
+      )
+    ).flatten().critical();
   }
 
   if (permits === 0) {
     return IO.of(new Ticket(IO.void(), IO.void()));
   } else {
     return Deferred.alloc<void>().chain((gate) =>
-      state.modify((current) => {
-        if (current._tag === "second" && current.second >= permits) {
-          return [new Ticket(IO.void(), sem.releaseN(permits)),
-                  new Second(current.second - permits) as State];
-        }
-        if (current._tag === "second") {
-          return [new Ticket(gate.wait, unqueue(gate)),
-                  new First(Dequeue.of([permits - current.second, gate])) as State];
-        }
-        return [new Ticket(gate.wait, unqueue(gate)),
-                new First(current.first.enqueue([permits, gate])) as State];
-      })
+      state.modify((current) =>
+        current.fold<[Ticket<void>, State]>(
+          (waiting) => [new Ticket(gate.wait, unqueue(gate)), left(waiting.enqueue([permits, gate]))],
+          (available) => available >= permits ?
+            [new Ticket(IO.void(), sem.releaseN(permits)), right(available - permits) as State] :
+            [new Ticket(gate.wait, unqueue(gate)), left(Dequeue.of([permits - available, gate])) as State]
+        )
+      )
     );
   }
 }

@@ -9,3 +9,5 @@ export * from "./fiber";
 export * from "./ref";
 export * from "./deferred";
 export * from "./terminal";
+export * from "./instances";
+export * from "./queue";

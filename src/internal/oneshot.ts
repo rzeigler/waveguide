@@ -3,11 +3,12 @@
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
+import { none, Option, some } from "fp-ts/lib/Option";
+
 export class OneShot<A> {
-  private value: A | undefined;
+  private value: Option<A> = none;
   // Track set state with a boolean.
   // This is important to make OneShot<void> work, which is needed to make Deferred<void> work
-  private wasSet: boolean = false;
   private listeners: Array<(a: A) => void>;
 
   constructor() {
@@ -15,11 +16,10 @@ export class OneShot<A> {
   }
 
   public set(value: A) {
-    if (this.wasSet) {
+    if (this.value.isSome()) {
       throw new Error("Bug: OneShot has already been set");
     }
-    this.wasSet = true;
-    this.value = value;
+    this.value = some(value);
     this.listeners.forEach((l) => l(value));
   }
 
@@ -28,7 +28,7 @@ export class OneShot<A> {
   }
 
   public isSet(): boolean {
-    return this.wasSet;
+    return this.value.isSome();
   }
 
   public isUnset(): boolean {
@@ -36,8 +36,8 @@ export class OneShot<A> {
   }
 
   public listen(f: (a: A) => void): void {
-    if (this.isSet()) {
-      f(this.value!);
+    if (this.value.isSome()) {
+      f(this.value.value);
     } else {
       this.listeners.push(f);
     }
@@ -47,7 +47,7 @@ export class OneShot<A> {
     this.listeners = this.listeners.filter((l) => l !== f);
   }
 
-  public get(): A | undefined {
+  public get(): Option<A> {
     return this.value;
   }
 }
