@@ -1,12 +1,10 @@
 // Copyright (c) 2019 Ryan Zeigler
-// 
+//
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
-
-
-import { IO } from "./io";
-import { Cause, Result } from "./result";
+import { IO } from "../io";
+import { Cause, Result } from "../result";
 
 export type IOStep<E, A> =
   Of<A>
