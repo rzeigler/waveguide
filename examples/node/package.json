@@ -1,0 +1,42 @@
+{
+  "name": "waveguide-node",
+  "version": "0.1.0",
+  "description": "A main for the IO type of waveguide on node.",
+  "keywords": [
+    "typescript",
+    "promise",
+    "future",
+    "effect"
+  ],
+  "private": true,
+  "author": "Ryan Zeigler <zeiglerr@gmail.com>",
+  "homepage": "https://github.com/rzeigler/waveguide#readme",
+  "license": "MIT",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rzeigler/waveguide.git"
+  },
+  "scripts": {
+    "clean": "rimraf lib/",
+    "build": "tsc",
+    "build-watch": "nodemon -w src/ -e ts -x tsc",
+    "build-full": "npm run clean && npm run lint && npm run build",
+    "test": "exit 0",
+    "lint": "tslint --project .",
+    "prepublishOnly": "npm run build-full"
+  },
+  "bugs": {
+    "url": "https://github.com/rzeigler/waveguide/issues"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^11.9.5",
+    "nodemon": "^1.18.10",
+    "rimraf": "^2.6.1",
+    "source-map-support": "^0.5.10",
+    "tslint": "^5.12.1",
+    "typescript": "^3.3.3"
+  }
+}

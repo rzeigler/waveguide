@@ -1,13 +1,58 @@
 {
-  "name": "root",
-  "private": true,
-  "devDependencies": {
-    "husky": "^1.3.1",
-    "lerna": "^3.13.0"
+  "name": "waveguide",
+  "version": "0.1.0",
+  "description": "An effect type for typescript/javascript",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "scripts": {
+    "clean": "rimraf lib/",
+    "build": "tsc",
+    "build-watch": "nodemon -w src/ -e ts -x tsc",
+    "test": "mocha --recursive lib/__test__/",
+    "test-watch": "mocha --watch --reporter min --recursive lib/__test__/",
+    "lint": "tslint --project .",
+    "docs": "typedoc --ignoreCompilerErrors --theme markdown",
+    "prepublishOnly": "npm run clean && npm run lint && npm run build && npm run test"
   },
-  "license": "AL2",
+  "keywords": [
+    "typescript",
+    "promise",
+    "future",
+    "effect"
+  ],
+  "bugs": {
+    "url": "https://github.com/rzeigler/waveguide/issues"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/rzeigler/waveguide.git"
+  },
+  "author": "Ryan Zeigler",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/chai": "^4.1.7",
+    "@types/chai-as-promised": "^7.1.0",
+    "@types/mocha": "^5.2.5",
+    "chai": "^4.2.0",
+    "chai-as-promised": "^7.1.1",
+    "esm": "^3.2.5",
+    "fast-check": "^1.10.1",
+    "fp-ts": "^1.14.3",
+    "husky": "^1.3.1",
+    "mocha": "^5.2.0",
+    "nodemon": "^1.18.10",
+    "np": "^4.0.2",
+    "rimraf": "^2.6.3",
+    "source-map-support": "^0.5.10",
+    "tslint": "^5.12.1",
+    "typedoc": "^0.14.2",
+    "typedoc-plugin-markdown": "^1.1.27",
+    "typescript": "^3.3.3"
+  },
+  "dependencies": {
+    "autobind-decorator": "^2.4.0"
+  },
+  "peerDependencies": {
+    "fp-ts": "^1.14.3"
   }
 }

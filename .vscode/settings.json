@@ -1,5 +1,5 @@
 {
-  "licenser.license": "AL2",
+  "licenser.license": "MIT",
   "editor.codeActionsOnSave": {
     "source.fixAll.tslint": true
   }
