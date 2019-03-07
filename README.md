@@ -27,8 +27,7 @@ Additionally, `IO.eval` and `IO.suspend` create IOs from side effecting function
 
 
 ## Using an IO
-`IO<E, A>` is a monad and exposes the relevant functions in a naming scheme similar to [fp-ts](https://github.com/gcanti/fp-ts/)
-There are parallel variants of a number of functions like ap, applyFirst/Second, and map2.
+`IO<E, A>` is a monad and exposes the relevant functions in a naming scheme similar to [fp-ts](https://github.com/gcanti/fp-ts/) along with a number of typeclass instances for Monoid, Monad, and parallel Applicative.
 Furthermore, there are a several resource acquisition functions such as `bracket` and `ensuring` which guarantee IO actions happen in the fact of errors or interuption.
 These respect the 'critical' method which marks an IO as a critical section and as such should be interruptible.
 
@@ -49,4 +48,4 @@ IOs are lazy so they don't actually do anything until they are interpreted.
 `promisedResult` will return a promise of a FiberResult.
 
 ## Concurrency Abstractions
-Waveguide also provides Ref (synchronous mutable cell), Deferred (set once asynchronous cell), and Semaphore.
+Waveguide also provides Ref (synchronous mutable cell), Deferred (set once asynchronous cell), Semaphore, and an asynchronous Queue implementation.

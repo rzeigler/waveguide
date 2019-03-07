@@ -578,7 +578,9 @@ export class IO<E, A> {
   public fork(): IO<never, Fiber<E, A>> {
     return IO.eval(() => {
       const runtime = new Runtime<E, A>();
-      runtime.start(this);
+      setTimeout(() => {
+        runtime.start(this);
+      });
       return new Fiber(runtime);
     }); // Yield. This prevents spawning many fibers in through folding from consume stack
   }
