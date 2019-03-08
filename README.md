@@ -33,6 +33,11 @@ Additionally, `IO.eval` and `IO.suspend` create IOs from side effecting function
 Furthermore, there are a several resource acquisition functions such as `bracket` and `ensuring` which guarantee IO actions happen in the fact of errors or interuption.
 These respect the 'critical' method which marks an IO as a critical section and as such should be interruptible.
 
+## Resources
+Any IO<E, A> may be safely used as a resource acquisition using the `bracket` or `bracketExit` combinators.
+Once the resource is acquired, the release action will always happen. 
+`bracketExit` is a more powerful form of `bracket` where the `FiberResult` of the resource use action is also available.
+
 ## Fibers
 An `IO<E, A>` may be converted to a fiber using `fork()`.
 The result being an `IO<never, Fiber<E, A>>`.
