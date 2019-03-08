@@ -48,4 +48,29 @@ IOs are lazy so they don't actually do anything until they are interpreted.
 `promisedResult` will return a promise of a FiberResult.
 
 ## Concurrency Abstractions
-Waveguide also provides Ref (synchronous mutable cell), Deferred (set once asynchronous cell), Semaphore, and an asynchronous Queue implementation.
+Waveguide also provides Ref (synchronous mutable cell), Deferred (set once asynchronous cell), Semaphore, and an asynchronous queue implementation.
+
+## Compared to...
+
+### funfix
+[funfix](https://github.com/funfix/funfix/) provides a whole suite of functional tools in its core such as either, option, and others.
+In contrast, waveguide has a peer dependency on [fp-ts](https://github.com/gcanti/fp-ts/) for this machinery and exports instances for fp-ts typeclasses where appropriate.
+
+Waveguide does not attempt to provide an equivalent to funfix's weaker primitives such as Eval or Future. 
+Waveguide does not provide an equivalent to funfix's Scheduler abstraction at this time.
+Both waveguide and funfix provide continuous synchronous execution up until an asynchronous boundary. 
+However, whereas funfix provides `ExecutionModel` to control this behavior, waveguide exposes the `yield_` combinator (both static and member) which introduces an asynchronous boundary similar to funfix's `fork`.
+
+Both waveguide and funfix allow for computations to be raced. 
+However, waveguide goes further and allows a computation to spawn fibers which it can then manage.
+This is the same machinery that waveguide uses internally to manage racing.
+
+Waveguide and funfix allow registering of cleanup actions in the event of completion and interruption.
+However, waveguide exposes `bracket` which guarantee that cleanup actions are run if a resource is acquired.
+`bracketExit` goes even further and allows the cleanup action to know how the action exited (interrupt, complete, error, etc.)
+
+Waveguide also provides some concurrency primitives such as the Semaphore, Mutex, Deferred, Ref, and Queue which allow for coordination between multiple running fibers.
+funfix does not provide an equivalent to these structures.
+
+
+
