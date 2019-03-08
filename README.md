@@ -19,6 +19,8 @@ For more information see the [docs](./docs/README.md)
 import { IO } from "waveguide"
 ```
 
+Consider simple examples for [node](./examples/node/src/index.ts) and the [browser](./examples/browser/src/index.tx)
+
 ## Constructing an IO
 There are a number of ways of constructing IOs.
 `IO.of` and `IO.failed` allow creating IOs from know values.
