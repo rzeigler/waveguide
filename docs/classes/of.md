@@ -29,7 +29,7 @@
 
 ⊕ **new Of**(value: *`A`*): [Of](of.md)
 
-*Defined in [iostep.ts:45](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/iostep.ts#L45)*
+*Defined in [internal/iostep.ts:22](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/iostep.ts#L22)*
 
 **Parameters:**
 
@@ -49,7 +49,7 @@ ___
 
 **● _tag**: *"of"* = "of"
 
-*Defined in [iostep.ts:45](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/iostep.ts#L45)*
+*Defined in [internal/iostep.ts:22](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/iostep.ts#L22)*
 
 ___
 <a id="value"></a>
@@ -58,7 +58,7 @@ ___
 
 **● value**: *`A`*
 
-*Defined in [iostep.ts:46](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/iostep.ts#L46)*
+*Defined in [internal/iostep.ts:23](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/iostep.ts#L23)*
 
 ___
 

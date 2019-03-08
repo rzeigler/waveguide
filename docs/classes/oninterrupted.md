@@ -32,7 +32,7 @@
 
 ⊕ **new OnInterrupted**(first: *[IO](io.md)<`E`, `A`>*, interupted: *[IO](io.md)<`never`, `B`>*): [OnInterrupted](oninterrupted.md)
 
-*Defined in [iostep.ts:90](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/iostep.ts#L90)*
+*Defined in [internal/iostep.ts:67](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/iostep.ts#L67)*
 
 **Parameters:**
 
@@ -53,7 +53,7 @@ ___
 
 **● _tag**: *"oninterrupted"* = "oninterrupted"
 
-*Defined in [iostep.ts:90](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/iostep.ts#L90)*
+*Defined in [internal/iostep.ts:67](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/iostep.ts#L67)*
 
 ___
 <a id="first"></a>
@@ -62,7 +62,7 @@ ___
 
 **● first**: *[IO](io.md)<`E`, `A`>*
 
-*Defined in [iostep.ts:91](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/iostep.ts#L91)*
+*Defined in [internal/iostep.ts:68](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/iostep.ts#L68)*
 
 ___
 <a id="interupted"></a>
@@ -71,7 +71,7 @@ ___
 
 **● interupted**: *[IO](io.md)<`never`, `B`>*
 
-*Defined in [iostep.ts:91](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/iostep.ts#L91)*
+*Defined in [internal/iostep.ts:68](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/iostep.ts#L68)*
 
 ___
 

@@ -12,7 +12,6 @@ import { Value } from "./result";
  * An asynchronous value cell that starts empty and may be filled at most one time.
  */
 export class Deferred<A> {
-
   public static alloc<A>(): IO<never, Deferred<A>> {
     return IO.eval(() => Deferred.unsafeAlloc<A>());
   }

@@ -22,7 +22,7 @@
 
 **● _tag**: *"interrupted"* = "interrupted"
 
-*Defined in [result.ts:18](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/result.ts#L18)*
+*Defined in [result.ts:9](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/result.ts#L9)*
 
 ___
 

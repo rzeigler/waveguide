@@ -18,7 +18,6 @@
 
 * [listeners](oneshot.md#listeners)
 * [value](oneshot.md#value)
-* [wasSet](oneshot.md#wasset)
 
 ### Methods
 
@@ -40,7 +39,7 @@
 
 ⊕ **new OneShot**(): [OneShot](oneshot.md)
 
-*Defined in [oneshot.ts:20](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/oneshot.ts#L20)*
+*Defined in [internal/oneshot.ts:12](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/oneshot.ts#L12)*
 
 **Returns:** [OneShot](oneshot.md)
 
@@ -54,25 +53,16 @@ ___
 
 **● listeners**: *`Array`<`function`>*
 
-*Defined in [oneshot.ts:20](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/oneshot.ts#L20)*
+*Defined in [internal/oneshot.ts:12](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/oneshot.ts#L12)*
 
 ___
 <a id="value"></a>
 
 ### `<Private>` value
 
-**● value**: *`A` \| `undefined`*
+**● value**: *`Option`<`A`>* =  none
 
-*Defined in [oneshot.ts:16](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/oneshot.ts#L16)*
-
-___
-<a id="wasset"></a>
-
-### `<Private>` wasSet
-
-**● wasSet**: *`boolean`* = false
-
-*Defined in [oneshot.ts:19](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/oneshot.ts#L19)*
+*Defined in [internal/oneshot.ts:9](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/oneshot.ts#L9)*
 
 ___
 
@@ -84,7 +74,7 @@ ___
 
 ▸ **count**(): `number`
 
-*Defined in [oneshot.ts:35](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/oneshot.ts#L35)*
+*Defined in [internal/oneshot.ts:26](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/oneshot.ts#L26)*
 
 **Returns:** `number`
 
@@ -93,11 +83,11 @@ ___
 
 ###  get
 
-▸ **get**(): `A` \| `undefined`
+▸ **get**(): `Option`<`A`>
 
-*Defined in [oneshot.ts:59](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/oneshot.ts#L59)*
+*Defined in [internal/oneshot.ts:50](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/oneshot.ts#L50)*
 
-**Returns:** `A` \| `undefined`
+**Returns:** `Option`<`A`>
 
 ___
 <a id="isset"></a>
@@ -106,7 +96,7 @@ ___
 
 ▸ **isSet**(): `boolean`
 
-*Defined in [oneshot.ts:39](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/oneshot.ts#L39)*
+*Defined in [internal/oneshot.ts:30](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/oneshot.ts#L30)*
 
 **Returns:** `boolean`
 
@@ -117,7 +107,7 @@ ___
 
 ▸ **isUnset**(): `boolean`
 
-*Defined in [oneshot.ts:43](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/oneshot.ts#L43)*
+*Defined in [internal/oneshot.ts:34](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/oneshot.ts#L34)*
 
 **Returns:** `boolean`
 
@@ -128,7 +118,7 @@ ___
 
 ▸ **listen**(f: *`function`*): `void`
 
-*Defined in [oneshot.ts:47](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/oneshot.ts#L47)*
+*Defined in [internal/oneshot.ts:38](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/oneshot.ts#L38)*
 
 **Parameters:**
 
@@ -145,7 +135,7 @@ ___
 
 ▸ **set**(value: *`A`*): `void`
 
-*Defined in [oneshot.ts:26](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/oneshot.ts#L26)*
+*Defined in [internal/oneshot.ts:18](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/oneshot.ts#L18)*
 
 **Parameters:**
 
@@ -162,7 +152,7 @@ ___
 
 ▸ **unlisten**(f: *`function`*): `void`
 
-*Defined in [oneshot.ts:55](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/oneshot.ts#L55)*
+*Defined in [internal/oneshot.ts:46](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/oneshot.ts#L46)*
 
 **Parameters:**
 

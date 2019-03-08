@@ -32,7 +32,7 @@
 
 ⊕ **new OnDone**(first: *[IO](io.md)<`E`, `A`>*, always: *[IO](io.md)<`never`, `B`>*): [OnDone](ondone.md)
 
-*Defined in [iostep.ts:85](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/iostep.ts#L85)*
+*Defined in [internal/iostep.ts:62](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/iostep.ts#L62)*
 
 **Parameters:**
 
@@ -53,7 +53,7 @@ ___
 
 **● _tag**: *"ondone"* = "ondone"
 
-*Defined in [iostep.ts:85](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/iostep.ts#L85)*
+*Defined in [internal/iostep.ts:62](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/iostep.ts#L62)*
 
 ___
 <a id="always"></a>
@@ -62,7 +62,7 @@ ___
 
 **● always**: *[IO](io.md)<`never`, `B`>*
 
-*Defined in [iostep.ts:86](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/iostep.ts#L86)*
+*Defined in [internal/iostep.ts:63](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/iostep.ts#L63)*
 
 ___
 <a id="first"></a>
@@ -71,7 +71,7 @@ ___
 
 **● first**: *[IO](io.md)<`E`, `A`>*
 
-*Defined in [iostep.ts:86](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/iostep.ts#L86)*
+*Defined in [internal/iostep.ts:63](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/iostep.ts#L63)*
 
 ___
 

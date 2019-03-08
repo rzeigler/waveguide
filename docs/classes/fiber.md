@@ -34,7 +34,7 @@
 
 ⊕ **new Fiber**(runtime: *[Runtime](runtime.md)<`E`, `A`>*): [Fiber](fiber.md)
 
-*Defined in [fiber.ts:46](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/fiber.ts#L46)*
+*Defined in [fiber.ts:38](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/fiber.ts#L38)*
 
 **Parameters:**
 
@@ -54,7 +54,7 @@ ___
 
 **● interrupt**: *[IO](io.md)<`never`, `void`>*
 
-*Defined in [fiber.ts:39](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/fiber.ts#L39)*
+*Defined in [fiber.ts:31](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/fiber.ts#L31)*
 
 Interrupt the fiber
 
@@ -67,7 +67,7 @@ ___
 
 **● interruptAndWait**: *[IO](io.md)<`never`, [FiberResult](../#fiberresult)<`E`, `A`>>*
 
-*Defined in [fiber.ts:44](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/fiber.ts#L44)*
+*Defined in [fiber.ts:36](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/fiber.ts#L36)*
 
 Interrupt the fiber and then await for its finalizers to run
 
@@ -78,7 +78,7 @@ ___
 
 **● join**: *[IO](io.md)<`E`, `A`>*
 
-*Defined in [fiber.ts:26](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/fiber.ts#L26)*
+*Defined in [fiber.ts:18](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/fiber.ts#L18)*
 
 Join on this fiber.
 
@@ -89,9 +89,9 @@ ___
 
 ###  result
 
-**● result**: *[IO](io.md)<`never`, [FiberResult](../#fiberresult)<`E`, `A`> \| `undefined`>*
+**● result**: *[IO](io.md)<`never`, `Option`<[FiberResult](../#fiberresult)<`E`, `A`>>>*
 
-*Defined in [fiber.ts:46](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/fiber.ts#L46)*
+*Defined in [fiber.ts:38](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/fiber.ts#L38)*
 
 ___
 <a id="runtime"></a>
@@ -100,7 +100,7 @@ ___
 
 **● runtime**: *[Runtime](runtime.md)<`E`, `A`>*
 
-*Defined in [fiber.ts:48](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/fiber.ts#L48)*
+*Defined in [fiber.ts:40](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/fiber.ts#L40)*
 
 ___
 <a id="wait"></a>
@@ -109,7 +109,7 @@ ___
 
 **● wait**: *[IO](io.md)<`never`, [FiberResult](../#fiberresult)<`E`, `A`>>*
 
-*Defined in [fiber.ts:31](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/fiber.ts#L31)*
+*Defined in [fiber.ts:23](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/fiber.ts#L23)*
 
 Wait for fiber completion by complete, failure, or interruption
 

@@ -29,7 +29,7 @@
 
 ⊕ **new Caused**(raise: *[Cause](../#cause)<`E`>*): [Caused](caused.md)
 
-*Defined in [iostep.ts:55](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/iostep.ts#L55)*
+*Defined in [internal/iostep.ts:32](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/iostep.ts#L32)*
 
 **Parameters:**
 
@@ -49,7 +49,7 @@ ___
 
 **● _tag**: *"raised"* = "raised"
 
-*Defined in [iostep.ts:55](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/iostep.ts#L55)*
+*Defined in [internal/iostep.ts:32](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/iostep.ts#L32)*
 
 ___
 <a id="raise"></a>
@@ -58,7 +58,7 @@ ___
 
 **● raise**: *[Cause](../#cause)<`E`>*
 
-*Defined in [iostep.ts:56](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/iostep.ts#L56)*
+*Defined in [internal/iostep.ts:33](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/iostep.ts#L33)*
 
 ___
 

@@ -35,7 +35,7 @@
 
 ⊕ **new ErrorFrame**(f: *`function`*): [ErrorFrame](errorframe.md)
 
-*Defined in [runtime.ts:43](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L43)*
+*Defined in [internal/runtime.ts:34](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/runtime.ts#L34)*
 
 **Parameters:**
 
@@ -55,7 +55,7 @@ ___
 
 **● _tag**: *"error"* = "error"
 
-*Defined in [runtime.ts:43](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L43)*
+*Defined in [internal/runtime.ts:34](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/runtime.ts#L34)*
 
 ___
 <a id="f"></a>
@@ -64,7 +64,7 @@ ___
 
 **● f**: *`function`*
 
-*Defined in [runtime.ts:44](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L44)*
+*Defined in [internal/runtime.ts:35](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/runtime.ts#L35)*
 
 #### Type declaration
 ▸(cause: *[Cause](../#cause)<`unknown`>*): [IO](io.md)<`unknown`, `unknown`>
@@ -89,7 +89,7 @@ ___
 
 *Implementation of [Call](../interfaces/call.md).[apply](../interfaces/call.md#apply)*
 
-*Defined in [runtime.ts:48](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L48)*
+*Defined in [internal/runtime.ts:39](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/runtime.ts#L39)*
 
 Normal processing of error frames means pass the value through directly
 

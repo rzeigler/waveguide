@@ -35,7 +35,7 @@
 
 ⊕ **new InterruptFrame**(io: *[IO](io.md)<`unknown`, `unknown`>*): [InterruptFrame](interruptframe.md)
 
-*Defined in [runtime.ts:54](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L54)*
+*Defined in [internal/runtime.ts:45](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/runtime.ts#L45)*
 
 **Parameters:**
 
@@ -55,7 +55,7 @@ ___
 
 **● _tag**: *"interrupt"* = "interrupt"
 
-*Defined in [runtime.ts:54](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L54)*
+*Defined in [internal/runtime.ts:45](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/runtime.ts#L45)*
 
 ___
 <a id="io"></a>
@@ -64,7 +64,7 @@ ___
 
 **● io**: *[IO](io.md)<`unknown`, `unknown`>*
 
-*Defined in [runtime.ts:55](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L55)*
+*Defined in [internal/runtime.ts:46](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/runtime.ts#L46)*
 
 ___
 
@@ -78,7 +78,7 @@ ___
 
 *Implementation of [Call](../interfaces/call.md).[apply](../interfaces/call.md#apply)*
 
-*Defined in [runtime.ts:59](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L59)*
+*Defined in [internal/runtime.ts:50](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/runtime.ts#L50)*
 
 Normal processing of interrupt frames mean we do nothign
 

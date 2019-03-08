@@ -18,7 +18,7 @@ import {
   Of,
   OnDone,
   OnInterrupted,
-  Suspend } from "./internal/iostep";
+  Suspend} from "./internal/iostep";
 import { Runtime } from "./internal/runtime";
 import { Ref } from "./ref";
 import { Abort, Attempt, Cause, FiberResult, Raise, Result, Value } from "./result";
@@ -323,7 +323,7 @@ export class IO<E, A> {
     return this.chainCause((cause) => f(cause).widenError<E>().applySecond(IO.caused(cause)));
   }
 
-  public chain<EE, B>(this: IO<EE | never, A>, f: (a: A) => IO<EE, B>): IO<EE, B> {
+  public chain<B>(f: (a: A) => IO<E, B>): IO<E, B> {
     return new IO(new Chain(this, f));
   }
 
@@ -570,6 +570,15 @@ export class IO<E, A> {
    */
   public when(test: IO<E, boolean>): IO<E, void> {
     return test.chain((go) => go ? this.void() : IO.void() as unknown as IO<E, void>);
+  }
+
+  /**
+   * Abort the current fiber if this produces true using the provided abort
+   * @param this
+   * @param abort
+   */
+  public abort(this: IO<E, boolean>, abort: Abort): IO<E, void> {
+    return this.chain((yes) => (yes ? IO.aborted(abort) : IO.void()).widenError<E>());
   }
 
   /**

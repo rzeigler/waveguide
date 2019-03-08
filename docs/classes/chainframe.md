@@ -35,7 +35,7 @@
 
 ⊕ **new ChainFrame**(f: *`function`*): [ChainFrame](chainframe.md)
 
-*Defined in [runtime.ts:32](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L32)*
+*Defined in [internal/runtime.ts:23](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/runtime.ts#L23)*
 
 **Parameters:**
 
@@ -55,7 +55,7 @@ ___
 
 **● _tag**: *"chain"* = "chain"
 
-*Defined in [runtime.ts:32](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L32)*
+*Defined in [internal/runtime.ts:23](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/runtime.ts#L23)*
 
 ___
 <a id="f"></a>
@@ -64,7 +64,7 @@ ___
 
 **● f**: *`function`*
 
-*Defined in [runtime.ts:33](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L33)*
+*Defined in [internal/runtime.ts:24](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/runtime.ts#L24)*
 
 #### Type declaration
 ▸(a: *`unknown`*): [IO](io.md)<`unknown`, `unknown`>
@@ -89,7 +89,7 @@ ___
 
 *Implementation of [Call](../interfaces/call.md).[apply](../interfaces/call.md#apply)*
 
-*Defined in [runtime.ts:37](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L37)*
+*Defined in [internal/runtime.ts:28](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/runtime.ts#L28)*
 
 Invoke the chain method
 

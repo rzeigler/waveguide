@@ -5,7 +5,7 @@
 
 // TODO: Use a proper persistent queue implementation. This gets pretty slow when adding tons of items.
 export class Dequeue<A> {
-  public static ofAll<A>(as: ReadonlyArray<A>): Dequeue<A> {
+  public static ofAll<A>(as: A[]): Dequeue<A> {
     return new Dequeue(as);
   }
 
@@ -21,7 +21,7 @@ export class Dequeue<A> {
   public empty: boolean;
 
   // TODO: Some day, implement an actual queue
-  private constructor(public readonly array: ReadonlyArray<A>) {
+  private constructor(public readonly array: A[]) {
     this.length = array.length;
     this.empty = this.length === 0;
   }

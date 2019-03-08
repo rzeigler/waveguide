@@ -24,7 +24,7 @@
 
 ▸ **error**(msg: *`string`*): [IO](io.md)<`never`, `void`>
 
-*Defined in [terminal.ts:26](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/terminal.ts#L26)*
+*Defined in [terminal.ts:17](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/terminal.ts#L17)*
 
 **Parameters:**
 
@@ -41,7 +41,7 @@ ___
 
 ▸ **log**(msg: *`string`*): [IO](io.md)<`never`, `void`>
 
-*Defined in [terminal.ts:20](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/terminal.ts#L20)*
+*Defined in [terminal.ts:11](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/terminal.ts#L11)*
 
 **Parameters:**
 
@@ -58,7 +58,7 @@ ___
 
 ▸ **warn**(msg: *`string`*): [IO](io.md)<`never`, `void`>
 
-*Defined in [terminal.ts:23](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/terminal.ts#L23)*
+*Defined in [terminal.ts:14](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/terminal.ts#L14)*
 
 **Parameters:**
 

@@ -35,7 +35,7 @@
 
 ⊕ **new FinalizeFrame**(io: *[IO](io.md)<`unknown`, `unknown`>*): [FinalizeFrame](finalizeframe.md)
 
-*Defined in [runtime.ts:65](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L65)*
+*Defined in [internal/runtime.ts:56](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/runtime.ts#L56)*
 
 Construct a finalize frame. The contract is that this IO should interoperate with the runtime critical segments
 
@@ -57,7 +57,7 @@ ___
 
 **● _tag**: *"finalize"* = "finalize"
 
-*Defined in [runtime.ts:65](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L65)*
+*Defined in [internal/runtime.ts:56](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/runtime.ts#L56)*
 
 ___
 <a id="io"></a>
@@ -66,7 +66,7 @@ ___
 
 **● io**: *[IO](io.md)<`unknown`, `unknown`>*
 
-*Defined in [runtime.ts:71](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L71)*
+*Defined in [internal/runtime.ts:62](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/runtime.ts#L62)*
 
 ___
 
@@ -80,7 +80,7 @@ ___
 
 *Implementation of [Call](../interfaces/call.md).[apply](../interfaces/call.md#apply)*
 
-*Defined in [runtime.ts:76](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/runtime.ts#L76)*
+*Defined in [internal/runtime.ts:67](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/runtime.ts#L67)*
 
 Normal processing of finalize frames means invoke the finalizer and then return the the value
 

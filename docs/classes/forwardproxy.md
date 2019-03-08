@@ -28,7 +28,7 @@
 
 **● action**: *`function` \| `undefined`*
 
-*Defined in [forwardproxy.ts:17](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/forwardproxy.ts#L17)*
+*Defined in [internal/forwardproxy.ts:8](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/forwardproxy.ts#L8)*
 
 ___
 <a id="invoked"></a>
@@ -37,7 +37,7 @@ ___
 
 **● invoked**: *`boolean`* = false
 
-*Defined in [forwardproxy.ts:16](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/forwardproxy.ts#L16)*
+*Defined in [internal/forwardproxy.ts:7](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/forwardproxy.ts#L7)*
 
 ___
 
@@ -49,7 +49,7 @@ ___
 
 ▸ **fill**(action: *`function`*): `void`
 
-*Defined in [forwardproxy.ts:26](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/forwardproxy.ts#L26)*
+*Defined in [internal/forwardproxy.ts:17](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/forwardproxy.ts#L17)*
 
 **Parameters:**
 
@@ -66,7 +66,7 @@ ___
 
 ▸ **invoke**(): `void`
 
-*Defined in [forwardproxy.ts:19](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/forwardproxy.ts#L19)*
+*Defined in [internal/forwardproxy.ts:10](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/internal/forwardproxy.ts#L10)*
 
 **Returns:** `void`
 

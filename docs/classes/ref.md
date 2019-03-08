@@ -39,7 +39,7 @@ A synchronous mutable reference cell that always contains a value
 
 ⊕ **new Ref**(a: *`A`*): [Ref](ref.md)
 
-*Defined in [ref.ts:29](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/ref.ts#L29)*
+*Defined in [ref.ts:21](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/ref.ts#L21)*
 
 **Parameters:**
 
@@ -59,7 +59,7 @@ ___
 
 **● a**: *`A`*
 
-*Defined in [ref.ts:30](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/ref.ts#L30)*
+*Defined in [ref.ts:22](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/ref.ts#L22)*
 
 ___
 <a id="get"></a>
@@ -68,7 +68,7 @@ ___
 
 **● get**: *[IO](io.md)<`never`, `A`>* =  IO.eval(() => this.a)
 
-*Defined in [ref.ts:29](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/ref.ts#L29)*
+*Defined in [ref.ts:21](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/ref.ts#L21)*
 
 ___
 
@@ -80,7 +80,7 @@ ___
 
 ▸ **modify**<`B`>(f: *`function`*): [IO](io.md)<`never`, `B`>
 
-*Defined in [ref.ts:43](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/ref.ts#L43)*
+*Defined in [ref.ts:35](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/ref.ts#L35)*
 
 **Type parameters:**
 
@@ -100,7 +100,7 @@ ___
 
 ▸ **set**(a: *`A`*): [IO](io.md)<`never`, `void`>
 
-*Defined in [ref.ts:31](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/ref.ts#L31)*
+*Defined in [ref.ts:23](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/ref.ts#L23)*
 
 **Parameters:**
 
@@ -117,7 +117,7 @@ ___
 
 ▸ **update**(f: *`function`*): [IO](io.md)<`never`, `A`>
 
-*Defined in [ref.ts:36](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/ref.ts#L36)*
+*Defined in [ref.ts:28](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/ref.ts#L28)*
 
 **Parameters:**
 
@@ -134,7 +134,7 @@ ___
 
 ▸ **alloc**<`A`>(a: *`A`*): [IO](io.md)<`never`, [Ref](ref.md)<`A`>>
 
-*Defined in [ref.ts:21](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/ref.ts#L21)*
+*Defined in [ref.ts:13](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/ref.ts#L13)*
 
 **Type parameters:**
 
@@ -154,7 +154,7 @@ ___
 
 ▸ **unsafeAlloc**<`A`>(a: *`A`*): [Ref](ref.md)<`A`>
 
-*Defined in [ref.ts:25](https://github.com/rzeigler/waveguide/blob/05ef8da/packages/waveguide/src/ref.ts#L25)*
+*Defined in [ref.ts:17](https://github.com/rzeigler/waveguide/blob/a4eddcf/src/ref.ts#L17)*
 
 **Type parameters:**
 
