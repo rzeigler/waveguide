@@ -3,8 +3,8 @@
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
-import { IO } from "../io";
-import { Cause, Result } from "../result";
+import { ContextSwitch, IO  } from "../io";
+import { Cause } from "../result";
 
 export type IOStep<E, A> =
   Of<A>
@@ -40,7 +40,7 @@ export class Suspend<E, A> {
 
 export class Async<E, A> {
   public readonly _tag: "async" = "async";
-  constructor(public readonly start: (resume: (result: Result<E, A>) => void) => (() => void)) { }
+  constructor(public readonly start: (contextSwitch: ContextSwitch<E, A>) => void) { }
 }
 
 export class Critical<E, A> {

@@ -7,7 +7,7 @@ import { Either, left, right } from "fp-ts/lib/Either";
 import { Deferred } from "./deferred";
 import { Dequeue } from "./internal/dequeue";
 import { Ticket } from "./internal/ticket";
-import { IO, UIO } from "./io";
+import { IO } from "./io";
 import { Ref } from "./ref";
 import { Abort } from "./result";
 

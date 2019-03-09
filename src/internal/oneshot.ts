@@ -50,4 +50,11 @@ export class OneShot<A> {
   public get(): Option<A> {
     return this.value;
   }
+
+  public unsafeGet(): A {
+    if (this.value.isSome()) {
+      return this.value.value;
+    }
+    throw new Error("Bug: Cannot get from empty OneShot");
+  }
 }

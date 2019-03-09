@@ -38,28 +38,28 @@ export class Fiber<E, A> {
   public readonly result: IO<never, Option<FiberResult<E, A>>>;
 
   constructor(public readonly runtime: Runtime<E, A>) {
-    this.join = IO.async((callback) => {
+    this.join = IO.async((contextSwitch) => {
       function listener(result: FiberResult<E, A>) {
         if (result._tag !== "interrupted") {
-          callback(result);
+          contextSwitch.resume(result);
         }
         // Is this the correct way to handle this?
-        callback(new Abort(new Error("Join on interrupted fiber")));
+        contextSwitch.resume(new Abort(new Error("Join on interrupted fiber")));
       }
       runtime.result.listen(listener);
-      return () => {
+      contextSwitch.setAbort(() => {
         runtime.result.unlisten(listener);
-      };
+      });
     });
 
-    this.wait = IO.async((callback) => {
+    this.wait = IO.async((contextSwitch) => {
       function listener(r: FiberResult<E, A>) {
-        callback(new Value(r));
+        contextSwitch.resume(new Value(r));
       }
       runtime.result.listen(listener);
-      return () => {
+      contextSwitch.setAbort(() => {
         runtime.result.unlisten(listener);
-      };
+      });
     });
 
     // Implementation of kill signals the kill then awaits a result to confirm

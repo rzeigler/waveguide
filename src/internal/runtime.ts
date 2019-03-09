@@ -4,9 +4,9 @@
 // https://opensource.org/licenses/MIT
 
 import { boundMethod } from "autobind-decorator";
-import { IO } from "../io";
+import { none, Option, some } from "fp-ts/lib/Option";
+import { ContextSwitch, IO } from "../io";
 import { Abort, Cause, FiberResult, interrupted, Raise, Result, Value } from "../result";
-import { ForwardProxy } from "./forwardproxy";
 import { OneShot } from "./oneshot";
 
 type Frame = ChainFrame | ErrorFrame | FinalizeFrame | InterruptFrame;
@@ -69,28 +69,45 @@ class FinalizeFrame implements Call {
   }
 }
 
-class AsyncFrame {
-  private proxy: ForwardProxy;
-  private interrupted: boolean;
-  private continuation: (callback: (result: Result<unknown, unknown>) => void) => () => void;
-  constructor(continuation: (callback: (result: Result<unknown, unknown>) => void) => () => void) {
-    this.proxy = new ForwardProxy();
-    this.interrupted = false;
-    this.continuation = continuation;
+class ContextSwitchImpl implements ContextSwitch<unknown, unknown> {
+  private delivered: boolean = false;
+  private aborted: boolean = false;
+  private abort: OneShot<() => void> = new OneShot();
+
+  constructor(private readonly go: (result: Result<unknown, unknown>) => void) { }
+
+  public resume(result: Result<unknown, unknown>): void {
+    if (!this.aborted && !this.delivered) {
+      this.delivered = true;
+      this.go(result);
+    }
   }
-  public go(callback: (result: Result<unknown, unknown>) => void): void {
-    const adapted = (result: Result<unknown, unknown>) => {
-      if (!this.interrupted) {
-        this.interrupted = true;
-        callback(result);
-      }
-    };
-    this.proxy.fill(this.continuation(adapted));
+
+  public resumeLater(result: Result<unknown, unknown>): void {
+    if (!this.aborted && !this.delivered) {
+      this.delivered = true;
+      setTimeout(() => {
+        this.go(result);
+      }, 0);
+    }
   }
+
+  public setAbort(cancel: () => void): void {
+    this.abort.set(cancel);
+
+  }
+
   public interrupt(): void {
-    this.interrupted = true;
-    // Only deliver the cancel invoke if we h aven't been delivered a result
-    this.proxy.invoke();
+    if (this.abort.isSet()) {
+      this.aborted = true;
+      this.abort.unsafeGet()();
+    } else {
+      throw new Error("Bug: Cannot cancel a ContextSwitch with no cancellation");
+    }
+  }
+
+  public isInterruptible(): boolean {
+    return this.abort.isSet();
   }
 }
 
@@ -98,7 +115,7 @@ export class Runtime<E, A> {
   public readonly result: OneShot<FiberResult<E, A>> = new OneShot();
 
   private started: boolean = false;
-  private asyncFrame: AsyncFrame | undefined;
+  private cSwitch: Option<ContextSwitchImpl> = none;
   private readonly callFrames: Frame[] = [];
   private criticalSections: number = 0;
   private interrupted: boolean = false;
@@ -125,8 +142,8 @@ export class Runtime<E, A> {
       this.interrupted = true;
       if (this.criticalSections === 0) {
         // It is possible we were interrupted before the runloop started
-        if (this.suspended && this.asyncFrame) {
-          this.asyncFrame.interrupt();
+        if (this.suspended && this.cSwitch.isSome() && this.cSwitch.value.isInterruptible()) {
+          this.cSwitch.value.interrupt();
           this.interruptFinalize();
         }
       }
@@ -255,18 +272,20 @@ export class Runtime<E, A> {
 
   @boundMethod
   private contextSwitch(
-    continuation: (callback: (result: Result<unknown, unknown>) => void) => (() => void),
+    go: (cSwitch: ContextSwitch<unknown, unknown>) => void,
     resume: (next: IO<unknown, unknown>) => void,
     complete: (result: Result<unknown, unknown>) => void): void {
-    this.asyncFrame = new AsyncFrame(continuation);
-    this.suspended = true;
-    this.asyncFrame.go((result) => {
+    const cSwitch = new ContextSwitchImpl((result) => {
       this.suspended = false;
+      this.cSwitch = none;
       const next = result._tag === "value" ? this.popFrame(result.value, complete) : this.unwindError(result, complete);
       if (next) {
         resume(next);
       }
     });
+    this.cSwitch = some(cSwitch);
+    this.suspended = true;
+    go(cSwitch);
   }
 
   @boundMethod
