@@ -48,6 +48,7 @@ export class Semaphore {
   }
 
   public readonly acquire: IO<never, void> = this.acquireN(1);
+  public readonly tryAcquire: IO<never, boolean> = this.tryAcquireN(1);
   public readonly release: IO<never, void> = this.releaseN(1);
   public readonly count: IO<never, number> = this.state.get
     .map(countPermits);
@@ -67,6 +68,20 @@ export class Semaphore {
   public acquireN(permits: number): IO<never, void> {
     return sanityCheck(permits)
       .applySecond(ticketN(this, permits, this.state).bracketExit(Ticket.cleanup, (ticket) => ticket.wait));
+  }
+
+  public tryAcquireN(permits: number): IO<never, boolean> {
+    return sanityCheck(permits)
+      .applySecond(this.state.modify(
+        (current) =>
+          current.fold<[boolean, State]>(
+            // Definitely not enough
+            (waiting) => [false, left(waiting) as State],
+            (available) => available >= permits ?
+              [true, right(available - permits) as State] :
+              [false, right(available) as State]
+          )
+      ));
   }
 
   public releaseN(permits: number): IO<never, void> {

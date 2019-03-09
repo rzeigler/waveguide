@@ -12,15 +12,12 @@ import { Ticket } from "./internal/ticket";
 import { IO } from "./io";
 import { Ref } from "./ref";
 import { Abort } from "./result";
+import { Semaphore } from "./semaphore";
 
 export interface AsyncQueue<A> {
   readonly count: IO<never, number>;
   readonly take: IO<never, A>;
   offer(a: A): IO<never, void>;
-}
-
-export interface CloseableAsyncQueue<A> extends AsyncQueue<Option<A>> {
-  close: IO<never, void>;
 }
 
 export type OverflowStrategy = "slide" | "drop";
@@ -83,7 +80,6 @@ export class Queue<A> implements AsyncQueue<A> {
             }
           )
         )
-
       );
     this.count = state.get.map(queueCount);
     this.take = makeTicket.bracketExit(Ticket.cleanup, (ticket) => ticket.wait);
