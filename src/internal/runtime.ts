@@ -124,15 +124,10 @@ export class Runtime<E, A> {
     if (!this.result.isSet() && !this.interrupted) {
       this.interrupted = true;
       if (this.criticalSections === 0) {
-        if (this.suspended) {
-          // Maybe we haven't actually started yet so we are suspended but have no async frame
-          // In that case, just let the runloop start pick it up
-          if (this.asyncFrame) {
-            this.asyncFrame.interrupt();
-            this.interruptFinalize();
-          }
-        } else {
-          throw new Error("Bug: Interrupted a running fiber. Run loops should not be able to stack this way.");
+        // It is possible we were interrupted before the runloop started
+        if (this.suspended && this.asyncFrame) {
+          this.asyncFrame.interrupt();
+          this.interruptFinalize();
         }
       }
     }

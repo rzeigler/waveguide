@@ -3,11 +3,11 @@
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
-export * from "./io";
+export { IO } from "./io";
+export { Fiber } from "./fiber";
+export { Ref } from "./ref";
+export { Deferred } from "./deferred";
+export { AsyncQueue, unboundedQueue, boundedQueue, OverflowStrategy } from "./queue";
 export * from "./result";
-export * from "./fiber";
-export * from "./ref";
-export * from "./deferred";
 export * from "./terminal";
 export * from "./instances";
-export * from "./queue";

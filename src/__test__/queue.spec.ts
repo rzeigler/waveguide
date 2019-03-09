@@ -7,7 +7,7 @@ import { right } from "fp-ts/lib/Either";
 import { none, some } from "fp-ts/lib/Option";
 import { Dequeue } from "../internal/dequeue";
 import { IO } from "../io";
-import { NBS, NonBlockingQueue, slidingStrategy, unboundedStrategy } from "../queue";
+import { Queue, QueueState, slidingStrategy, unboundedStrategy } from "../queue";
 import { Ref } from "../ref";
 import { Value } from "../result";
 import { equiv } from "./lib.spec";
@@ -17,8 +17,8 @@ const append = <A>(a: A) => (as: A[]) => [...as, a];
 describe("Unbounded Async Queue", () => {
   it("should allow consuming elements in the order they were added", () => {
     const ref = Ref.unsafeAlloc<number[]>([]);
-    const state = Ref.unsafeAlloc<NBS<number>>(right(Dequeue.empty()));
-    const queue = new NonBlockingQueue(state, unboundedStrategy);
+    const state = Ref.unsafeAlloc<QueueState<number>>(right(Dequeue.empty()));
+    const queue = new Queue(state, unboundedStrategy);
     const read = queue.take.chain((n) => ref.update(append(n)));
     const io = queue.offer(1)
       .applySecond(queue.offer(2))
@@ -31,8 +31,8 @@ describe("Unbounded Async Queue", () => {
   });
   it("should block consumers until there is a value ready", () => {
     const ref = Ref.unsafeAlloc<number[]>([]);
-    const state = Ref.unsafeAlloc<NBS<number>>(right(Dequeue.empty()));
-    const queue = new NonBlockingQueue(state, unboundedStrategy);
+    const state = Ref.unsafeAlloc<QueueState<number>>(right(Dequeue.empty()));
+    const queue = new Queue(state, unboundedStrategy);
     const read = queue.take.chain((n) => ref.update(append(n)));
     const io =
       read.fork().chain((fib1) =>
@@ -46,8 +46,8 @@ describe("Unbounded Async Queue", () => {
   });
   it("should allow consumers to stack up", () => {
     const ref = Ref.unsafeAlloc<number[]>([]);
-    const state = Ref.unsafeAlloc<NBS<number>>(right(Dequeue.empty()));
-    const queue = new NonBlockingQueue(state, unboundedStrategy);
+    const state = Ref.unsafeAlloc<QueueState<number>>(right(Dequeue.empty()));
+    const queue = new Queue(state, unboundedStrategy);
     const read = queue.take.chain((n) => ref.update(append(n)));
     const io =
       queue.offer(1)
@@ -62,8 +62,8 @@ describe("Unbounded Async Queue", () => {
     return equiv(io, new Value([[1], [1, 2]]));
   });
   it("should ensure available items are removed before subsequent reads", () => {
-    const state = Ref.unsafeAlloc<NBS<number>>(right(Dequeue.empty()));
-    const queue = new NonBlockingQueue(state, unboundedStrategy);
+    const state = Ref.unsafeAlloc<QueueState<number>>(right(Dequeue.empty()));
+    const queue = new Queue(state, unboundedStrategy);
     const read = queue.take;
     const io =
       queue.offer(1)
@@ -72,8 +72,8 @@ describe("Unbounded Async Queue", () => {
   });
   it("should allow reads to be cancelled", () => {
     const ref = Ref.unsafeAlloc<Array<[string, number]>>([]);
-    const state = Ref.unsafeAlloc<NBS<number>>(right(Dequeue.empty()));
-    const queue = new NonBlockingQueue(state, unboundedStrategy);
+    const state = Ref.unsafeAlloc<QueueState<number>>(right(Dequeue.empty()));
+    const queue = new Queue(state, unboundedStrategy);
     const read = (name: string) => queue.take.chain((n) => ref.update(append([name, n] as [string, number])));
     const io =
       read("a").fork().product(read("b").fork())
@@ -83,8 +83,8 @@ describe("Unbounded Async Queue", () => {
     return equiv(io, new Value([["b", 1]]));
   });
   it("should be unbounded", () => {
-    const state = Ref.unsafeAlloc<NBS<number>>(right(Dequeue.empty()));
-    const queue = new NonBlockingQueue(state, unboundedStrategy);
+    const state = Ref.unsafeAlloc<QueueState<number>>(right(Dequeue.empty()));
+    const queue = new Queue(state, unboundedStrategy);
     const inserts: Array<IO<never, void>> = [];
     for (let i = 0; i < 10000; i++) {
       inserts.push(queue.offer(i));
@@ -98,8 +98,8 @@ describe("Unbounded Async Queue", () => {
 describe("Bounded Non Blocking Queue", () => {
   it("should be bounded", () => {
     const ref = Ref.unsafeAlloc<number[]>([]);
-    const state = Ref.unsafeAlloc<NBS<number>>(right(Dequeue.empty()));
-    const queue = new NonBlockingQueue(state, slidingStrategy(1));
+    const state = Ref.unsafeAlloc<QueueState<number>>(right(Dequeue.empty()));
+    const queue = new Queue(state, slidingStrategy(1));
     const read = queue.take.chain((n) => ref.update(append(n)));
     const io = queue.offer(1)
       .applySecond(queue.offer(2))
