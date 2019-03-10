@@ -163,9 +163,9 @@ export class Runtime<E, A> {
   @boundMethod
   private loop(io: IO<unknown, unknown>, resume: (next: IO<unknown, unknown>) => void): void {
     let current: IO<unknown, unknown> | undefined = io;
-    while (current && (!this.interrupted || this.criticalSections > 0)) {
+    do {
       current = this.step(current, resume, this.complete);
-    }
+    } while (current && (!this.interrupted || this.criticalSections > 0))
     /**
      * We were interrupted so determine if we need to switch to the finalize loop
      */
