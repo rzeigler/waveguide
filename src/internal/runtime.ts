@@ -138,10 +138,12 @@ export class Runtime<E, A> {
   }
 
   public interrupt(): void {
+    // Only interrupt when not complete and this is the first interrupt
     if (!this.result.isSet() && !this.interrupted) {
       this.interrupted = true;
       if (this.criticalSections === 0) {
         // It is possible we were interrupted before the runloop started
+        // If so then we just allow the runloop to start and immediately interrupt itself
         if (this.suspended && this.cSwitch.isSome() && this.cSwitch.value.isInterruptible()) {
           this.cSwitch.value.interrupt();
           this.interruptFinalize();
@@ -163,9 +165,12 @@ export class Runtime<E, A> {
   @boundMethod
   private loop(io: IO<unknown, unknown>, resume: (next: IO<unknown, unknown>) => void): void {
     let current: IO<unknown, unknown> | undefined = io;
+    // Using do ensures that we resume at least one step in the face of an interrupted resumeLater
+    // which is the case of an interrupt being delivered after the resumeLater is queued.
+    // Thus, we are technically past and if there is a critical section coming as the next io we can enter it
     do {
       current = this.step(current, resume, this.complete);
-    } while (current && (!this.interrupted || this.criticalSections > 0))
+    } while (current && (!this.interrupted || this.criticalSections > 0));
     /**
      * We were interrupted so determine if we need to switch to the finalize loop
      */

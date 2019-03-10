@@ -648,19 +648,24 @@ function raceInto<E, A>(defer: Deferred<Result<E, A>>, io: IO<E, A>): IO<never, 
  */
 export interface ContextSwitch<E, A> {
   /**
-   * Deliver a value immediately to a suspended runloop
+   * Deliver a value immediately to a suspended runloop.
+   * Once this value is delivered, the runloop is guaranteed to execute at least 1 IO action.
    * @param result
    */
   resume(result: Result<E, A>): void;
   /**
    * Deliver a value after a short delay to a suspended runloop.
+   * The runloop is uninterruptible during this waiting period and is
+   * guaranteed to execute at least 1 IO action.
    *
    * Prefer #{@link deliver} unless you have a reason
    * @param result
    */
   resumeLater(result: Result<E, A>): void;
    /**
-    * Provide cancellation logic
+    * Provide cancellation logic.
+    *
+    * If this is provided during the async call then interuption of the asynchronous element is possible.
     * @param abort
     */
   setAbort(abort: () => void): void;
