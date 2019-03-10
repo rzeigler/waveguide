@@ -13,6 +13,7 @@ IO is:
 
 
 For more information see the [docs](./docs/README.md)
+Also, there are a [number](./src/examples) [of](./examples/node) [examples](./examples/browser)
 
 ## Getting Started
 ```
@@ -48,6 +49,9 @@ IOs are lazy so they don't actually do anything until they are interpreted.
 `launch` will begin running a fiber and returns a cancellation action.
 `promised` will return a promise of the result of the fiber and will not resolve in the face of interruption.
 `promisedResult` will return a promise of a FiberResult.
+Once an IO is launched its runloop will execute synchronous effects continuously until an asynchronous boundary is hit.
+If this is undesirable insert `yield_` calls at appropriate points.
+IO can be used to perform long-running tasks without resorting to service workers on the main thread in this way.
 
 
 ## Concurrency Abstractions
