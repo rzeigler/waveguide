@@ -233,45 +233,45 @@ export class Runtime<E, A> {
   private step(current: IO<unknown, unknown>,
                resume: (next: IO<unknown, unknown>) => void,
                complete: (result: Result<unknown, unknown>) => void): IO<unknown, unknown> | undefined {
-    if (current.step._tag === "of") {
-      return this.popFrame(current.step.value, complete);
-    } else if (current.step._tag === "failed") {
-      return this.unwindError(new Raise(current.step.error), complete);
-    } else if (current.step._tag === "raised") {
-      return this.unwindError(current.step.raise, complete);
-    } else if (current.step._tag === "suspend") {
-      try {
+    try {
+      if (current.step._tag === "of") {
+        return this.popFrame(current.step.value, complete);
+      } else if (current.step._tag === "failed") {
+        return this.unwindError(new Raise(current.step.error), complete);
+      } else if (current.step._tag === "raised") {
+        return this.unwindError(current.step.raise, complete);
+      } else if (current.step._tag === "suspend") {
         return current.step.thunk();
-      } catch (e) {
-        return IO.caused(new Abort(e));
-      }
-    } else if (current.step._tag === "async") {
-      this.contextSwitch(current.step.start, resume, complete);
-      return;
-    } else if (current.step._tag === "critical") {
-      this.criticalSections++;
-      return current.step.io
-        .ensuring(this.leaveCritical as unknown as IO<never, unknown>);
-    } else if (current.step._tag === "chain") {
-      this.callFrames.push(new ChainFrame(current.step.chain));
-      return current.step.left;
-    } else if (current.step._tag === "chainerror") {
-      this.callFrames.push(new ErrorFrame(current.step.chain));
-      return current.step.left;
-    } else if (current.step._tag === "ondone") {
-      this.callFrames.push(new FinalizeFrame(
-        this.enterCritical
-          .applySecond(current.step.always)
+      } else if (current.step._tag === "async") {
+        this.contextSwitch(current.step.start, resume, complete);
+        return;
+      } else if (current.step._tag === "critical") {
+        this.criticalSections++;
+        return current.step.io
+          .ensuring(this.leaveCritical as unknown as IO<never, unknown>);
+      } else if (current.step._tag === "chain") {
+        this.callFrames.push(new ChainFrame(current.step.chain));
+        return current.step.left;
+      } else if (current.step._tag === "chainerror") {
+        this.callFrames.push(new ErrorFrame(current.step.chain));
+        return current.step.left;
+      } else if (current.step._tag === "ondone") {
+        this.callFrames.push(new FinalizeFrame(
+          this.enterCritical
+            .applySecond(current.step.always)
+            .applySecond(this.leaveCritical) as unknown as IO<unknown, unknown>));
+        return current.step.first;
+      } else if (current.step._tag === "oninterrupted") {
+        this.callFrames.push(new InterruptFrame(
+          this.enterCritical
+          .applySecond(current.step.interupted)
           .applySecond(this.leaveCritical) as unknown as IO<unknown, unknown>));
-      return current.step.first;
-    } else if (current.step._tag === "oninterrupted") {
-      this.callFrames.push(new InterruptFrame(
-        this.enterCritical
-        .applySecond(current.step.interupted)
-        .applySecond(this.leaveCritical) as unknown as IO<unknown, unknown>));
-      return current.step.first;
-    } else {
-      throw new Error(`Bug: Unrecognized step tag: ${(current.step as any)._tag}`);
+        return current.step.first;
+      } else {
+        throw new Error(`Bug: Unrecognized step tag: ${(current.step as any)._tag}`);
+      }
+    } catch (e) {
+      return IO.aborted(new Abort(e)) as unknown as IO<unknown, unknown>;
     }
   }
 

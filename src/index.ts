@@ -9,5 +9,5 @@ export { Ref } from "./ref";
 export { Deferred } from "./deferred";
 export { AsyncQueue, unboundedQueue, boundedQueue, OverflowStrategy } from "./queue";
 export * from "./result";
-export * from "./terminal";
+export * from "./console";
 export * from "./instances";
