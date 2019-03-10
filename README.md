@@ -2,7 +2,7 @@
 
 [![npm version](https://badge.fury.io/js/waveguide.svg)](https://badge.fury.io/js/waveguide)
 
-Waveguide is a set of modules provided datatypes for encoding effects on Javascript platforms inspired by projects like [Cats Effect](https://github.com/typelevel/cats-effect), and [ZIO](https://github.com/scalaz/scalaz-zio). 
+Waveguide is a set of modules provided datatypes for encoding effects on Javascript platforms inspired by projects like [Cats Effect](https://github.com/typelevel/cats-effect) and [ZIO](https://github.com/scalaz/scalaz-zio). 
 This is the core module which provides the effect type IO as well as a number of concurrency primatives.
 
 IO is:
@@ -31,6 +31,7 @@ Additionally, `IO.eval` and `IO.suspend` create IOs from side effecting function
 Furthermore, there are a several resource acquisition functions such as `bracket` and `ensuring` which guarantee IO actions happen in the fact of errors or interuption.
 These respect the 'critical' method which marks an IO as a critical section and as such should be interruptible.
 
+
 ## Fibers
 An `IO<E, A>` may be converted to a fiber using `fork()`.
 The result being an `IO<never, Fiber<E, A>>`.
@@ -41,11 +42,13 @@ A fiber will always run its finalizers even in the face of interruption.
 `wait` will await the termination of a fiber either by interruption or completion. 
 In particular, if you need to know when a fiber has finished its finalizers after being interrupted, you may use `wait`.
 
+
 ## Running
 IOs are lazy so they don't actually do anything until they are interpreted.
 `launch` will begin running a fiber and returns a cancellation action.
 `promised` will return a promise of the result of the fiber and will not resolve in the face of interruption.
 `promisedResult` will return a promise of a FiberResult.
+
 
 ## Concurrency Abstractions
 Waveguide also provides Ref (synchronous mutable cell), Deferred (set once asynchronous cell), Semaphore, and an asynchronous queue implementation.
@@ -55,22 +58,27 @@ Waveguide also provides Ref (synchronous mutable cell), Deferred (set once async
 ### funfix
 [funfix](https://github.com/funfix/funfix/) provides a whole suite of functional tools in its core such as either, option, and others.
 In contrast, waveguide has a peer dependency on [fp-ts](https://github.com/gcanti/fp-ts/) for this machinery and exports instances for fp-ts typeclasses where appropriate.
+Both use a similar encoding of higher kinded types based on the paper [Lightweight Higher Kinded Polymorphism](https://www.cl.cam.ac.uk/~jdy22/papers/lightweight-higher-kinded-polymorphism.pdf)
 
-Waveguide does not attempt to provide an equivalent to funfix's weaker primitives such as Eval or Future. 
-Waveguide does not provide an equivalent to funfix's Scheduler abstraction at this time.
-Both waveguide and funfix provide continuous synchronous execution up until an asynchronous boundary. 
-However, whereas funfix provides `ExecutionModel` to control this behavior, waveguide exposes the `yield_` combinator (both static and member) which introduces an asynchronous boundary similar to funfix's `fork`.
+funfix provides several building block effect types like Eval and Future that posses fewer capabilities than the most powerfult type IO.
+waveguide does not provide equivalents; there is only the IO type.
+waveguide does not provide an equivalent to funfix's Scheduler abstraction.
+Both waveguide and funfix optimistically run synchronous effects until the first asynchronous boundary.
+In funfix can be customized by providing an `ExecutionModel` and one such use is to perform auto-batching to ensure that every n synchronous steps the runloop will suspend to give other fibers a chance to run.
+By contrast, waveguide will never automatically insert a boundary because doing so could result in unexpected behavior
+As a case in point, consider using IO.async to requestAnimationFrame in the browser. 
+An auto-batched runloop could reduce render performance in non-obvious ways. 
 
-Both waveguide and funfix allow for computations to be raced. 
-However, waveguide goes further and allows a computation to spawn fibers which it can then manage.
+Both waveguide and funfix allow for sub-programs to be raced. 
+However, waveguide goes further and allows a sub-program to be reified into a fiber which can be managed.
 This is the same machinery that waveguide uses internally to manage racing.
 
 Waveguide and funfix allow registering of cleanup actions in the event of completion and interruption.
-However, waveguide exposes `bracket` which guarantee that cleanup actions are run if a resource is acquired.
-`bracketExit` goes even further and allows the cleanup action to know how the action exited (interrupt, complete, error, etc.)
+However, waveguide exposes `bracket` which guarantee that cleanup actions are run if a resource is acquired
+`bracketExit` goes even further and allows the cleanup action to know how the action exited (interrupt, complete, error, etc.).
 
 Waveguide also provides some concurrency primitives such as the Semaphore, Mutex, Deferred, Ref, and Queue which allow for coordination between multiple running fibers.
-funfix does not provide an equivalent to these structures.
+funfix does not provide an equivalents.
 
 
 
