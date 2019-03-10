@@ -64,4 +64,16 @@ describe("Semaphore", () => {
       .product(sem.count);
     return equiv(io, new Value([42, 2]));
   });
+  it("should produce true when there are enough permits for tryAcquireN", () => {
+    const sem = Semaphore.unsafeAlloc(2);
+    const io = sem.tryAcquireN(1)
+      .product(sem.count);
+    return equiv(io, new Value([true, 1]));
+  });
+  it("should produce false when there are not enough permits for tryAcquireN", () => {
+    const sem = Semaphore.unsafeAlloc(2);
+    const io = sem.tryAcquireN(3)
+      .product(sem.count);
+    return equiv(io, new Value([false, 2]));
+  });
 });

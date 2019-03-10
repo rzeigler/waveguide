@@ -1,6 +1,7 @@
 # waveguide
 
 [![npm version](https://badge.fury.io/js/waveguide.svg)](https://badge.fury.io/js/waveguide)
+[![CircleCI](https://circleci.com/gh/rzeigler/waveguide.svg?style=svg)](https://circleci.com/gh/rzeigler/waveguide)
 
 Waveguide is a set of modules provided datatypes for encoding effects on Javascript platforms inspired by projects like [Cats Effect](https://github.com/typelevel/cats-effect) and [ZIO](https://github.com/scalaz/scalaz-zio). 
 This is the core module which provides the effect type IO as well as a number of concurrency primatives.
@@ -20,6 +21,8 @@ Also, there are a [number](./src/examples) [of](./examples/node) [examples](./ex
 import { IO } from "waveguide"
 ```
 
+Consider simple examples for [node](./examples/node/src/index.ts) and the [browser](./examples/browser/src/index.tx)
+
 ## Constructing an IO
 There are a number of ways of constructing IOs.
 `IO.of` and `IO.failed` allow creating IOs from know values.
@@ -32,6 +35,10 @@ Additionally, `IO.eval` and `IO.suspend` create IOs from side effecting function
 Furthermore, there are a several resource acquisition functions such as `bracket` and `ensuring` which guarantee IO actions happen in the fact of errors or interuption.
 These respect the 'critical' method which marks an IO as a critical section and as such should be interruptible.
 
+## Resources
+Any IO<E, A> may be safely used as a resource acquisition using the `bracket` or `bracketExit` combinators.
+Once the resource is acquired, the release action will always happen. 
+`bracketExit` is a more powerful form of `bracket` where the `FiberResult` of the resource use action is also available.
 
 ## Fibers
 An `IO<E, A>` may be converted to a fiber using `fork()`.

@@ -4,9 +4,9 @@
 // https://opensource.org/licenses/MIT
 
 import { boundMethod } from "autobind-decorator";
-import { IO } from "../io";
+import { none, Option, some } from "fp-ts/lib/Option";
+import { ContextSwitch, IO } from "../io";
 import { Abort, Cause, FiberResult, interrupted, Raise, Result, Value } from "../result";
-import { ForwardProxy } from "./forwardproxy";
 import { OneShot } from "./oneshot";
 
 type Frame = ChainFrame | ErrorFrame | FinalizeFrame | InterruptFrame;
@@ -69,28 +69,45 @@ class FinalizeFrame implements Call {
   }
 }
 
-class AsyncFrame {
-  private proxy: ForwardProxy;
-  private interrupted: boolean;
-  private continuation: (callback: (result: Result<unknown, unknown>) => void) => () => void;
-  constructor(continuation: (callback: (result: Result<unknown, unknown>) => void) => () => void) {
-    this.proxy = new ForwardProxy();
-    this.interrupted = false;
-    this.continuation = continuation;
+class ContextSwitchImpl implements ContextSwitch<unknown, unknown> {
+  private delivered: boolean = false;
+  private aborted: boolean = false;
+  private abort: OneShot<() => void> = new OneShot();
+
+  constructor(private readonly go: (result: Result<unknown, unknown>) => void) { }
+
+  public resume(result: Result<unknown, unknown>): void {
+    if (!this.aborted && !this.delivered) {
+      this.delivered = true;
+      this.go(result);
+    }
   }
-  public go(callback: (result: Result<unknown, unknown>) => void): void {
-    const adapted = (result: Result<unknown, unknown>) => {
-      if (!this.interrupted) {
-        this.interrupted = true;
-        callback(result);
-      }
-    };
-    this.proxy.fill(this.continuation(adapted));
+
+  public resumeLater(result: Result<unknown, unknown>): void {
+    if (!this.aborted && !this.delivered) {
+      this.delivered = true;
+      setTimeout(() => {
+        this.go(result);
+      }, 0);
+    }
   }
+
+  public setAbort(cancel: () => void): void {
+    this.abort.set(cancel);
+
+  }
+
   public interrupt(): void {
-    this.interrupted = true;
-    // Only deliver the cancel invoke if we h aven't been delivered a result
-    this.proxy.invoke();
+    if (this.abort.isSet()) {
+      this.aborted = true;
+      this.abort.unsafeGet()();
+    } else {
+      throw new Error("Bug: Cannot cancel a ContextSwitch with no cancellation");
+    }
+  }
+
+  public isInterruptible(): boolean {
+    return this.abort.isSet();
   }
 }
 
@@ -98,7 +115,7 @@ export class Runtime<E, A> {
   public readonly result: OneShot<FiberResult<E, A>> = new OneShot();
 
   private started: boolean = false;
-  private asyncFrame: AsyncFrame | undefined;
+  private cSwitch: Option<ContextSwitchImpl> = none;
   private readonly callFrames: Frame[] = [];
   private criticalSections: number = 0;
   private interrupted: boolean = false;
@@ -121,18 +138,15 @@ export class Runtime<E, A> {
   }
 
   public interrupt(): void {
+    // Only interrupt when not complete and this is the first interrupt
     if (!this.result.isSet() && !this.interrupted) {
       this.interrupted = true;
       if (this.criticalSections === 0) {
-        if (this.suspended) {
-          // Maybe we haven't actually started yet so we are suspended but have no async frame
-          // In that case, just let the runloop start pick it up
-          if (this.asyncFrame) {
-            this.asyncFrame.interrupt();
-            this.interruptFinalize();
-          }
-        } else {
-          throw new Error("Bug: Interrupted a running fiber. Run loops should not be able to stack this way.");
+        // It is possible we were interrupted before the runloop started
+        // If so then we just allow the runloop to start and immediately interrupt itself
+        if (this.suspended && this.cSwitch.isSome() && this.cSwitch.value.isInterruptible()) {
+          this.cSwitch.value.interrupt();
+          this.interruptFinalize();
         }
       }
     }
@@ -151,9 +165,12 @@ export class Runtime<E, A> {
   @boundMethod
   private loop(io: IO<unknown, unknown>, resume: (next: IO<unknown, unknown>) => void): void {
     let current: IO<unknown, unknown> | undefined = io;
-    while (current && (!this.interrupted || this.criticalSections > 0)) {
+    // Using do ensures that we resume at least one step in the face of an interrupted resumeLater
+    // which is the case of an interrupt being delivered after the resumeLater is queued.
+    // Thus, we are technically past and if there is a critical section coming as the next io we can enter it
+    do {
       current = this.step(current, resume, this.complete);
-    }
+    } while (current && (!this.interrupted || this.criticalSections > 0));
     /**
      * We were interrupted so determine if we need to switch to the finalize loop
      */
@@ -216,62 +233,64 @@ export class Runtime<E, A> {
   private step(current: IO<unknown, unknown>,
                resume: (next: IO<unknown, unknown>) => void,
                complete: (result: Result<unknown, unknown>) => void): IO<unknown, unknown> | undefined {
-    if (current.step._tag === "of") {
-      return this.popFrame(current.step.value, complete);
-    } else if (current.step._tag === "failed") {
-      return this.unwindError(new Raise(current.step.error), complete);
-    } else if (current.step._tag === "raised") {
-      return this.unwindError(current.step.raise, complete);
-    } else if (current.step._tag === "suspend") {
-      try {
+    try {
+      if (current.step._tag === "of") {
+        return this.popFrame(current.step.value, complete);
+      } else if (current.step._tag === "failed") {
+        return this.unwindError(new Raise(current.step.error), complete);
+      } else if (current.step._tag === "raised") {
+        return this.unwindError(current.step.raise, complete);
+      } else if (current.step._tag === "suspend") {
         return current.step.thunk();
-      } catch (e) {
-        return IO.caused(new Abort(e));
-      }
-    } else if (current.step._tag === "async") {
-      this.contextSwitch(current.step.start, resume, complete);
-      return;
-    } else if (current.step._tag === "critical") {
-      this.criticalSections++;
-      return current.step.io
-        .ensuring(this.leaveCritical as unknown as IO<never, unknown>);
-    } else if (current.step._tag === "chain") {
-      this.callFrames.push(new ChainFrame(current.step.chain));
-      return current.step.left;
-    } else if (current.step._tag === "chainerror") {
-      this.callFrames.push(new ErrorFrame(current.step.chain));
-      return current.step.left;
-    } else if (current.step._tag === "ondone") {
-      this.callFrames.push(new FinalizeFrame(
-        this.enterCritical
-          .applySecond(current.step.always)
+      } else if (current.step._tag === "async") {
+        this.contextSwitch(current.step.start, resume, complete);
+        return;
+      } else if (current.step._tag === "critical") {
+        this.criticalSections++;
+        return current.step.io
+          .ensuring(this.leaveCritical as unknown as IO<never, unknown>);
+      } else if (current.step._tag === "chain") {
+        this.callFrames.push(new ChainFrame(current.step.chain));
+        return current.step.left;
+      } else if (current.step._tag === "chainerror") {
+        this.callFrames.push(new ErrorFrame(current.step.chain));
+        return current.step.left;
+      } else if (current.step._tag === "ondone") {
+        this.callFrames.push(new FinalizeFrame(
+          this.enterCritical
+            .applySecond(current.step.always)
+            .applySecond(this.leaveCritical) as unknown as IO<unknown, unknown>));
+        return current.step.first;
+      } else if (current.step._tag === "oninterrupted") {
+        this.callFrames.push(new InterruptFrame(
+          this.enterCritical
+          .applySecond(current.step.interupted)
           .applySecond(this.leaveCritical) as unknown as IO<unknown, unknown>));
-      return current.step.first;
-    } else if (current.step._tag === "oninterrupted") {
-      this.callFrames.push(new InterruptFrame(
-        this.enterCritical
-        .applySecond(current.step.interupted)
-        .applySecond(this.leaveCritical) as unknown as IO<unknown, unknown>));
-      return current.step.first;
-    } else {
-      throw new Error(`Bug: Unrecognized step tag: ${(current.step as any)._tag}`);
+        return current.step.first;
+      } else {
+        throw new Error(`Bug: Unrecognized step tag: ${(current.step as any)._tag}`);
+      }
+    } catch (e) {
+      return IO.aborted(new Abort(e)) as unknown as IO<unknown, unknown>;
     }
   }
 
   @boundMethod
   private contextSwitch(
-    continuation: (callback: (result: Result<unknown, unknown>) => void) => (() => void),
+    go: (cSwitch: ContextSwitch<unknown, unknown>) => void,
     resume: (next: IO<unknown, unknown>) => void,
     complete: (result: Result<unknown, unknown>) => void): void {
-    this.asyncFrame = new AsyncFrame(continuation);
-    this.suspended = true;
-    this.asyncFrame.go((result) => {
+    const cSwitch = new ContextSwitchImpl((result) => {
       this.suspended = false;
+      this.cSwitch = none;
       const next = result._tag === "value" ? this.popFrame(result.value, complete) : this.unwindError(result, complete);
       if (next) {
         resume(next);
       }
     });
+    this.cSwitch = some(cSwitch);
+    this.suspended = true;
+    go(cSwitch);
   }
 
   @boundMethod

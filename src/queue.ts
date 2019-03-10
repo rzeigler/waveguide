@@ -11,6 +11,8 @@ import { Dequeue } from "./internal/dequeue";
 import { Ticket } from "./internal/ticket";
 import { IO } from "./io";
 import { Ref } from "./ref";
+import { Abort } from "./result";
+import { Semaphore } from "./semaphore";
 
 export interface AsyncQueue<A> {
   readonly count: IO<never, number>;
@@ -18,34 +20,24 @@ export interface AsyncQueue<A> {
   offer(a: A): IO<never, void>;
 }
 
-export interface FiniteAsyncQueue<A> extends AsyncQueue<Option<A>> {
-  close: IO<never, void>;
-}
-
 export type OverflowStrategy = "slide" | "drop";
 
-export function unboundedNonBlockingQueue<A>(): IO<never, AsyncQueue<A>> {
-  return Ref.alloc<NBS<A>>(right(Dequeue.empty()))
-    .map((state) => new NonBlockingQueue(state, unboundedStrategy));
+export function unboundedQueue<A>(): IO<never, AsyncQueue<A>> {
+  return Ref.alloc<QueueState<A>>(right(Dequeue.empty()))
+    .map((state) => new Queue(state, unboundedStrategy));
 }
 
-export function boundedNonBlockingQueue<A>(max: number, strategy: OverflowStrategy): IO<never, AsyncQueue<A>> {
+export function boundedQueue<A>(max: number, strategy: OverflowStrategy): IO<never, AsyncQueue<A>> {
   return assert(max, isGt(0), "Bug: Max queue size must be > 0")
-    .applySecond(Ref.alloc<NBS<A>>(right(Dequeue.empty())))
-    .map((state) => new NonBlockingQueue(state,  strategy === "slide" ? slidingStrategy(max) : droppingStrategy(max)));
-}
-
-export type Available<A> = Dequeue<A>;
-export type Waiting<A> = Dequeue<Deferred<A>>;
-export type NBS<A> = Either<Waiting<A>, Available<A>>;
-
-type FNBQ<A> = Either<Waiting<Option<A>>, Available<A>>;
-interface FiniteNonBlockingState<A> {
-  closed: boolean;
-  state: FNBQ<A>;
+    .applySecond(Ref.alloc<QueueState<A>>(right(Dequeue.empty())))
+    .map((state) => new Queue(state,  strategy === "slide" ? slidingStrategy(max) : droppingStrategy(max)));
 }
 
 export type EnqueueStrategy<A> = (a: A, current: Dequeue<A>) => Dequeue<A>;
+
+export type Available<A> = Dequeue<A>;
+export type Waiting<A> = Dequeue<Deferred<A>>;
+export type QueueState<A> = Either<Waiting<A>, Available<A>>;
 
 export const unboundedStrategy =
   <A>(a: A, current: Dequeue<A>): Dequeue<A> => current.enqueue(a);
@@ -61,11 +53,11 @@ export const slidingStrategy = (max: number) => <A>(a: A, current: Dequeue<A>): 
   return current.enqueue(a);
 };
 
-export class NonBlockingQueue<A> implements AsyncQueue<A> {
+export class Queue<A> implements AsyncQueue<A> {
   public readonly count: IO<never, number>;
   public readonly take: IO<never, A>;
 
-  constructor(private readonly state: Ref<NBS<A>>, private readonly enqueue: EnqueueStrategy<A>) {
+  constructor(private readonly state: Ref<QueueState<A>>, private readonly enqueue: EnqueueStrategy<A>) {
     function unregister(deferred: Deferred<A>): IO<never, void> {
       return state.update((current) =>
         current.fold(
@@ -77,7 +69,7 @@ export class NonBlockingQueue<A> implements AsyncQueue<A> {
     const makeTicket = Deferred.alloc<A>()
       .chain((deferred) =>
         state.modify((current) =>
-          current.fold<[Ticket<A>, NBS<A>]>(
+          current.fold<[Ticket<A>, QueueState<A>]>(
             (waiting) => [new Ticket(deferred.wait, unregister(deferred)), left(waiting.enqueue(deferred))],
             (available) => {
               const [next, queue] = available.dequeue();
@@ -88,7 +80,6 @@ export class NonBlockingQueue<A> implements AsyncQueue<A> {
             }
           )
         )
-
       );
     this.count = state.get.map(queueCount);
     this.take = makeTicket.bracketExit(Ticket.cleanup, (ticket) => ticket.wait);
@@ -97,7 +88,7 @@ export class NonBlockingQueue<A> implements AsyncQueue<A> {
   public offer(a: A): IO<never, void> {
     return this.state
       .modify((current) =>
-        current.fold<[IO<never, void>, NBS<A>]>(
+        current.fold<[IO<never, void>, QueueState<A>]>(
           (waiting) => {
             const [next, queue] = waiting.dequeue();
             if (next) {

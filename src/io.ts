@@ -23,13 +23,6 @@ import { Runtime } from "./internal/runtime";
 import { Ref } from "./ref";
 import { Abort, Attempt, Cause, FiberResult, Raise, Result, Value } from "./result";
 
-/**
- * Unexception IO.
- *
- * A type alias for IO<never, A> which is an IO that cannot fail (though it can abort)
- */
-export type UIO<A> = IO<never, A>;
-
 export class IO<E, A> {
   /**
    * Construct an IO from a pure value.
@@ -113,24 +106,12 @@ export class IO<E, A> {
   /**
    * Construct an IO from an asynchronous effect.
    *
-   * Evaluating this IO will cause the runloop to pause and then resume once the callback provided to start
-   * is executed.
-   * Start should return a thunk that can be used to cancel the asynchronous action.
+   * Evaluating this IO will cause the runloop to pause and then resume once a value is delivered to context switch.
+   * ContextSwitch also has a means of setting cancellation logic.
    * @param start
    */
-  public static async<E, A>(start: (resume: (result: Result<E, A>) => void) => (() => void)): IO<E, A> {
+  public static async<E, A>(start: (contextSwitch: ContextSwitch<E, A>) => void): IO<E, A> {
     return new IO(new Async(start));
-  }
-
-  /**
-   * Construct an IO from an asynchronous effect that cannot be cancelled.
-   * @param start
-   */
-  public static asyncCritical<E, A>(start: (resume: (result: Result<E, A>) => void) => void): IO<E, A> {
-    return new IO(new Async<E, A>((resume) => {
-      start(resume);
-      return () => { return; };
-    })).critical();
   }
 
   /**
@@ -146,14 +127,14 @@ export class IO<E, A> {
    * @param millis the delay
    */
   public static delay(millis: number): IO<never, void> {
-    return new IO(new Async((callback) => {
+    return new IO(new Async((contextSwitch) => {
       function go() {
-        callback(new Value(undefined));
+        contextSwitch.resume(new Value(undefined));
       }
       const id = setTimeout(go, millis);
-      return () => {
+      contextSwitch.setAbort(() => {
         clearTimeout(id);
-      };
+      });
     }));
   }
 
@@ -170,8 +151,11 @@ export class IO<E, A> {
    * Useful as a base case for racing many IOs.
    */
   public static never_(): IO<never, never> {
-    return new IO(new Async((_) => {
-      return () => { return; };
+    return new IO(new Async((contextSwitch) => {
+      // We just need an abort implementation to indicate it is possible
+      contextSwitch.setAbort(() => {
+        return;
+      });
     }));
   }
 
@@ -184,8 +168,8 @@ export class IO<E, A> {
    * @param thunk
    */
   public static assimilate<A>(thunk: () => Promise<A>): IO<unknown, A> {
-    return IO.asyncCritical<unknown, A>((callback) => {
-      thunk().then((v) => callback(new Value(v))).catch((e) => callback(new Raise(e)));
+    return IO.async<unknown, A>((contextSwitch) => {
+      thunk().then((v) => contextSwitch.resume(new Value(v))).catch((e) => contextSwitch.resume(new Raise(e)));
     });
   }
 
@@ -539,9 +523,9 @@ export class IO<E, A> {
    * @param millis
    */
   public delay(millis: number): IO<E, A> {
-    return IO.async<E, void>((resume) => {
+    return IO.async<E, void>((contextSwitch) => {
       const id = setTimeout(() => {
-        resume(new Value(undefined));
+        contextSwitch.resume(new Value(undefined));
       }, millis);
       return () => {
         clearTimeout(id);
@@ -659,6 +643,30 @@ function raceInto<E, A>(defer: Deferred<Result<E, A>>, io: IO<E, A>): IO<never, 
     .fork();
 }
 
-function fiberInterrupt<E, A>(fiber: Fiber<E, A>): IO<never, void> {
-  return fiber.interrupt;
+/**
+ * Connection to the runloop for delivering asynchronous values
+ */
+export interface ContextSwitch<E, A> {
+  /**
+   * Deliver a value immediately to a suspended runloop.
+   * Once this value is delivered, the runloop is guaranteed to execute at least 1 IO action.
+   * @param result
+   */
+  resume(result: Result<E, A>): void;
+  /**
+   * Deliver a value after a short delay to a suspended runloop.
+   * The runloop is uninterruptible during this waiting period and is
+   * guaranteed to execute at least 1 IO action.
+   *
+   * Prefer #{@link deliver} unless you have a reason
+   * @param result
+   */
+  resumeLater(result: Result<E, A>): void;
+   /**
+    * Provide cancellation logic.
+    *
+    * If this is provided during the async call then interuption of the asynchronous element is possible.
+    * @param abort
+    */
+  setAbort(abort: () => void): void;
 }

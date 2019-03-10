@@ -29,9 +29,8 @@ export class Deferred<A> {
     this.oneshot = new OneShot<A>();
     this.isFull = IO.eval(() => this.oneshot.isSet());
     this.isEmpty = IO.eval(() => !this.oneshot.isSet());
-    this.wait = IO.async<never, A>((resume) => {
+    this.wait = IO.async<never, A>((contextSwitch) => {
       // types are weird between browser and node but we are only using it as an opaque handle
-      let id: any;
       const listener = (a: A) => {
         // Don't deliver the notification until the next tick.
         // This prevents stack overflows at the fill/wait rendezvous where one fiber's runloop
@@ -39,17 +38,12 @@ export class Deferred<A> {
         // This behavior will cause the stack to grow.
         // Because one of the use cases of Deferred is for implementing racing we need to ensure
         // we can support an arbitrary number of such interactions.
-        id = setTimeout(() => {
-          resume(new Value(a));
-        }, 0);
+        contextSwitch.resumeLater(new Value(a));
       };
       this.oneshot.listen(listener);
-      return () => {
+      contextSwitch.setAbort(() => {
         this.oneshot.unlisten(listener);
-        if (id) {
-          clearTimeout(id);
-        }
-      };
+      });
     });
   }
 
