@@ -197,18 +197,18 @@ export class IO<E, A> {
    * @param fb
    * @param f
    */
-  public parMap2<EE, B, C>(this: IO<EE | never, A>, fb: IO<EE, B>, f: (a: A, b: B) => C): IO<EE, C> {
+  public parMap2<B, C>(fb: IO<E, B>, f: (a: A, b: B) => C): IO<E, C> {
     // Go through deferreds for the purposes of stack safety
     // Deferred has the property of ensuring the stack is unwound on wait and this is desirable
-    return Deferred.alloc<A>().widenError<EE>().chain((leftInto) =>
-      Deferred.alloc<B>().widenError<EE>().chain((rightInto) =>
-        this.fork().widenError<EE>().bracket((fiba) => fiba.interrupt, (fiba) =>
-          fb.fork().widenError<EE>().bracket((fibb) => fibb.interrupt, (fibb) =>
-            fiba.join.peek((v) => leftInto.fill(v).widenError<EE>())
-              .applySecond(fibb.join.peek((v) => rightInto.fill(v).widenError<EE>()))
+    return Deferred.alloc<A>().widenError<E>().chain((leftInto) =>
+      Deferred.alloc<B>().widenError<E>().chain((rightInto) =>
+        this.fork().widenError<E>().bracket((fiba) => fiba.interrupt, (fiba) =>
+          fb.fork().widenError<E>().bracket((fibb) => fibb.interrupt, (fibb) =>
+            fiba.join.peek((v) => leftInto.fill(v).widenError<E>())
+              .applySecond(fibb.join.peek((v) => rightInto.fill(v).widenError<E>()))
           )
         )
-        .applySecond(leftInto.wait.map2(rightInto.wait, f).widenError<EE>())
+        .applySecond(leftInto.wait.map2(rightInto.wait, f).widenError<E>())
       )
     );
   }
@@ -283,7 +283,7 @@ export class IO<E, A> {
    * Run this and fb in parallel and produce a tuple of their results.
    * @param fb
    */
-  public parProduct<EE, B>(this: IO<EE | never, A>, fb: IO<EE, B>): IO<EE, [A, B]> {
+  public parProduct<B>(fb: IO<E, B>): IO<E, [A, B]> {
     return this.parMap2(fb, (a, b) => [a, b] as [A, B]);
   }
 
@@ -291,11 +291,11 @@ export class IO<E, A> {
    * Flatten an IO<E, IO<E, A>> into an IO<E, A>
    * @param this
    */
-  public flatten<AA>(this: IO<E | never, IO<E | never, AA>>): IO<E, AA> {
+  public flatten<AA>(this: IO<E, IO<E | never, AA>>): IO<E, AA> {
     return this.chain((io) => io);
   }
 
-  public peek<B>(f: (a: A) => IO<E | never, B>): IO<E, A> {
+  public peek<B>(f: (a: A) => IO<E, B>): IO<E, A> {
     return this.chain((a) => f(a).as(a));
   }
 
@@ -319,7 +319,7 @@ export class IO<E, A> {
    * @param this
    * @param f
    */
-  public chainCause<AA, EE>(this: IO<E, AA | never>, f: (cause: Cause<E>) => IO<EE, AA>): IO<EE, AA> {
+  public chainCause<EE>(f: (cause: Cause<E>) => IO<EE, A>): IO<EE, A> {
     return new IO(new ChainError(this, f));
   }
 
@@ -328,7 +328,7 @@ export class IO<E, A> {
    * @param this
    * @param f
    */
-  public chainError<AA, EE>(this: IO<E, AA | never>, f: (e: E) => IO<EE, AA>): IO<EE, AA> {
+  public chainError<EE>(f: (e: E) => IO<EE, A>): IO<EE, A> {
     return this.chainCause((cause) => cause._tag === "raise" ? f(cause.error) : IO.caused(cause));
   }
 
@@ -443,7 +443,7 @@ export class IO<E, A> {
    * @param release
    * @param inner
    */
-  public use_<B>(release: (a: A) => IO<never, void>, inner: IO<E, B>): IO<E, B> {
+  public within<B>(release: (a: A) => IO<never, void>, inner: IO<E, B>): IO<E, B> {
     return this.bracket(release, (_) => inner);
   }
 
@@ -492,8 +492,8 @@ export class IO<E, A> {
     return Deferred.alloc<Result<E, A>>()
       .chain((deferred) =>
         raceInto(deferred, this)
-          .use_((fiba) => fiba.interrupt, raceInto(deferred, other)
-            .use_((fibb) => fibb.interrupt, deferred.wait)))
+          .within((fiba) => fiba.interrupt, raceInto(deferred, other)
+            .within((fibb) => fibb.interrupt, deferred.wait)))
       .slay();
   }
 
@@ -563,6 +563,10 @@ export class IO<E, A> {
    */
   public abort(this: IO<E, boolean>, abort: Abort): IO<E, void> {
     return this.chain((yes) => (yes ? IO.aborted(abort) : IO.void()).widenError<E>());
+  }
+
+  public fail(this: IO<E, boolean>, e: E): IO<E, void> {
+    return this.chain((yes) => yes ? IO.failed(e) : IO.void().widenError<E>());
   }
 
   /**

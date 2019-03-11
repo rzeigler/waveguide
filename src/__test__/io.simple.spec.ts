@@ -28,7 +28,7 @@ describe("IO", () => {
       return equiv(IO.failed("boom!"), new Raise("boom!"));
     });
     it("should eval recovering from errors", () => {
-      const io = IO.failed("42").chainError((n) => IO.of(parseInt(n, 10)));
+      const io = IO.failed("42").widen<number>().chainError((n) => IO.of(parseInt(n, 10)));
       return equiv(io, new Value(42));
     });
     it("should allow up to 10000 map calls", () => {
