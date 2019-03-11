@@ -4,6 +4,7 @@
 // https://opensource.org/licenses/MIT
 
 import { boundMethod } from "autobind-decorator";
+import { Option } from "fp-ts/lib/Option";
 import { OneShot } from "./internal/oneshot";
 import { IO } from "./io";
 import { Value } from "./result";
@@ -21,6 +22,7 @@ export class Deferred<A> {
   }
 
   public wait: IO<never, A>;
+  public get: IO<never, Option<A>>;
   public isFull: IO<never, boolean>;
   public isEmpty: IO<never, boolean>;
   private oneshot: OneShot<A>;
@@ -45,6 +47,7 @@ export class Deferred<A> {
         this.oneshot.unlisten(listener);
       });
     });
+    this.get = IO.eval(() => this.oneshot.get());
   }
 
   @boundMethod
