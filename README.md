@@ -89,7 +89,7 @@ However, waveguide exposes `bracket` which guarantee that cleanup actions are ru
 `bracketExit` goes even further and allows the cleanup action to know how the action exited (interrupt, complete, error, etc.).
 
 Waveguide also provides some concurrency primitives such as the Semaphore, Mutex, Deferred, Ref, and Queue which allow for coordination between multiple running fibers.
-funfix does not provide an equivalents.
+funfix does not provide equivalents.
 
 
 
