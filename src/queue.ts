@@ -4,7 +4,7 @@
 // https://opensource.org/licenses/MIT
 
 import { Either, left, right } from "fp-ts/lib/Either";
-import { Option } from "fp-ts/lib/Option";
+import { none, Option } from "fp-ts/lib/Option";
 import { Deferred } from "./deferred";
 import { assert, isGt } from "./internal/assert";
 import { Dequeue } from "./internal/dequeue";
@@ -12,12 +12,19 @@ import { Ticket } from "./internal/ticket";
 import { IO } from "./io";
 import { Ref } from "./ref";
 import { Abort } from "./result";
-import { Semaphore } from "./semaphore";
 
 export interface AsyncQueue<A> {
   readonly count: IO<never, number>;
   readonly take: IO<never, A>;
   offer(a: A): IO<never, void>;
+}
+
+export interface CloseableAsyncQueue<A> {
+  readonly close: IO<never, void>;
+  readonly isClosed: IO<never, boolean>;
+  readonly count: IO<never, number>;
+  readonly take: IO<never, Option<A>>;
+  offer(a: A): IO<never, boolean>;
 }
 
 export type OverflowStrategy = "slide" | "drop";
@@ -47,7 +54,7 @@ export const droppingStrategy = (max: number) => <A>(a: A, current: Dequeue<A>):
 
 export const slidingStrategy = (max: number) => <A>(a: A, current: Dequeue<A>): Dequeue<A> => {
   if (current.length >= max) {
-    const [_, queue] = current.dequeue();
+    const queue = current.dequeue()[1];
     return queue.enqueue(a);
   }
   return current.enqueue(a);
@@ -102,7 +109,27 @@ export class Queue<A> implements AsyncQueue<A> {
   }
 }
 
-function queueCount<A>(state: Either<Dequeue<unknown>, Dequeue<unknown>>): number {
+export class CloseableQueue<A> implements CloseableAsyncQueue<A> {
+  public readonly count: IO<never, number>;
+  public readonly take: IO<never, Option<A>>;
+  public readonly close: IO<never, void>;
+  public readonly isClosed: IO<never, boolean>;
+
+  constructor(private readonly state: Ref<QueueState<Option<A>>>,
+              private readonly closed: Deferred<Option<A>>,
+              private readonly enqueue: EnqueueStrategy<Option<A>>) {
+    this.count = state.get.map(queueCount);
+    this.take = IO.aborted(new Abort("boom!"));
+    this.close = closed.isEmpty.ifM(closed.fill(none), IO.void());
+    this.isClosed = closed.isFull;
+  }
+
+  public offer(a: A): IO<never, boolean> {
+    return IO.aborted(new Abort("boom!"));
+  }
+}
+
+function queueCount(state: Either<Dequeue<unknown>, Dequeue<unknown>>): number {
   return state.fold(
     (waiting) => waiting.empty ? 0 : -1 * waiting.length,
     (available) => available.length

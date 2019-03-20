@@ -548,12 +548,14 @@ export class IO<E, A> {
   }
 
   /**
-   *  Produce an IO that will run this if and only if test produces true.
+   * Lifts branching into IO. If this evaluates to true will then evaluate the ifTrue IO,
+   * otherwise evaluating the ifFalse
    * @param this
-   * @param test
+   * @param ifTrue
+   * @param ifFalse
    */
-  public when(test: IO<E, boolean>): IO<E, void> {
-    return test.chain((go) => go ? this.void() : IO.void() as unknown as IO<E, void>);
+  public ifM<EE, AA>(this: IO<EE, boolean>, ifTrue: IO<EE, AA>, ifFalse: IO<EE, AA>): IO<EE, AA> {
+    return this.chain((isTrue) => isTrue ? ifTrue : ifFalse);
   }
 
   /**
