@@ -558,6 +558,10 @@ export class IO<E, A> {
     return this.chain((isTrue) => isTrue ? ifTrue : ifFalse);
   }
 
+  public whenM<EE>(this: IO<EE, boolean>, ifTrue: IO<EE, void>): IO<EE, void> {
+    return this.chain((isTrue) => isTrue ? ifTrue : IO.void() as unknown as IO<EE, void>);
+  }
+
   /**
    * Abort the current fiber if this produces true using the provided abort
    * @param this
@@ -645,7 +649,7 @@ function raceInto<E, A>(defer: Deferred<Result<E, A>>, io: IO<E, A>): IO<never, 
   return io.resurrect()
     .chain((result) =>
       // Avoid double setting
-      defer.fill(result).when(defer.isEmpty))
+      defer.isEmpty.whenM(defer.fill(result)))
     .fork();
 }
 
