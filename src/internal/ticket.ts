@@ -16,5 +16,8 @@ export class Ticket<A> {
     }
     return IO.void();
   }
+  public static wait<A>(ticket: Ticket<A>): IO<never, A> {
+    return ticket.wait;
+  }
   constructor(public readonly wait: IO<never, A>, public readonly cleanup: IO<never, void>) { }
 }

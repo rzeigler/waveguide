@@ -364,6 +364,16 @@ export class IO<E, A> {
     return this.chain((_) => this.forever());
   }
 
+  public repeat(count: number): IO<E, A> {
+    if (count === 0) {
+      return IO.aborted(new Abort(new Error("Cannot repeat less than 1 time"))) as unknown as IO<E, A>;
+    } else if (count === 1) {
+      return this;
+    } else {
+      return this.chain((_) => this.repeat(count - 1));
+    }
+  }
+
   /**
    * Ensure that once the returned IO has begun executing always will always be executed
    * regardless of error or interrupt.
@@ -548,17 +558,22 @@ export class IO<E, A> {
   }
 
   /**
-   * Lifts branching into IO. If this evaluates to true will then evaluate the ifTrue IO,
-   * otherwise evaluating the ifFalse
+   * Lifts branching into IO. If this evaluates to true will then evaluate the ifTrue IO
+   * otherwise evaluate the ifFalse IO.
    * @param this
    * @param ifTrue
    * @param ifFalse
    */
-  public ifM<EE, AA>(this: IO<EE, boolean>, ifTrue: IO<EE, AA>, ifFalse: IO<EE, AA>): IO<EE, AA> {
+  public branch<EE, AA>(this: IO<EE, boolean>, ifTrue: IO<EE, AA>, ifFalse: IO<EE, AA>): IO<EE, AA> {
     return this.chain((isTrue) => isTrue ? ifTrue : ifFalse);
   }
 
-  public whenM<EE>(this: IO<EE, boolean>, ifTrue: IO<EE, void>): IO<EE, void> {
+  /**
+   * If this evaluates to true, evaluate the given IO, otherwise, do nothing.
+   * @param this
+   * @param ifTrue
+   */
+  public guard<EE>(this: IO<EE, boolean>, ifTrue: IO<EE, void>): IO<EE, void> {
     return this.chain((isTrue) => isTrue ? ifTrue : IO.void() as unknown as IO<EE, void>);
   }
 
@@ -649,7 +664,7 @@ function raceInto<E, A>(defer: Deferred<Result<E, A>>, io: IO<E, A>): IO<never, 
   return io.resurrect()
     .chain((result) =>
       // Avoid double setting
-      defer.isEmpty.whenM(defer.fill(result)))
+      defer.isEmpty.guard(defer.fill(result)))
     .fork();
 }
 

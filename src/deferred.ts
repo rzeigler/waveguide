@@ -59,4 +59,15 @@ export class Deferred<A> {
       this.oneshot.set(a);
     });
   }
+
+  @boundMethod
+  public tryFill(a: A): IO<never, boolean> {
+    return IO.eval(() => {
+      if (this.oneshot.isSet()) {
+        return false;
+      }
+      this.oneshot.set(a);
+      return true;
+    });
+  }
 }
