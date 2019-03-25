@@ -147,7 +147,7 @@ describe("Blocking Queue", () => {
       const bulkRead = queue.take.forever();
       return bulkWrite.fork()
         .chain((fiber) =>
-          wrote.get.applyFirst(bulkRead.fork()).product(fiber.wait.applySecond(wrote.get))
+          wrote.get.delay(50).applyFirst(bulkRead.fork()).product(fiber.wait.applySecond(wrote.get))
         );
     });
   return equiv(io, new Value([[1], [1, 2, 3]]));
