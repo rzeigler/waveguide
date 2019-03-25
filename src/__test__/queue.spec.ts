@@ -3,11 +3,9 @@
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
-import { right } from "fp-ts/lib/Either";
+import { array } from "fp-ts/lib/Array";
 import { none, Option, some } from "fp-ts/lib/Option";
-import { Dequeue } from "../internal/dequeue";
-import { IO } from "../io";
-import { boundedQueue, unboundedCloseableQueue, unboundedQueue } from "../queue";
+import { blockingQueue, boundedQueue, unboundedCloseableQueue, unboundedQueue } from "../queue";
 import { Ref } from "../ref";
 import { Value } from "../result";
 import { equiv } from "./lib.spec";
@@ -137,4 +135,20 @@ describe("Closeable Queue", () => {
     });
     return equiv(io, new Value([some(1), none, none]));
   });
+});
+
+import { monad } from "../instances";
+
+describe("Blocking Queue", () => {
+  const io = blockingQueue<number>(1).product(Ref.alloc<number[]>([]))
+    .chain(([queue, wrote]) => {
+      const write = (n: number) => queue.offer(n).applySecond(wrote.update(append(n)));
+      const bulkWrite = array.traverse(monad)([1, 2, 3], write);
+      const bulkRead = queue.take.forever();
+      return bulkWrite.fork()
+        .chain((fiber) =>
+          wrote.get.applyFirst(bulkRead.fork()).product(fiber.wait.applySecond(wrote.get))
+        );
+    });
+  return equiv(io, new Value([[1], [1, 2, 3]]));
 });

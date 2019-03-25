@@ -7,25 +7,7 @@ import { IO } from "../io";
 import { Ref } from "../ref";
 import { AsyncQueue, CloseableAsyncQueue } from "./iface";
 
-export type EnqueueStrategy<A> = (a: A, current: Dequeue<A>) => Dequeue<A>;
-
-export type Available<A> = Dequeue<A>;
-export type Waiting<A> = Dequeue<Deferred<A>>;
-export type QueueState<A> = Either<Waiting<A>, Available<A>>;
-
-export const unboundedStrategy =
-  <A>(a: A, current: Dequeue<A>): Dequeue<A> => current.enqueue(a);
-
-export const droppingStrategy = (max: number) => <A>(a: A, current: Dequeue<A>): Dequeue<A> =>
-  current.length >= max ? current : current.enqueue(a);
-
-export const slidingStrategy = (max: number) => <A>(a: A, current: Dequeue<A>): Dequeue<A> => {
-  if (current.length >= max) {
-    const queue = current.dequeue()[1];
-    return queue.enqueue(a);
-  }
-  return current.enqueue(a);
-};
+import { CloseableQueueState, EnqueueStrategy, QueueState } from "./common";
 
 export class AsyncQueueImpl<A> implements AsyncQueue<A> {
   public readonly count: IO<never, number>;
@@ -76,11 +58,6 @@ export class AsyncQueueImpl<A> implements AsyncQueue<A> {
       (available) => right(available))
     ).void();
   }
-}
-
-export interface CloseableQueueState<A> {
-  closed: boolean;
-  queue: QueueState<Option<A>>;
 }
 
 export class CloseableAsyncQueueImpl<A> implements CloseableAsyncQueue<A> {
