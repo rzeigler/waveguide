@@ -3,6 +3,7 @@
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
+import { when } from "fp-ts/lib/Applicative";
 import { Either, left, right } from "fp-ts/lib/Either";
 import { none, Option, some } from "fp-ts/lib/Option";
 import { Deferred } from "./deferred";
@@ -118,8 +119,8 @@ export class IO<E, A> {
    * Construct an IO that is already succeeded with an undefined value
    */
   // TODO: This should probably be a constant
-  public static void(): IO<never, void> {
-    return IO.of(undefined);
+  public static void<E = never>(): IO<E, void> {
+    return IO.pure(undefined);
   }
 
   /**
@@ -354,7 +355,7 @@ export class IO<E, A> {
    */
   public slay<EE, AA>(this: IO<never, Result<EE, AA>>): IO<EE, AA> {
     return this.widenError<EE>()
-      .chain((result) => result._tag === "value" ? IO.of(result.value) as unknown as IO<EE, AA> : IO.caused(result));
+      .chain((result) => result._tag === "value" ? IO.pure(result.value) : IO.caused(result));
   }
 
   /**
@@ -564,17 +565,16 @@ export class IO<E, A> {
    * @param ifTrue
    * @param ifFalse
    */
-  public branch<EE, AA>(this: IO<EE, boolean>, ifTrue: IO<EE, AA>, ifFalse: IO<EE, AA>): IO<EE, AA> {
+  public branch<AA>(this: IO<E, boolean>, ifTrue: IO<E, AA>, ifFalse: IO<E, AA>): IO<E, AA> {
     return this.chain((isTrue) => isTrue ? ifTrue : ifFalse);
   }
 
   /**
-   * If this evaluates to true, evaluate the given IO, otherwise, do nothing.
-   * @param this
-   * @param ifTrue
+   * Only perform this action if the test action evaluats to true.
+   * @param test
    */
-  public guard<EE>(this: IO<EE, boolean>, ifTrue: IO<EE, void>): IO<EE, void> {
-    return this.chain((isTrue) => isTrue ? ifTrue : IO.void() as unknown as IO<EE, void>);
+  public when(test: IO<E, boolean>): IO<E, void> {
+    return test.branch<void>(this.void(), IO.void());
   }
 
   /**
@@ -583,7 +583,7 @@ export class IO<E, A> {
    * @param abort
    */
   public abort(this: IO<E, boolean>, abort: Abort): IO<E, void> {
-    return this.chain((yes) => (yes ? IO.aborted(abort) : IO.void()).widenError<E>());
+    return this.chain((yes) => yes ? IO.aborted(abort).widenError<E>() : IO.void());
   }
 
   public fail(this: IO<E, boolean>, e: E): IO<E, void> {
@@ -662,9 +662,7 @@ export class IO<E, A> {
 
 function raceInto<E, A>(defer: Deferred<Result<E, A>>, io: IO<E, A>): IO<never, Fiber<never, void>> {
   return io.resurrect()
-    .chain((result) =>
-      // Avoid double setting
-      defer.isEmpty.guard(defer.fill(result)))
+    .chain((result) => defer.tryFill(result).void())
     .fork();
 }
 

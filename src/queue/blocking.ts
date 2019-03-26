@@ -8,7 +8,7 @@ import { IO } from "../io";
 import { Ref } from "../ref";
 import { Abort } from "../result";
 import { Semaphore } from "../semaphore";
-import { QueueState } from "./common";
+import { CloseableQueueState, QueueState } from "./common";
 import { AsyncQueue } from "./iface";
 
 export class AsyncQueueImpl<A> implements AsyncQueue<A> {
@@ -79,6 +79,24 @@ export class AsyncQueueImpl<A> implements AsyncQueue<A> {
         (available) => [IO.void(), right(available)]
       )
     ).flatten();
+  }
+}
+
+export class CloseableAsyncQueueImpl<A> {
+  public readonly count: IO<never, number>;
+  public readonly take: IO<never, A>;
+  public readonly close: IO<never, void>;
+
+  constructor(private readonly state: Ref<CloseableQueueState<A>>,
+              private readonly closed: Deferred<Option<A>>,
+              private readonly semaphore: Semaphore) {
+    this.count = IO.aborted(new Abort("boom!"));
+    this.take = IO.aborted(new Abort("boom!"));
+    this.close = IO.aborted(new Abort("boom"));
+  }
+
+  public offer(a: A): IO<never, void> {
+    return IO.aborted(new Abort("boom!"));
   }
 }
 

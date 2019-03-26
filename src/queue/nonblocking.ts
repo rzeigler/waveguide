@@ -97,7 +97,7 @@ export class CloseableAsyncQueueImpl<A> implements CloseableAsyncQueue<A> {
               return current.queue.fold<[Ticket<Option<A>>, CloseableQueueState<A>]>(
                 (waiting) => [
                   new Ticket(
-                    deferred.wait.race(closed.wait)
+                    deferred.wait.race(this.closed.wait)
                       // Always remove the from the queue even if close occurs
                       .ensuring(cleanup),
                     cleanup
