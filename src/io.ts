@@ -184,7 +184,7 @@ export class IO<E, A> {
    * @param fb
    * @param f
    */
-  public map2<EE, B, C>(this: IO<EE | never, A>, fb: IO<EE | never, B>, f: (a: A, b: B) => C): IO<EE, C> {
+  public map2<B, C>(fb: IO<E, B>, f: (a: A, b: B) => C): IO<E, C> {
     return this.chain((a) => fb.map((b) => f(a, b)));
   }
 
