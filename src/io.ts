@@ -3,7 +3,6 @@
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
-import { when } from "fp-ts/lib/Applicative";
 import { Either, left, right } from "fp-ts/lib/Either";
 import { none, Option, some } from "fp-ts/lib/Option";
 import { Deferred } from "./deferred";
@@ -205,8 +204,8 @@ export class IO<E, A> {
       Deferred.alloc<B>().widenError<E>().chain((rightInto) =>
         this.fork().widenError<E>().bracket((fiba) => fiba.interrupt, (fiba) =>
           fb.fork().widenError<E>().bracket((fibb) => fibb.interrupt, (fibb) =>
-            fiba.join.peek((v) => leftInto.fill(v).widenError<E>())
-              .applySecond(fibb.join.peek((v) => rightInto.fill(v).widenError<E>()))
+            fiba.join.tap((v) => leftInto.fill(v).widenError<E>())
+              .applySecond(fibb.join.tap((v) => rightInto.fill(v).widenError<E>()))
           )
         )
         .applySecond(leftInto.wait.map2(rightInto.wait, f).widenError<E>())
@@ -296,7 +295,7 @@ export class IO<E, A> {
     return this.chain((io) => io);
   }
 
-  public peek<B>(f: (a: A) => IO<E, B>): IO<E, A> {
+  public tap<B>(f: (a: A) => IO<E, B>): IO<E, A> {
     return this.chain((a) => f(a).as(a));
   }
 
@@ -439,7 +438,7 @@ export class IO<E, A> {
         this
         .chain((resource) =>
           consume(resource).fork().widenError<E>()
-            .peek((fib) =>
+            .tap((fib) =>
               cleanup.set(fib.interruptAndWait
                 .chain((result) => release(resource, result))).widenError<E>())).critical()
         .chain((fib) => fib.join)

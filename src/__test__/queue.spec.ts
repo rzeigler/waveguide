@@ -5,6 +5,7 @@
 
 import { array } from "fp-ts/lib/Array";
 import { none, Option, some } from "fp-ts/lib/Option";
+import { log } from "../console";
 import { blockingQueue, boundedQueue, unboundedCloseableQueue, unboundedQueue } from "../queue";
 import { Ref } from "../ref";
 import { Value } from "../result";
@@ -140,15 +141,19 @@ describe("Closeable Queue", () => {
 import { monad } from "../instances";
 
 describe("Blocking Queue", () => {
-  const io = blockingQueue<number>(1).product(Ref.alloc<number[]>([]))
+  it("should block while waiting for values", () => {
+    const io = blockingQueue<number>(1).product(Ref.alloc<number[]>([]))
     .chain(([queue, wrote]) => {
       const write = (n: number) => queue.offer(n).applySecond(wrote.update(append(n)));
-      const bulkWrite = array.traverse(monad)([1, 2, 3], write);
+      // Array evaluates effects from right to left?
+      // const bulkWrite = array.traverse(monad)([1, 2, 3], write).void();
+      const bulkWrite = write(1).applySecond(write(2)).applySecond(write(3)).void();
       const bulkRead = queue.take.forever();
       return bulkWrite.fork()
         .chain((fiber) =>
           wrote.get.delay(50).applyFirst(bulkRead.fork()).product(fiber.wait.applySecond(wrote.get))
         );
     });
-  return equiv(io, new Value([[1], [1, 2, 3]]));
+    return equiv(io, new Value([[1], [1, 2, 3]]));
+  });
 });

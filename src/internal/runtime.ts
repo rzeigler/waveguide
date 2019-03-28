@@ -246,9 +246,9 @@ export class Runtime<E, A> {
         this.contextSwitch(current.step.start, resume, complete);
         return;
       } else if (current.step._tag === "critical") {
-        this.criticalSections++;
-        return current.step.io
-          .ensuring(this.leaveCritical as unknown as IO<never, unknown>);
+        // Once enter critical completes we are guaranteed leave critical
+        return (this.enterCritical as unknown as IO<unknown, unknown>)
+        .applySecond(current.step.io.ensuring(this.leaveCritical as unknown as IO<never, unknown>));
       } else if (current.step._tag === "chain") {
         this.callFrames.push(new ChainFrame(current.step.chain));
         return current.step.left;
