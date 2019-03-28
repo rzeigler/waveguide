@@ -218,7 +218,7 @@ export class IO<E, A> {
    * @param fab
    */
   public ap<B>(fab: IO<E, (a: A) => B>): IO<E, B> {
-    return this.chain((a) => fab.map((f) => f(a)));
+    return this.map2(fab, (a, f) => f(a));
   }
 
   /**
@@ -227,7 +227,7 @@ export class IO<E, A> {
    * @param fb
    */
   public ap_<B, C>(this: IO<E, (b: B) => C>, fb: IO<E, B>): IO<E, C> {
-    return this.chain((f) => fb.map(f));
+    return this.map2(fb, (f, b) => f(b));
   }
 
   /**
@@ -239,7 +239,7 @@ export class IO<E, A> {
   }
 
   public parAp_<B, C>(this: IO<E, (b: B) => C>, fb: IO<E, B>): IO<E, C> {
-    return fb.parAp(this);
+    return this.parMap2(fb, (f, b) => f(b));
   }
 
   /**
