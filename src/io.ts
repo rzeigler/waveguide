@@ -222,15 +222,20 @@ export class IO<E, A> {
   }
 
   /**
+   * Apply the function produced by this to the result of fb
+   * @param this
+   * @param fb
+   */
+  public ap_<B, C>(this: IO<E, (b: B) => C>, fb: IO<E, B>): IO<E, C> {
+    return this.chain((f) => fb.map(f));
+  }
+
+  /**
    * Apply the function produced by fab to the result of this after both fab and this are run in parallel.
    * @param fab
    */
   public parAp<B>(fab: IO<E, (a: A) => B>): IO<E, B> {
     return this.parMap2(fab, (a, f) => f(a));
-  }
-
-  public ap_<B, C>(this: IO<E, (b: B) => C>, fb: IO<E, B>): IO<E, C> {
-    return fb.ap(this);
   }
 
   public parAp_<B, C>(this: IO<E, (b: B) => C>, fb: IO<E, B>): IO<E, C> {

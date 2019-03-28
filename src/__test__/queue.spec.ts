@@ -145,9 +145,7 @@ describe("Blocking Queue", () => {
     const io = blockingQueue<number>(1).product(Ref.alloc<number[]>([]))
     .chain(([queue, wrote]) => {
       const write = (n: number) => queue.offer(n).applySecond(wrote.update(append(n)));
-      // Array evaluates effects from right to left?
-      // const bulkWrite = array.traverse(monad)([1, 2, 3], write).void();
-      const bulkWrite = write(1).applySecond(write(2)).applySecond(write(3)).void();
+      const bulkWrite = array.traverse(monad)([1, 2, 3], write).void();
       const bulkRead = queue.take.forever();
       return bulkWrite.fork()
         .chain((fiber) =>
