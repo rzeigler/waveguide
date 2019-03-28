@@ -256,7 +256,7 @@ export class IO<E, A> {
    * If either fail which error is produced is undefined
    * @param fb
    */
-  public parApplyFirst<EE, B>(this: IO<EE | never, A>, fb: IO<EE, B>): IO<EE, A> {
+  public parApplyFirst<B>(fb: IO<E, B>): IO<E, A> {
     return this.parMap2(fb, (a, _) => a);
   }
 
@@ -264,7 +264,7 @@ export class IO<E, A> {
    * Run this and fb in sequence and take the result of fb
    * @param fb
    */
-  public applySecond<B>(fb: IO<E | never, B>): IO<E, B> {
+  public applySecond<B>(fb: IO<E, B>): IO<E, B> {
     return this.map2(fb, (_, b) => b);
   }
 
@@ -272,7 +272,7 @@ export class IO<E, A> {
    * Run this and fb in parallel and take the result of fb
    * @param fb
    */
-  public parApplySecond<EE, B>(this: IO<EE | never, A>, fb: IO<EE, B>): IO<EE, B> {
+  public parApplySecond<B>(fb: IO<E, B>): IO<E, B> {
     return this.parMap2(fb, (_, b) => b);
   }
 
@@ -304,11 +304,11 @@ export class IO<E, A> {
     return this.chain((a) => f(a).as(a));
   }
 
-  public peekError<B>(f: (e: E) => IO<never, B>): IO<E, A> {
+  public tapError<B>(f: (e: E) => IO<never, B>): IO<E, A> {
     return this.chainError((e) => f(e).widenError<E>().applySecond(IO.failed(e)));
   }
 
-  public peekCause<B>(f: (cause: Cause<E>) => IO<never, B>): IO<E, A> {
+  public tapCause<B>(f: (cause: Cause<E>) => IO<never, B>): IO<E, A> {
     return this.chainCause((cause) => f(cause).widenError<E>().applySecond(IO.caused(cause)));
   }
 
