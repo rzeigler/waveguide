@@ -103,15 +103,18 @@ export class CloseableAsyncQueueImpl<A> {
             // The queue is closed, so we need to ensure we are draining
             if (current.closed) {
               return current.queue.fold<[Ticket<Option<A>>, CloseableQueueState<A>]>(
+                // we are queued up on waits, so we can do nothing
                 (waiting) => [new Ticket(IO.of(none), IO.void()), {...current, queue: left(waiting)}],
                 (available) => {
                   const [next, queue] = available.dequeue();
+                  // there is an available element so we should drain it
                   if (next) {
                     return [
                       new Ticket(IO.of(next), IO.void()),
                       {...current, queue: right(queue)}
                     ];
                   }
+                  // otherwise there is nothing we can do
                   return [
                     new Ticket(IO.of(none), IO.void()),
                     {...current, queue: left(Dequeue.empty())}
@@ -119,6 +122,9 @@ export class CloseableAsyncQueueImpl<A> {
                 }
               );
             } else {
+              // The queue is not closed
+              // We want to construct tickets that wait on the constructed deferred and the closed implementation
+              // The tickets should also always remove the deferred from the queue
               const cleanup = this.unregister(deferred);
               return current.queue.fold<[Ticket<Option<A>>, CloseableQueueState<A>]>(
                 (waiting) => [
