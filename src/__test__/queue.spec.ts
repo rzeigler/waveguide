@@ -6,7 +6,7 @@
 import { array } from "fp-ts/lib/Array";
 import { none, Option, some } from "fp-ts/lib/Option";
 import { log } from "../console";
-import { blockingQueue, boundedQueue, unboundedCloseableQueue, unboundedQueue } from "../queue";
+import { blockingQueue, blockingCloseableQueue, boundedQueue, unboundedCloseableQueue, unboundedQueue } from "../queue";
 import { Ref } from "../ref";
 import { Value } from "../result";
 import { equiv } from "./lib.spec";
@@ -155,3 +155,19 @@ describe("Blocking Queue", () => {
     return equiv(io, new Value([[1], [1, 2, 3]]));
   });
 });
+
+// describe("CloseableBlockingQueue", () => {
+//   it("should block while waiting for values", () => {
+//     const io = blockingCloseableQueue<number>(1).product(Ref.alloc<Array<Option<number>>>([]))
+//     .chain(([queue, wrote]) => {
+//       const write = (n: number) => queue.offer(n).applySecond(wrote.update(append(n)));
+//       const bulkWrite = array.traverse(monad)([1, 2, 3], write).void();
+//       const bulkRead = queue.take.forever();
+//       return bulkWrite.fork()
+//         .chain((fiber) =>
+//           wrote.get.delay(50).applyFirst(bulkRead.fork()).product(fiber.wait.applySecond(wrote.get))
+//         );
+//     });
+//     return equiv(io, new Value([[some(1)], [some(1), some(2), some(3)]]));
+//   })
+// })

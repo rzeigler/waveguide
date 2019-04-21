@@ -102,58 +102,58 @@ export class CloseableAsyncQueueImpl<A> {
           this.state.modify((current) => {
             // The queue is closed, so we need to ensure we are draining
             if (current.closed) {
+              const cleanup = this.semaphore.acquire;
               return current.queue.fold<[Ticket<Option<A>>, CloseableQueueState<A>]>(
                 // we are queued up on waits, so we can do nothing
-                (waiting) => [new Ticket(IO.of(none), IO.void()), {...current, queue: left(waiting)}],
+                (waiting) => [new Ticket(IO.of(none), cleanup), {...current, queue: left(waiting)}],
                 (available) => {
                   const [next, queue] = available.dequeue();
                   // there is an available element so we should drain it
                   if (next) {
                     return [
-                      new Ticket(IO.of(next), IO.void()),
+                      new Ticket(IO.of(next), cleanup),
                       {...current, queue: right(queue)}
                     ];
                   }
                   // otherwise there is nothing we can do
                   return [
-                    new Ticket(IO.of(none), IO.void()),
+                    new Ticket(IO.of(none), cleanup),
                     {...current, queue: left(Dequeue.empty())}
                   ];
                 }
               );
-            } else {
-              // The queue is not closed
-              // We want to construct tickets that wait on the constructed deferred and the closed implementation
-              // The tickets should also always remove the deferred from the queue
-              const cleanup = this.unregister(deferred);
-              return current.queue.fold<[Ticket<Option<A>>, CloseableQueueState<A>]>(
-                (waiting) => [
+            } 
+            // The queue is not closed
+            // We want to construct tickets that wait on the constructed deferred and the closed implementation
+            // The tickets should also always remove the deferred from the queue
+            const cleanup = this.unregister(deferred).applySecond(this.semaphore.acquire);
+            return current.queue.fold<[Ticket<Option<A>>, CloseableQueueState<A>]>(
+              (waiting) => [
+                new Ticket(
+                  deferred.wait.race(this.closed.wait)
+                    .ensuring(cleanup),
+                  cleanup
+                ),
+                {...current, queue: left(waiting.enqueue(deferred))}
+              ],
+              (available) => {
+                const [next, queue] = available.dequeue();
+                if (next) {
+                  return [
+                    new Ticket(IO.of(next), IO.void()),
+                    {...current, queue: right(queue)}
+                  ];
+                }
+                return [
                   new Ticket(
                     deferred.wait.race(this.closed.wait)
                       .ensuring(cleanup),
                     cleanup
                   ),
-                  {...current, queue: left(waiting.enqueue(deferred))}
-                ],
-                (available) => {
-                  const [next, queue] = available.dequeue();
-                  if (next) {
-                    return [
-                      new Ticket(IO.of(next), IO.void()),
-                      {...current, queue: right(queue)}
-                    ];
-                  }
-                  return [
-                    new Ticket(
-                      deferred.wait.race(this.closed.wait)
-                        .ensuring(cleanup),
-                      cleanup
-                    ),
-                    {...current, queue: left(Dequeue.of(deferred))}
-                  ];
-                }
-              );
-            }
+                  {...current, queue: left(Dequeue.of(deferred))}
+                ];
+              }
+            );
           })
         )
       );

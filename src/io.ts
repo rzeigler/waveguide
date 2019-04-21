@@ -582,19 +582,6 @@ export class IO<E, A> {
   }
 
   /**
-   * Abort the current fiber if this produces true using the provided abort
-   * @param this
-   * @param abort
-   */
-  public abort(this: IO<E, boolean>, abort: Abort): IO<E, void> {
-    return this.chain((yes) => yes ? IO.aborted(abort).widenError<E>() : IO.void());
-  }
-
-  public fail(this: IO<E, boolean>, e: E): IO<E, void> {
-    return this.chain((yes) => yes ? IO.failed(e) : IO.void().widenError<E>());
-  }
-
-  /**
    * Produce an IO that when run will spawn this as a fiber.
    */
   public fork(): IO<never, Fiber<E, A>> {

@@ -1,12 +1,14 @@
 export * from "./iface";
 import { right } from "fp-ts/lib/Either";
 import { Option } from "fp-ts/lib/Option";
+import { Do } from "fp-ts-contrib/lib/Do";
 import { Deferred } from "../deferred";
 import { Dequeue } from "../internal/dequeue";
 import { IO } from "../io";
+import { monad } from "../instances";
 import { Ref } from "../ref";
 import { Semaphore } from "../semaphore";
-import { AsyncQueueImpl as BQImpl } from "./blocking";
+import { AsyncQueueImpl as BQImpl, CloseableAsyncQueueImpl as CBQImpl } from "./blocking";
 import { CloseableQueueState, droppingStrategy, QueueState, slidingStrategy, unboundedStrategy } from "./common";
 import { AsyncQueue, CloseableAsyncQueue } from "./iface";
 import {
@@ -40,4 +42,13 @@ export function boundedCloseableQueue<A>(strategy: OverflowStrategy, max: number
 export function blockingQueue<A>(max: number): IO<never, AsyncQueue<A>> {
   return Ref.alloc<QueueState<A>>(right(Dequeue.empty())).product(Semaphore.alloc(max))
     .map(([ref, sem]) => new BQImpl(ref, sem));
+}
+
+
+export function blockingCloseableQueue<A>(max: number): IO<never, CloseableAsyncQueue<A>> {
+  return Do(monad)
+    .bind("ref", Ref.alloc<CloseableQueueState<A>>({closed: false, queue: right(Dequeue.empty())}))
+    .bind("close", Deferred.alloc<Option<A>>())
+    .bind("sem", Semaphore.alloc(max))
+    .return(({ref, close, sem}) => new CBQImpl(ref, close, sem));
 }
