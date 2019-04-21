@@ -58,7 +58,7 @@ export class Semaphore {
   public withPermitsN<E, A>(permits: number, io: IO<E, A>): IO<E, A> {
     return this.acquireN(permits)
       .widenError<E>()
-      .applySecond(io.ensuring(this.releaseN(permits)));
+      .applySecond(io.onComplete(this.releaseN(permits)));
   }
 
   public withPermit<E, A>(io: IO<E, A>): IO<E, A> {
@@ -96,7 +96,7 @@ export class Semaphore {
                 const [needed, gate] = pending;
                 if (needed >= permits) {
                   return [
-                    gate.fill(undefined)
+                    gate.complete(undefined)
                       .applyFirst(permits > needed ? this.releaseN(permits - needed) : IO.void()),
                     left(next) as State
                   ];
@@ -151,10 +151,10 @@ function ticketN(sem: Semaphore,
     return Deferred.alloc<void>().chain((gate) =>
       state.modify((current) =>
         current.fold<[Ticket<void>, State]>(
-          (waiting) => [new Ticket(gate.wait, unqueue(gate)), left(waiting.enqueue([permits, gate]))],
+          (waiting) => [new Ticket(gate.get, unqueue(gate)), left(waiting.enqueue([permits, gate]))],
           (available) => available >= permits ?
             [new Ticket(IO.void(), sem.releaseN(permits)), right(available - permits) as State] :
-            [new Ticket(gate.wait, unqueue(gate)), left(Dequeue.of([permits - available, gate])) as State]
+            [new Ticket(gate.get, unqueue(gate)), left(Dequeue.of([permits - available, gate])) as State]
         )
       )
     );

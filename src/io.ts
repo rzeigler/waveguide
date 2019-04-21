@@ -204,11 +204,11 @@ export class IO<E, A> {
       Deferred.alloc<B>().widenError<E>().chain((rightInto) =>
         this.fork().widenError<E>().bracket((fiba) => fiba.interrupt, (fiba) =>
           fb.fork().widenError<E>().bracket((fibb) => fibb.interrupt, (fibb) =>
-            fiba.join.tap((v) => leftInto.fill(v).widenError<E>())
-              .applySecond(fibb.join.tap((v) => rightInto.fill(v).widenError<E>()))
+            fiba.join.tap((v) => leftInto.complete(v).widenError<E>())
+              .applySecond(fibb.join.tap((v) => rightInto.complete(v).widenError<E>()))
           )
         )
-        .applySecond(leftInto.wait.map2(rightInto.wait, f).widenError<E>())
+        .applySecond(leftInto.get.map2(rightInto.get, f).widenError<E>())
       )
     );
   }
@@ -340,9 +340,9 @@ export class IO<E, A> {
   /**
    * Run this and produce either a Value<A> or a Raise<E> depending on the result
    */
-  public attempt(): IO<never, Attempt<E, A>> {
-    return this.map<Attempt<E, A>>((v) => new Value(v))
-      .chainCause((cause) => cause._tag === "raise" ? IO.of(cause) : IO.caused(cause));
+  public attempt(): IO<never, Either<E, A>> {
+    return this.map<Either<E, A>>(right)
+      .chainError((e) => IO.of(left(e)));
   }
 
   /**
@@ -389,7 +389,7 @@ export class IO<E, A> {
    * This is an interaction between asynchronous boundaries and critical sections, but you must account for it.
    * @param always
    */
-  public ensuring<B>(always: IO<never, B>): IO<E, A> {
+  public onComplete<B>(always: IO<never, B>): IO<E, A> {
     return new IO(new OnDone(this, always));
   }
 
@@ -401,7 +401,7 @@ export class IO<E, A> {
    * (and thus always be registered as a cleanup action) without 'this' IO every actually starting.
    * This is an interaction between asynchronous boundaries and critical sections, but you must account for it.
    */
-  public interrupted<B>(interrupt: IO<never, B>): IO<E, A> {
+  public onInterrupt<B>(interrupt: IO<never, B>): IO<E, A> {
     return new IO(new OnInterrupted(this, interrupt));
   }
 
@@ -421,7 +421,7 @@ export class IO<E, A> {
         // Resource acquisition and setting of the ref is critical
         this.chain((r) => ref.set(release(r)).as(r).widenError<E>()).critical()
           .chain(consume)
-          .ensuring(ref.get.flatten())
+          .onComplete(ref.get.flatten())
       );
   }
 
@@ -447,7 +447,7 @@ export class IO<E, A> {
               cleanup.set(fib.interruptAndWait
                 .chain((result) => release(resource, result))).widenError<E>())).critical()
         .chain((fib) => fib.join)
-        .ensuring(cleanup.get.flatten())
+        .onComplete(cleanup.get.flatten())
       );
   }
 
@@ -508,7 +508,7 @@ export class IO<E, A> {
       .chain((deferred) =>
         raceInto(deferred, this)
           .within((fiba) => fiba.interrupt, raceInto(deferred, other)
-            .within((fibb) => fibb.interrupt, deferred.wait)))
+            .within((fibb) => fibb.interrupt, deferred.get)))
       .slay();
   }
 
@@ -653,7 +653,7 @@ export class IO<E, A> {
 
 function raceInto<E, A>(defer: Deferred<Result<E, A>>, io: IO<E, A>): IO<never, Fiber<never, void>> {
   return io.resurrect()
-    .chain((result) => defer.tryFill(result).void())
+    .chain((result) => defer.tryComplete(result).void())
     .fork();
 }
 

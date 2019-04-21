@@ -21,17 +21,17 @@ export class Deferred<A> {
     return new Deferred();
   }
 
-  public wait: IO<never, A>;
-  public get: IO<never, Option<A>>;
-  public isFull: IO<never, boolean>;
+  public get: IO<never, A>;
+  public tryGet: IO<never, Option<A>>;
+  public isComplete: IO<never, boolean>;
   public isEmpty: IO<never, boolean>;
   private oneshot: OneShot<A>;
 
   private constructor() {
     this.oneshot = new OneShot<A>();
-    this.isFull = IO.eval(() => this.oneshot.isSet());
+    this.isComplete = IO.eval(() => this.oneshot.isSet());
     this.isEmpty = IO.eval(() => !this.oneshot.isSet());
-    this.wait = IO.async<never, A>((contextSwitch) => {
+    this.get = IO.async<never, A>((contextSwitch) => {
       // types are weird between browser and node but we are only using it as an opaque handle
       const listener = (a: A) => {
         // Don't deliver the notification until the next tick.
@@ -47,11 +47,11 @@ export class Deferred<A> {
         this.oneshot.unlisten(listener);
       });
     });
-    this.get = IO.eval(() => this.oneshot.get());
+    this.tryGet = IO.eval(() => this.oneshot.get());
   }
 
   @boundMethod
-  public fill(a: A): IO<never, void> {
+  public complete(a: A): IO<never, void> {
     return IO.eval(() => {
       if (this.oneshot.isSet()) {
         throw new Error("Bug: Deferred has already been filled");
@@ -61,7 +61,7 @@ export class Deferred<A> {
   }
 
   @boundMethod
-  public tryFill(a: A): IO<never, boolean> {
+  public tryComplete(a: A): IO<never, boolean> {
     return IO.eval(() => {
       if (this.oneshot.isSet()) {
         return false;

@@ -12,12 +12,12 @@ describe("IO", () => {
   describe("resource management", () => {
     it("should eval ensuring", () => {
       const ref = Ref.unsafeAlloc(42);
-      const io = ref.update((n) => n + 1).ensuring(ref.update((n) => n - 1).yield_()).applySecond(ref.get);
+      const io = ref.update((n) => n + 1).onComplete(ref.update((n) => n - 1).yield_()).applySecond(ref.get);
       return equiv(io, new Value(42));
     });
     it("should eval ensuring in the face of interrupts", () => {
       const ref = Ref.unsafeAlloc(41);
-      const fiberIO = IO.never_().ensuring(ref.update((n) => n + 1));
+      const fiberIO = IO.never_().onComplete(ref.update((n) => n + 1));
       const io = fiberIO.fork().chain((fiber) => fiber.interrupt.yield_().applySecond(ref.get));
       return equiv(io, new Value(42));
     });
@@ -98,7 +98,7 @@ describe("IO", () => {
     it("should not invoke interrupted during normal execution", () => {
       const ref = Ref.unsafeAlloc(41);
       const add1 = ref.update(((n) => n + 1));
-      const fiberIO = add1.interrupted(add1);
+      const fiberIO = add1.onInterrupt(add1);
       const io = fiberIO.fork()
         .chain((fiber) => fiber.join.attempt().applySecond(ref.get));
       return equiv(io, new Value(42));
@@ -106,7 +106,7 @@ describe("IO", () => {
     it("should not invoke interrupted during failure execution", () => {
       const ref = Ref.unsafeAlloc(42);
       const add1 = ref.update(((n) => n + 1));
-      const fiberIO = IO.failed("boom").interrupted(add1);
+      const fiberIO = IO.failed("boom").onInterrupt(add1);
       const io = fiberIO.fork()
         .chain((fiber) => fiber.join.attempt().applySecond(ref.get));
       return equiv(io, new Value(42));
@@ -114,7 +114,7 @@ describe("IO", () => {
     it("should invoke interrupted during interrupts", () => {
       const ref = Ref.unsafeAlloc(41);
       const add1 = ref.update((n) => n + 1);
-      const fiberIO = IO.never_().interrupted(add1);
+      const fiberIO = IO.never_().onInterrupt(add1);
       const io = fiberIO.fork()
         .chain((fiber) => fiber.interruptAndWait.delay(10).applySecond(ref.get));
       return equiv(io, new Value(42));

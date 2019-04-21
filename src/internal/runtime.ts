@@ -248,7 +248,7 @@ export class Runtime<E, A> {
       } else if (current.step._tag === "critical") {
         // Once enter critical completes we are guaranteed leave critical
         return (this.enterCritical as unknown as IO<unknown, unknown>)
-        .applySecond(current.step.io.ensuring(this.leaveCritical as unknown as IO<never, unknown>));
+        .applySecond(current.step.io.onComplete(this.leaveCritical as unknown as IO<never, unknown>));
       } else if (current.step._tag === "chain") {
         this.callFrames.push(new ChainFrame(current.step.chain));
         return current.step.left;
