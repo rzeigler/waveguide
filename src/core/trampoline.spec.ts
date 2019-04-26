@@ -12,4 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export { IO, io } from "./core/io";
+import { expect } from "chai";
+import { Trampoline } from "./trampoline";
+
+describe("trampoline", () => {
+  it("should invoke dispatches immediately", () => {
+    const t = new Trampoline();
+    let n = 1;
+    t.dispatch(() => n++);
+    expect(n).to.equal(2);
+    expect(t.isRunning()).to.equal(false);
+  });
+  it("should trampoline dispatches that occur while running", () => {
+    const t = new Trampoline();
+    let n = 1;
+    t.dispatch(() => {
+      n++;
+      t.dispatch(() => {
+        n *= 2;
+      });
+      n--;
+    });
+    expect(n).to.equal(2);
+  });
+});

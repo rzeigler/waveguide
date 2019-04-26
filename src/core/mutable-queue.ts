@@ -12,4 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export { IO, io } from "./core/io";
+export class MutableQueue<A> {
+  private array: A[] = [];
+
+  public enqueue(a: A): void {
+    this.array.push(a);
+  }
+
+  public dequeue(): A | undefined {
+    return this.array.shift();
+  }
+
+  public peek(): A | undefined {
+    return this.isEmpty() ? undefined : this.array[0];
+  }
+
+  public isEmpty(): boolean {
+    return this.array.length === 0;
+  }
+
+  public size(): number {
+    return this.array.length;
+  }
+}

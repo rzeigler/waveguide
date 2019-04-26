@@ -8,8 +8,8 @@
     "clean": "rimraf lib/",
     "build": "tsc",
     "build-watch": "nodemon -w src/ -e ts -x tsc",
-    "test": "mocha --recursive lib/__test__/",
-    "test-watch": "mocha --watch --reporter min --recursive lib/__test__/",
+    "test": "mocha --recursive lib/**/*.spec.js",
+    "test-watch": "mocha --watch --reporter min --recursive lib/**/*.spec.js",
     "lint": "tslint --project .",
     "docs": "typedoc --ignoreCompilerErrors --theme markdown",
     "prepublishOnly": "npm run clean && npm run lint && npm run build && npm run test"
@@ -28,7 +28,7 @@
     "url": "git+https://github.com/rzeigler/waveguide.git"
   },
   "author": "Ryan Zeigler",
-  "license": "MIT",
+  "license": "APACHE-2.0",
   "devDependencies": {
     "@types/chai": "^4.1.7",
     "@types/chai-as-promised": "^7.1.0",

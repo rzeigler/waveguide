@@ -1,6 +1,4 @@
 {
-  "licenser.license": "MIT",
-  "editor.codeActionsOnSave": {
-    "source.fixAll.tslint": true
-  }
+  
+  "licenser.author": "Ryan Zeigler"
 }

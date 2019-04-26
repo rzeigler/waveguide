@@ -12,4 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export { IO, io } from "./core/io";
+export class MutableStack<A> {
+  private array: A[] = [];
+
+  public push(a: A): void {
+    this.array.push(a);
+  }
+
+  public pop(): A | undefined {
+    return this.array.pop();
+  }
+
+  public peek(): A | undefined {
+    return this.array.length > 0 ? this.array[this.array.length - 1] : undefined;
+  }
+
+  public isEmpty(): boolean {
+    return this.array.length === 0;
+  }
+
+  public size(): number {
+    return this.array.length;
+  }
+}
