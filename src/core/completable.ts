@@ -30,10 +30,13 @@ export class Completable<A> {
     this.listeners.forEach((f) => f(a));
   }
 
-  public listen(f: (a: A) => void): void {
+  public listen(f: (a: A) => void): () => void {
     if (this.completed.isSome()) {
       f(this.completed.value);
     }
     this.listeners.push(f);
+    return () => {
+      this.listeners = this.listeners.filter((cb) => cb !== f);
+    };
   }
 }

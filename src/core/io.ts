@@ -12,48 +12,59 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// export type Exit<E, A> = Success<A> | Cause<E>;
-// export type Cause<E> = Failure<E> | Aborted | Interrupted;
+import { Either, right } from "fp-ts/lib/Either";
+import { Driver } from "./driver";
+import { Runtime } from "./runtime";
 
-// export class Success<A> {
-//   public readonly _tag: "success" = "success";
-//   constructor(public readonly value: A) { }
-// }
+export type Exit<E, A> = Completed<A> | Cause<E>;
 
-// export class Failure<E> {
-//   public readonly _tag: "failure" = "failure";
-//   constructor(public readonly error: E, public readonly additional: ReadonlyArray<Cause<E>> = []) { }
-// }
+export class Completed<A> {
+  public readonly _tag: "completed" = "completed";
+  constructor(public readonly value: A) { }
+}
 
-// export class Aborted {
-//   public readonly _tag: "aborted" = "aborted";
-//   constructor(public readonly additional: ReadonlyArray<Cause<unknown>> = []) { }
-// }
+export type Cause<E> = Failed<E> | Aborted | Interrupted;
+export class Failed<E> {
+  public readonly _tag: "failed" = "failed";
+  constructor(public readonly error: E) { }
+}
 
-// export class Interrupted {
-//   public readonly _tag: "interrupted" = "interrupted";
-//   constructor(public readonly additional: ReadonlyArray<Cause<unknown>> = []) { }
-// }
+export class Aborted {
+  public readonly _tag: "aborted" = "aborted";
+  constructor(public readonly error: unknown) { }
+}
 
-export type Step<E, A> = Succeed<A> | Fail<E> | Abort | Interrupt | Suspend<E, A> | Chain<E, unknown, A>;
+export class Interrupted {
+  public readonly _tag: "interrupted" = "interrupted";
+}
 
-export class Succeed<A> {
+export type Step<E, A> = Initial<E, A> |
+  Continue<E, A> |
+  (Runtime extends A ? AccessRuntime<E, A> : never);
+
+export type Continue<E, A> = Chain<E, unknown, A> |
+  Fold<unknown, E, unknown, A>;
+
+export type Initial<E, A> = Succeed<E, A> |
+  Caused<E, A> |
+  Complete<E, A> |
+  Suspend<E, A> |
+  Async<E, A>;
+
+export class Succeed<E, A> {
   public readonly _tag: "succeed" = "succeed";
   constructor(public readonly value: A) { }
 }
 
-export class Fail<E> {
-  public readonly _tag: "fail" = "fail";
-  constructor(public readonly error: E) { }
+
+export class Caused<E, A> {
+  public readonly _tag: "caused" = "caused";
+  constructor(public readonly cause: Cause<E>) { }
 }
 
-export class Abort {
-  public readonly _tag: "abort" = "abort";
-  constructor(public readonly error: unknown) { }
-}
-
-export class Interrupt {
-  public readonly _tag: "interrupt" = "interrupt";
+export class Complete<E, A> {
+  public readonly _tag: "complete" = "complete";
+  constructor(public readonly status: Exit<E, A>) { }
 }
 
 export class Suspend<E, A> {
@@ -61,50 +72,75 @@ export class Suspend<E, A> {
   constructor(public readonly thunk: () => IO<E, A>) { }
 }
 
-export class Chain<E, A, B> {
+export class Async<E, A> {
+  public readonly _tag: "async" = "async";
+  constructor(public readonly op: (callback: (result: Either<E, A>) => void) => (() => void)) {  }
+}
+
+export class Chain<E, Z, A> {
   public readonly _tag: "chain" = "chain";
-  constructor(public readonly left: IO<E, A>, f: (a: A) => IO<E, B>) { }
+  constructor(public readonly left: IO<E, Z>,
+              public readonly bind: (z: Z) => IO<E, A>) { }
+}
+
+export class Fold<E1, E2, A1, A2> {
+  public readonly _tag: "fold" = "fold";
+  constructor(public readonly left: IO<E1, A1>,
+              public readonly success: (z: A1) => IO<E2, A2>,
+              public readonly failure: (f: Cause<E1>) => IO<E2, A2>) { }
+}
+
+export class AccessRuntime<E, A> {
+  public readonly _tag: "access_runtime" = "access_runtime";
 }
 
 export class IO<E, A> {
-  constructor(public readonly step: Step<E, A>) {  }
-
-  public map<B>(f: (a: A) => B): IO<E, B> {
-    return new IO(new Chain(this, (a) => success(f(a))));
-  }
-
-  public chain<B>(f: (a: A) => IO<E, B>): IO<E, B> {
-    return new IO(new Chain(this, f));
-  }
+  constructor(public readonly step: Step<E, A>) { }
 }
 
-function success<A>(value: A): IO<never, A> {
-  return new IO(new Succeed(value));
+function succeed<A>(a: A): IO<never, A> {
+  return new IO(new Succeed(a));
 }
 
-function failure<E>(error: E): IO<E, never> {
-  return new IO(new Fail(error));
+function fail<E>(e: E): IO<E, never> {
+  return new IO(new Fail(e));
 }
 
-function abort(error: unknown): IO<never, never> {
-  return new IO(new Abort(error));
+function abort(e: unknown): IO<never, never> {
+  return new IO(new Abort(e));
 }
 
-function lazy<A>(f: () => A): IO<never, A> {
-  return new IO(new Suspend(() => success(f())));
+function exit<E, A>(status: Exit<E, A>): IO<E, A> {
+  return new IO(new Complete(status));
 }
 
-function suspended<E, A>(f: () => IO<E, A>): IO<E, A> {
-  return new IO(new Suspend(f));
+function delay<A>(thunk: () => A): IO<never, A> {
+  return new IO(new Suspend(() => succeed(thunk())));
 }
 
-const interrupt: IO<never, never> = new IO(new Interrupt());
+function suspend<E, A>(thunk: () => IO<E, A>): IO<E, A> {
+  return new IO(new Suspend(thunk));
+}
+
+function later<A>(op: (callback: (result: A) => void) => () => void): IO<never, A> {
+  const adapted: (callback: (result: Either<never, A>) => void) => () => void =
+    (callback) => op((result) => callback(right(result)));
+  return async(adapted);
+}
+
+function async<E, A>(op: (callback: (result: Either<E, A>) => void) => () => void) {
+  return new IO(new Async(op));
+}
+
+const accessRuntime: IO<never, Runtime> = new IO(new AccessRuntime());
 
 export const io = {
-  success,
-  failure,
+  succeed,
+  fail,
   abort,
-  interrupt,
-  lazy,
-  suspended
+  exit,
+  delay,
+  suspend,
+  later,
+  async
 };
