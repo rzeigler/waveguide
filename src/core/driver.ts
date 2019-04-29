@@ -12,16 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Option, some } from "fp-ts/lib/Option";
 import { Either } from "fp-ts/lib/Either";
 import { Completable } from "./completable";
-import { Exit, Cause, IO, io, Completed, Failed, Aborted } from "./io";
-import { defaultRuntime, Runtime } from "./runtime";
+import { Cause, Completed, Exit, Failed, IO, io } from "./io";
 import { MutableStack } from "./mutable-stack";
-import { none } from "fp-ts/lib/Option";
+import { defaultRuntime, Runtime } from "./runtime";
 
 export type FrameType = Frame | FoldFrame;
-
 
 class Frame {
   public readonly _tag: "frame" = "frame";
@@ -30,7 +27,7 @@ class Frame {
 
 class FoldFrame {
   public readonly _tag: "fold" = "fold";
-  constructor(public readonly apply: (u: unknown) => IO<unknown, unknown>, 
+  constructor(public readonly apply: (u: unknown) => IO<unknown, unknown>,
               public readonly recover: (e: Cause<unknown>) => IO<unknown, unknown>) { }
 }
 
@@ -43,7 +40,7 @@ export class Driver<E, A> {
   private started: boolean = false;
   private readonly result: Completable<Exit<E, A>> = new Completable();
   private readonly stack: MutableStack<FrameType> = new MutableStack();
-  private cancel: Option<() => void> = none;
+  private cancel: (() => void) | undefined;
 
   constructor(private readonly init: IO<E, A>, private readonly runtime: Runtime = defaultRuntime) {  }
 
@@ -76,7 +73,7 @@ export class Driver<E, A> {
         } else if (step._tag === "suspend") {
           current = step.thunk();
         } else if (step._tag === "async") {
-          this.contextSwitch(step.op)
+          this.contextSwitch(step.op);
           current = undefined;
         } else if (step._tag === "chain") {
           this.stack.push(new Frame(step.bind));
@@ -86,9 +83,12 @@ export class Driver<E, A> {
           current = step.left;
         } else if (step._tag === "access_runtime") {
           current = io.succeed(this.runtime);
+        } else {
+          // This should never happen.
+          // However, there is not great way of ensuring the above is total and its worth having during developments
+          throw new Error(`Die: Unrecognized step type ${step}`);
         }
-        throw new Error(`Die: Unrecognized step tag ${step._tag}`);
-      } catch(e) {
+      } catch (e) {
         current = io.abort(e);
       }
     }
@@ -122,17 +122,17 @@ export class Driver<E, A> {
 
   private contextSwitch(op: (callback: (result: Either<unknown, unknown>) => void) => (() => void)): void {
     let complete = false;
-    this.cancel = some(op((result) => {
+    this.cancel = op((result) => {
       if (complete) {
         throw new Error("Die: Multiple async operation resumes");
       }
       complete = true;
       this.resume(result);
-    }));
+    });
   }
 
   private resume(result: Either<unknown, unknown>): void {
-    this.cancel = none;
+    this.cancel = undefined;
     this.runtime.dispatch(() => {
       result.fold(
         (cause) => {
@@ -148,6 +148,6 @@ export class Driver<E, A> {
           }
         }
       );
-    }); 
+    });
   }
 }

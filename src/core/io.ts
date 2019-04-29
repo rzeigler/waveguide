@@ -14,7 +14,7 @@
 
 import { Either, right } from "fp-ts/lib/Either";
 import { Driver } from "./driver";
-import { Runtime } from "./runtime";
+import { defaultRuntime, Runtime } from "./runtime";
 
 export type Exit<E, A> = Completed<A> | Cause<E>;
 
@@ -39,11 +39,13 @@ export class Interrupted {
 }
 
 export type Step<E, A> = Initial<E, A> |
-  Continue<E, A> |
-  (Runtime extends A ? AccessRuntime<E, A> : never);
+  More<E, A> |
+  AccessRuntimeGADT<E, A>;
 
-export type Continue<E, A> = Chain<E, unknown, A> |
-  Fold<unknown, E, unknown, A>;
+export type More<E, A> = Chain<E, any, A> |
+  Fold<any, E, any, A>;
+
+export type AccessRuntimeGADT<E, A> = Runtime extends A ? AccessRuntime<E, A> : never;
 
 export type Initial<E, A> = Succeeded<E, A> |
   Caused<E, A> |
@@ -55,7 +57,6 @@ export class Succeeded<E, A> {
   public readonly _tag: "succeed" = "succeed";
   constructor(public readonly value: A) { }
 }
-
 
 export class Caused<E, A> {
   public readonly _tag: "caused" = "caused";
@@ -96,6 +97,60 @@ export class AccessRuntime<E, A> {
 
 export class IO<E, A> {
   constructor(public readonly step: Step<E, A>) { }
+
+  public map<B>(f: (a: A)  => B): IO<E, B> {
+    return this.chain((a) => succeed(f(a)));
+  }
+
+  public map2<B, C>(iob: IO<E, B>, f: (a: A, b: B) => C): IO<E, C> {
+    return this.chain((a) => iob.map((b) => f(a, b)));
+  }
+
+  public ap<B>(iof: IO<E, (a: A) => B>): IO<E, B> {
+    return this.map2(iof, (a, f) => f(a));
+  }
+
+  public chain<B>(f: (a: A) => IO<E, B>): IO<E, B> {
+    return new IO(new Chain(this, f));
+  }
+
+  public chainError<E2>(f: (e: E) => IO<E2, A>): IO<E2, A> {
+    return new IO(new Fold(
+      this,
+      succeed,
+      (cause) => cause._tag === "failed" ? f(cause.error) : exitWith(cause)
+    ));
+  }
+
+  public unsafeRun(onComplete: (exit: Exit<E, A>) => void, runtime: Runtime = defaultRuntime): () => void {
+    const driver = new Driver(this, runtime);
+    driver.onExit(onComplete);
+    driver.start();
+    return () => {};
+  }
+
+  public unsafeRunToPromise(runtime: Runtime = defaultRuntime): Promise<A> {
+    return new Promise((resolve, reject) => {
+      const driver = new Driver(this, runtime);
+      driver.onExit((result) => {
+        if (result._tag === "completed") {
+          resolve(result.value);
+        } else {
+          reject(result);
+        }
+      });
+      driver.start();
+    });
+  }
+
+  public unsafeRunToPromiseTotal(runtime: Runtime = defaultRuntime): Promise<Exit<E, A>> {
+    return new Promise((resolve) => {
+      const driver = new Driver(this, runtime);
+      driver.onExit((result) => {
+        resolve(result);
+      });
+    });
+  }
 }
 
 function succeed<A>(a: A): IO<never, A> {
@@ -110,11 +165,11 @@ function abort(e: unknown): IO<never, never> {
   return new IO(new Caused(new Aborted(e)));
 }
 
-function exit<E, A>(status: Exit<E, A>): IO<E, A> {
+function exitWith<E, A>(status: Exit<E, A>): IO<E, A> {
   return new IO(new Complete(status));
 }
 
-function delay<A>(thunk: () => A): IO<never, A> {
+function effect<A>(thunk: () => A): IO<never, A> {
   return new IO(new Suspend(() => succeed(thunk())));
 }
 
@@ -122,9 +177,9 @@ function suspend<E, A>(thunk: () => IO<E, A>): IO<E, A> {
   return new IO(new Suspend(thunk));
 }
 
-function later<A>(op: (callback: (result: A) => void) => () => void): IO<never, A> {
+function delay<A>(op: (callback: (result: A) => void) => () => void): IO<never, A> {
   const adapted: (callback: (result: Either<never, A>) => void) => () => void =
-    (callback) => op((result) => callback(right(result)));
+    (callback) => op((v) => callback(right(v)));
   return async(adapted);
 }
 
@@ -134,13 +189,16 @@ function async<E, A>(op: (callback: (result: Either<E, A>) => void) => () => voi
 
 const accessRuntime: IO<never, Runtime> = new IO(new AccessRuntime());
 
+const interrupted: IO<never, never> = new IO(new Caused(new Interrupted()));
+
 export const io = {
   succeed,
   fail,
   abort,
-  exit,
-  delay,
+  exitWith,
+  interrupted,
+  effect,
   suspend,
-  later,
+  delay,
   async
 };
