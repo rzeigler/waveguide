@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Option } from "fp-ts/lib/Option";
+import { Option, some } from "fp-ts/lib/Option";
 import { Either } from "fp-ts/lib/Either";
 import { Completable } from "./completable";
-import { Exit, Cause, IO, io, Completed } from "./io";
+import { Exit, Cause, IO, io, Completed, Failed, Aborted } from "./io";
 import { defaultRuntime, Runtime } from "./runtime";
 import { MutableStack } from "./mutable-stack";
 import { none } from "fp-ts/lib/Option";
 
-export type FrameType = Frame | TotalFrame;
+export type FrameType = Frame | FoldFrame;
 
 
 class Frame {
@@ -28,8 +28,8 @@ class Frame {
   constructor(public readonly apply: (u: unknown) => IO<unknown, unknown>) { }
 }
 
-class TotalFrame {
-  public readonly _tag: "total" = "total";
+class FoldFrame {
+  public readonly _tag: "fold" = "fold";
   constructor(public readonly apply: (u: unknown) => IO<unknown, unknown>, 
               public readonly recover: (e: Cause<unknown>) => IO<unknown, unknown>) { }
 }
@@ -76,7 +76,16 @@ export class Driver<E, A> {
         } else if (step._tag === "suspend") {
           current = step.thunk();
         } else if (step._tag === "async") {
+          this.contextSwitch(step.op)
           current = undefined;
+        } else if (step._tag === "chain") {
+          this.stack.push(new Frame(step.bind));
+          current = step.left;
+        } else if (step._tag === "fold") {
+          this.stack.push(new FoldFrame(step.success, step.failure));
+          current = step.left;
+        } else if (step._tag === "access_runtime") {
+          current = io.succeed(this.runtime);
         }
         throw new Error(`Die: Unrecognized step tag ${step._tag}`);
       } catch(e) {
@@ -97,7 +106,7 @@ export class Driver<E, A> {
   private handle(e: Cause<unknown>): IO<unknown, unknown> | undefined {
     let frame = this.stack.pop();
     while (frame) {
-      if (frame._tag === "total") {
+      if (frame._tag === "fold") {
         return frame.recover(e);
       }
       frame = this.stack.pop();
@@ -111,11 +120,23 @@ export class Driver<E, A> {
     this.result.complete(exit);
   }
 
-  private resume(result: Either<Cause<E>, A>): void {
+  private contextSwitch(op: (callback: (result: Either<unknown, unknown>) => void) => (() => void)): void {
+    let complete = false;
+    this.cancel = some(op((result) => {
+      if (complete) {
+        throw new Error("Die: Multiple async operation resumes");
+      }
+      complete = true;
+      this.resume(result);
+    }));
+  }
+
+  private resume(result: Either<unknown, unknown>): void {
+    this.cancel = none;
     this.runtime.dispatch(() => {
       result.fold(
         (cause) => {
-          const next = this.handle(cause);
+          const next = this.handle(new Failed(cause));
           if (next) {
             this.loop(next);
           }

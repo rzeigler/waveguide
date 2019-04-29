@@ -45,13 +45,13 @@ export type Step<E, A> = Initial<E, A> |
 export type Continue<E, A> = Chain<E, unknown, A> |
   Fold<unknown, E, unknown, A>;
 
-export type Initial<E, A> = Succeed<E, A> |
+export type Initial<E, A> = Succeeded<E, A> |
   Caused<E, A> |
   Complete<E, A> |
   Suspend<E, A> |
   Async<E, A>;
 
-export class Succeed<E, A> {
+export class Succeeded<E, A> {
   public readonly _tag: "succeed" = "succeed";
   constructor(public readonly value: A) { }
 }
@@ -99,15 +99,15 @@ export class IO<E, A> {
 }
 
 function succeed<A>(a: A): IO<never, A> {
-  return new IO(new Succeed(a));
+  return new IO(new Succeeded(a));
 }
 
 function fail<E>(e: E): IO<E, never> {
-  return new IO(new Fail(e));
+  return new IO(new Caused(new Failed(e)));
 }
 
 function abort(e: unknown): IO<never, never> {
-  return new IO(new Abort(e));
+  return new IO(new Caused(new Aborted(e)));
 }
 
 function exit<E, A>(status: Exit<E, A>): IO<E, A> {
