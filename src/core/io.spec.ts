@@ -12,18 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { assert, asyncProperty, integer, string } from "fast-check";
 import { left, right } from "fp-ts/lib/Either";
-import { Applicative } from "fp-ts/lib/Applicative";
-import { Apply } from "fp-ts/lib/Apply";
-import { Chain } from "fp-ts/lib/Chain";
-import { Function1 } from "fp-ts/lib/function";
-import { Functor } from "fp-ts/lib/Functor";
-import { HKT } from "fp-ts/lib/HKT";
-import { Monad } from "fp-ts/lib/Monad";
-import { Setoid } from "fp-ts/lib/Setoid";
-import { Aborted, Value, Failed, Interrupted, io } from "./io";
-import { adaptMocha } from "./tools.spec";
-import { Arbitrary, assert } from "fast-check";
+import { compose, identity } from "fp-ts/lib/function";
+import { Aborted, Failed, Interrupted, Value } from "./exit";
+import { io } from "./io";
+import { adaptMocha, arbIO, eqvIO } from "./tools.spec";
 
 // Tests for the io module
 describe("io", () => {
@@ -127,21 +121,23 @@ describe("IO", () => {
   describe("laws", () => {
     // Property test utils
     // base on fp-ts-laws at https://github.com/gcanti/fp-ts-laws but adapter for the fact that we need to run IOs
-    describe("functor", () => {
-      function functor<A, B, C>(
-        arbA: Arbitrary<A>,
-        arbB: Arbitrary<B>,
-        fa: Function1<A, B>,
-        fb: Function1<B, C>
-      ): void {
-        // const identity = fc.property(arb, laws.functor.identity(F, Sa))
-        // const ab: Function1<string, number> = s => s.length
-        // const bc: Function1<number, boolean> = n => n > 2
-        // const composition = fc.property(arb, laws.functor.composition(F, Sc, ab, bc))
-    
-        // assert(identity)
-        // assert(composition)
-      }
+    describe("functor", function() {
+      this.timeout(5000);
+      it("has conforming identity", () => {
+        const arb = integer();
+        return assert(asyncProperty(arbIO(arb), (fa) => eqvIO(fa.map(identity), fa)));
+      });
+      it("has conforming composition", () => {
+        const arb = string();
+        const replicate = (s: string) => s + s;
+        const length = (s: string) => s.length;
+        return assert(asyncProperty(arbIO(arb),
+          (fa) => eqvIO(
+            fa.map(replicate).map(length),
+            fa.map(compose(length, replicate))
+          )
+        ));
+      });
     });
   });
 });

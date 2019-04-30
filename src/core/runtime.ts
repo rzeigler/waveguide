@@ -14,8 +14,27 @@
 
 import { Trampoline } from "./trampoline";
 
+/**
+ * An interface for the IO system runtime.
+ *
+ * Allows dispatching arbitrary blocks of code immediately or after some delay
+ */
 export interface Runtime {
+  /**
+   * Dispatch a thunk immediately.
+   *
+   * The default runtime trampolines this dispatch to for stack safety.
+   * @param thunk the action to execute
+   */
   dispatch(thunk: () => void): void;
+  /**
+   * Dispatch a thunk after some amount of time has elapsed.
+   *
+   * Returns an actions that may be used to cancel execution.
+   * The default runtime delegates to setTimeout.
+   * @param thunk the action to execute
+   * @param ms delay in milliseconds
+   */
   dispatchLater(thunk: () => void, ms: number): () => void;
 }
 

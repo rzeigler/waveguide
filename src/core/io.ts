@@ -14,39 +14,8 @@
 
 import { Either, right } from "fp-ts/lib/Either";
 import { Driver } from "./driver";
+import { Aborted, Cause, Exit, Failed, Interrupted, Value } from "./exit";
 import { defaultRuntime, Runtime } from "./runtime";
-import { Setoid } from "fp-ts/lib/Setoid";
-
-export type Exit<E, A> = Value<A> | Cause<E>;
-
-export class Value<A> {
-  public readonly _tag: "value" = "value";
-  constructor(public readonly value: A) { }
-}
-
-export type Cause<E> = Failed<E> | Aborted | Interrupted;
-export class Failed<E> {
-  public readonly _tag: "failed" = "failed";
-  constructor(public readonly error: E) { }
-}
-
-export class Aborted {
-  public readonly _tag: "aborted" = "aborted";
-  constructor(public readonly error: unknown) { }
-}
-
-export class Interrupted {
-  public readonly _tag: "interrupted" = "interrupted";
-}
-
-
-export function getExitSetoid<E, A>(): Setoid<Exit<E, A>> {
-  return {
-    equals: (a: Exit<E, A>, b: Exit<E, A>): boolean => {
-      throw new Error();
-    }
-  };
-}
 
 export type Step<E, A> = Initial<E, A> |
   More<E, A> |
@@ -54,8 +23,6 @@ export type Step<E, A> = Initial<E, A> |
 
 export type More<E, A> = Chain<E, any, A> |
   Fold<any, E, any, A>;
-
-export type AccessRuntimeGADT<E, A> = Runtime extends A ? GetRuntime<E, A> : never;
 
 export type Initial<E, A> = Succeeded<E, A> |
   Caused<E, A> |
@@ -101,8 +68,9 @@ export class Fold<E1, E2, A1, A2> {
               public readonly failure: (f: Cause<E1>) => IO<E2, A2>) { }
 }
 
-// Additioal magic 
-export class GetRuntime<E, A> {
+// Additional GADT constructors to access platform services
+export type AccessRuntimeGADT<E, A> = Runtime extends A ? GetRuntime<E> : never;
+export class GetRuntime<E> {
   public readonly _tag: "get-runtime" = "get-runtime";
 }
 
@@ -121,6 +89,10 @@ export class IO<E, A> {
     return this.map2(iof, (a, f) => f(a));
   }
 
+  public ap_<B, C>(this: IO<E, (b: B) => C>, iob: IO<E, B>): IO<E, C> {
+    return this.map2(iob, (f, b) => f(b));
+  }
+
   public chain<B>(f: (a: A) => IO<E, B>): IO<E, B> {
     return new IO(new Chain(this, f));
   }
@@ -134,7 +106,7 @@ export class IO<E, A> {
   }
 
   public run(): IO<never, Exit<E, A>> {
-    // This could probably be a static property hwoever, for now, 
+    // This could probably be a static property hwoever, for now,
     return new IO(new Fold(
       this,
       (a) => succeed(new Value(a) as Exit<E, A>),
@@ -171,6 +143,7 @@ export class IO<E, A> {
       driver.onExit((result) => {
         resolve(result);
       });
+      driver.start();
     });
   }
 }

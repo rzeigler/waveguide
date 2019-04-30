@@ -14,7 +14,8 @@
 
 import { Either } from "fp-ts/lib/Either";
 import { Completable } from "./completable";
-import { Cause, Exit, Failed, IO, io, Value } from "./io";
+import { Cause, Exit, Failed, Value } from "./exit";
+import { IO, io } from "./io";
 import { MutableStack } from "./mutable-stack";
 import { defaultRuntime, Runtime } from "./runtime";
 

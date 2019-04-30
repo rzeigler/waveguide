@@ -16,10 +16,12 @@
 
 import { expect } from "chai";
 import { Arbitrary, constantFrom, nat, tuple } from "fast-check";
-import { Exit, IO, Step, Initial, io, Value } from "./io";
+import { constTrue } from "fp-ts/lib/function";
+import { Exit, Value } from "./exit";
+import { IO, io } from "./io";
 
-export function adaptMocha<E, A>(io: IO<E, A>, expected: Exit<E, A>, done: (a?: any) => void) {
-  io.unsafeRun((result) => {
+export function adaptMocha<E, A>(ioa: IO<E, A>, expected: Exit<E, A>, done: (a?: any) => void) {
+  ioa.unsafeRun((result) => {
     try {
       expect(result).to.deep.equal(expected);
       done();
@@ -29,15 +31,21 @@ export function adaptMocha<E, A>(io: IO<E, A>, expected: Exit<E, A>, done: (a?: 
   });
 }
 
-export function adaptFastCheckProperty<E, A>(io1: IO<E, A>, io2: IO<E, A>): Promise<boolean> {
-  return Promise.resolve(false);
+export function eqvIO<E, A>(io1: IO<E, A>, io2: IO<E, A>): Promise<boolean> {
+  // TODO: Use additional machinery rather than promises
+  return io1.unsafeRunToPromiseTotal()
+    .then((result1) =>
+      io2.unsafeRunToPromiseTotal()
+        .then((result2) => expect(result1).to.deep.equal(result2))
+        .then(constTrue)
+    );
 }
 
-export const arbitraryVariantIO: Arbitrary<Initial<unknown, unknown>["_tag"]> =
+export const arbVariant: Arbitrary<string> =
   constantFrom("succeed", "complete", "suspend", "async");
 
-export function arbitraryIO<A>(arb: Arbitrary<A>): Arbitrary<IO<never, A>> {
-  return arbitraryVariantIO
+export function arbIO<A>(arb: Arbitrary<A>): Arbitrary<IO<never, A>> {
+  return arbVariant
     .chain((ioStep) => {
       if (ioStep === "succeed") {
         return arb.map((a) => io.succeed(a));
@@ -45,10 +53,10 @@ export function arbitraryIO<A>(arb: Arbitrary<A>): Arbitrary<IO<never, A>> {
         return arb.map((a) => io.completeWith(new Value(a)));
       } else if (ioStep === "suspend") {
         // We now need to do recursion... wooo
-        return arbitraryIO(arb)
+        return arbIO(arb)
           .map((nestedIO) => io.suspend(() => nestedIO));
       } else { // async with random delay
-        return tuple(nat(), arb)
+        return tuple(nat(50), arb)
           .map(
             ([delay, val]) =>
               io.delay((callback) => {
