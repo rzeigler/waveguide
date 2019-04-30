@@ -13,82 +13,135 @@
 // limitations under the License.
 
 import { left, right } from "fp-ts/lib/Either";
-import { Aborted, Completed, Failed, Interrupted, io } from "./io";
-import { mochafy } from "./tools.spec";
+import { Applicative } from "fp-ts/lib/Applicative";
+import { Apply } from "fp-ts/lib/Apply";
+import { Chain } from "fp-ts/lib/Chain";
+import { Function1 } from "fp-ts/lib/function";
+import { Functor } from "fp-ts/lib/Functor";
+import { HKT } from "fp-ts/lib/HKT";
+import { Monad } from "fp-ts/lib/Monad";
+import { Setoid } from "fp-ts/lib/Setoid";
+import { Aborted, Value, Failed, Interrupted, io } from "./io";
+import { adaptMocha } from "./tools.spec";
+import { Arbitrary, assert } from "fast-check";
 
+// Tests for the io module
 describe("io", () => {
   describe("#succeed", () => {
     it("should complete with a completed", (done) => {
-      mochafy(io.succeed(42), new Completed(42), done);
+      adaptMocha(io.succeed(42), new Value(42), done);
     });
   });
   describe("#fail", () => {
     it("should complete with a failed", (done) => {
-      mochafy(io.fail("boom"), new Failed("boom"), done);
+      adaptMocha(io.fail("boom"), new Failed("boom"), done);
     });
   });
   describe("#abort", () => {
     it("should complete with an aborted", (done) => {
-      mochafy(io.abort("boom"), new Aborted("boom"), done);
+      adaptMocha(io.abort("boom"), new Aborted("boom"), done);
     });
   });
   describe("#interrupted", () => {
     it("should complete with an interrupted", (done) => {
-      mochafy(io.interrupted, new Interrupted(), done);
+      adaptMocha(io.interrupted, new Interrupted(), done);
     });
   });
   describe("#exitWith", () => {
     it("should complete with a completed when provided", (done) => {
-      mochafy(io.exitWith(new Completed(42)), new Completed(42), done);
+      adaptMocha(io.completeWith(new Value(42)), new Value(42), done);
     });
     it("should complete with a failed when provided", (done) => {
-      mochafy(io.exitWith(new Failed("boom")), new Failed("boom"), done);
+      adaptMocha(io.completeWith(new Failed("boom")), new Failed("boom"), done);
     });
     it("should complete with an aborted when provided", (done) => {
-      mochafy(io.exitWith(new Aborted("boom")), new Aborted("boom"), done);
+      adaptMocha(io.completeWith(new Aborted("boom")), new Aborted("boom"), done);
     });
     it("should complete with an interrupted when provided", (done) => {
-      mochafy(io.exitWith(new Interrupted()), new Interrupted(), done);
-    });
-  });
-  describe("#delay", () => {
-    it("should complete with a success eventually", (done) => {
-      mochafy(io.delay((callback) => {
-        const handle = setTimeout(() => callback(42), 0);
-        return () => { clearTimeout(handle); };
-      }), new Completed(42), done);
+      adaptMocha(io.completeWith(new Interrupted()), new Interrupted(), done);
     });
   });
   describe("#effect", () => {
     it("should complete at some a success", (done) => {
-      mochafy(io.effect(() => 42), new Completed(42), done);
+      adaptMocha(io.effect(() => 42), new Value(42), done);
     });
   });
   describe("#suspend", () => {
     it("should complete with synchronous effects", (done) => {
-      mochafy(io.suspend(() => io.succeed(42)), new Completed(42), done);
+      adaptMocha(io.suspend(() => io.succeed(42)), new Value(42), done);
     });
     it("should complete with asynchronous effects", (done) => {
-      mochafy(io.suspend(() =>
+      adaptMocha(io.suspend(() =>
         io.delay((callback) => {
           const handle = setTimeout(() => callback(42), 0);
           return () => { clearTimeout(handle); };
         })
-      ), new Completed(42), done);
+      ), new Value(42), done);
+    });
+  });
+  describe("#delay", () => {
+    it("should complete with a success eventually", (done) => {
+      adaptMocha(io.delay((callback) => {
+        const handle = setTimeout(() => callback(42), 0);
+        return () => { clearTimeout(handle); };
+      }), new Value(42), done);
     });
   });
   describe("#async", () => {
     it("should complete with a success eventually", (done) => {
-      mochafy(io.async((callback) => {
+      adaptMocha(io.async((callback) => {
         const handle = setTimeout(() => callback(right(42)), 0);
         return () => { clearTimeout(handle); };
-      }), new Completed(42), done);
+      }), new Value(42), done);
     });
     it("should complete with a failed eventually", (done) => {
-      mochafy(io.async((callback) => {
+      adaptMocha(io.async((callback) => {
         const handle = setTimeout(() => callback(left("boom")), 0);
         return () => { clearTimeout(handle); };
       }), new Failed("boom"), done);
+    });
+  });
+  describe("#interrupted", () => {
+    it("should complete with interrupted", (done) => {
+      adaptMocha(io.interrupted, new Interrupted(), done);
+    });
+  });
+});
+
+// Tests for IO instances
+describe("IO", () => {
+  describe("#run", () => {
+    it("should complete with an expected completion", (done) => {
+      adaptMocha(io.succeed(42).run(), new Value(new Value(42)), done);
+    });
+    it("should complete with an expected failure", (done) => {
+      adaptMocha(io.fail("boom").run(), new Value(new Failed("boom")), done);
+    });
+    it("shoudl complete with an expected abort", (done) => {
+      adaptMocha(io.abort("boom").run(), new Value(new Aborted("boom")), done);
+    });
+    it("should complete with an expected interrupt", (done) => {
+      adaptMocha(io.interrupted.run(), new Value(new Interrupted()), done);
+    });
+  });
+  describe("laws", () => {
+    // Property test utils
+    // base on fp-ts-laws at https://github.com/gcanti/fp-ts-laws but adapter for the fact that we need to run IOs
+    describe("functor", () => {
+      function functor<A, B, C>(
+        arbA: Arbitrary<A>,
+        arbB: Arbitrary<B>,
+        fa: Function1<A, B>,
+        fb: Function1<B, C>
+      ): void {
+        // const identity = fc.property(arb, laws.functor.identity(F, Sa))
+        // const ab: Function1<string, number> = s => s.length
+        // const bc: Function1<number, boolean> = n => n > 2
+        // const composition = fc.property(arb, laws.functor.composition(F, Sc, ab, bc))
+    
+        // assert(identity)
+        // assert(composition)
+      }
     });
   });
 });

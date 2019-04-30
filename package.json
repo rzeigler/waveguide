@@ -36,7 +36,7 @@
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
     "esm": "^3.2.5",
-    "fast-check": "^1.10.1",
+    "fast-check": "^1.14.0",
     "fp-ts": "^1.17.0",
     "mocha": "^5.2.0",
     "nodemon": "^1.18.10",

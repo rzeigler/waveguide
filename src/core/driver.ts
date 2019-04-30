@@ -14,7 +14,7 @@
 
 import { Either } from "fp-ts/lib/Either";
 import { Completable } from "./completable";
-import { Cause, Completed, Exit, Failed, IO, io } from "./io";
+import { Cause, Exit, Failed, IO, io, Value } from "./io";
 import { MutableStack } from "./mutable-stack";
 import { defaultRuntime, Runtime } from "./runtime";
 
@@ -65,7 +65,7 @@ export class Driver<E, A> {
         } else if (step._tag === "caused") {
           current = this.handle(step.cause);
         } else if (step._tag === "complete") {
-          if (step.status._tag === "completed") {
+          if (step.status._tag === "value") {
             current = this.next(step.status.value);
           } else {
             current = this.handle(step.status);
@@ -81,7 +81,7 @@ export class Driver<E, A> {
         } else if (step._tag === "fold") {
           this.stack.push(new FoldFrame(step.success, step.failure));
           current = step.left;
-        } else if (step._tag === "access_runtime") {
+        } else if (step._tag === "get-runtime") {
           current = io.succeed(this.runtime);
         } else {
           // This should never happen.
@@ -99,7 +99,7 @@ export class Driver<E, A> {
     if (frame) {
       return frame.apply(value);
     }
-    this.done(new Completed(value) as Completed<A>);
+    this.done(new Value(value) as Value<A>);
     return;
   }
 
