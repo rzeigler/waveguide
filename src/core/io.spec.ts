@@ -121,13 +121,13 @@ describe("IO", () => {
   describe("laws", () => {
     // Property test utils
     // base on fp-ts-laws at https://github.com/gcanti/fp-ts-laws but adapter for the fact that we need to run IOs
-    describe("functor", function() {
+    describe("Functor", function() {
       this.timeout(5000);
-      it("has conforming identity", () => {
+      it("- identity", () => {
         const arb = integer();
         return assert(asyncProperty(arbIO(arb), (fa) => eqvIO(fa.map(identity), fa)));
       });
-      it("has conforming composition", () => {
+      it("- composition", () => {
         const arb = string();
         const replicate = (s: string) => s + s;
         const length = (s: string) => s.length;
@@ -137,6 +137,12 @@ describe("IO", () => {
             fa.map(compose(length, replicate))
           )
         ));
+      });
+    });
+    describe("Apply", function() {
+      this.timeout(5000);
+      it("- associaive composition", () => {
+        
       });
     });
   });
