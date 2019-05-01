@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import { Either } from "fp-ts/lib/Either";
-import { Lazy, Function1 } from "fp-ts/lib/function";
+import { Function1, Lazy } from "fp-ts/lib/function";
 import { Completable } from "./completable";
 import { Cause, Exit, Failed, Value } from "./exit";
 import { IO, io } from "./io";
@@ -83,8 +83,12 @@ export class Driver<E, A> {
         } else if (step._tag === "fold") {
           this.stack.push(new FoldFrame(step.success, step.failure));
           current = step.left;
-        } else if (step._tag === "get-runtime") {
-          current = io.succeed(this.runtime);
+        } else if (step._tag === "platform-interface") {
+          if (step.platform._tag === "get-runtime") {
+            current = io.succeed(this.runtime);
+          } else {
+            throw new Error(`Die: Unrecognized platform-interface tag ${step.platform}`);
+          }
         } else {
           // This should never happen.
           // However, there is not great way of ensuring the above is total and its worth having during developments

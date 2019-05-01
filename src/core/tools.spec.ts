@@ -44,7 +44,7 @@ export function eqvIO<E, A>(io1: IO<E, A>, io2: IO<E, A>): Promise<boolean> {
 export const arbVariant: Arbitrary<string> =
   fc.constantFrom("succeed", "complete", "suspend", "async");
 
-export function arbIO<A>(arb: Arbitrary<A>): Arbitrary<IO<never, A>> {
+export function arbIO<E, A>(arb: Arbitrary<A>): Arbitrary<IO<E, A>> {
   return arbVariant
     .chain((ioStep) => {
       if (ioStep === "succeed") {
@@ -53,7 +53,7 @@ export function arbIO<A>(arb: Arbitrary<A>): Arbitrary<IO<never, A>> {
         return arb.map((a) => io.completeWith(new Value(a)));
       } else if (ioStep === "suspend") {
         // We now need to do recursion... wooo
-        return arbIO(arb)
+        return arbIO<E, A>(arb)
           .map((nestedIO) => io.suspend(() => nestedIO));
       } else { // async with random delay
         return fc.tuple(fc.nat(50), arb)
@@ -69,6 +69,10 @@ export function arbIO<A>(arb: Arbitrary<A>): Arbitrary<IO<never, A>> {
     });
 }
 
+export function arbConstIO<E, A>(a: A): Arbitrary<IO<E, A>> {
+  return arbIO(fc.constant(a));
+}
+
 /**
  * Construct a Arbitrary of Kleisli IO A B given an arbitrary of A => B
  *
@@ -77,9 +81,28 @@ export function arbIO<A>(arb: Arbitrary<A>): Arbitrary<IO<never, A>> {
  */
 export function arbKleisliIO<E, A, B>(arbAB: Arbitrary<Function1<A, B>>): Arbitrary<Function1<A, IO<E, B>>> {
   return arbAB.chain((fab) =>
-    arbIO(fc.constant(undefined)) // construct an IO of arbitrary type we can push a result into
+    arbIO<E, undefined>(fc.constant(undefined)) // construct an IO of arbitrary type we can push a result into
       .map((slot) =>
         (a: A) => slot.map((_) => fab(a))
       )
   );
+}
+
+export function arbErrorKleisliIO<E, E2, A>(arbEE: Arbitrary<Function1<E, E2>>): Arbitrary<Function1<E, IO<E2, A>>> {
+  return arbKleisliIO<A, E, E2>(arbEE)
+    .map((f) => (e: E) => f(e).flip());
+}
+
+export function arbErrorIO<E, A>(arbE: Arbitrary<E>): Arbitrary<IO<E, A>> {
+  return arbE
+    .chain((err) =>
+      arbConstIO<E, undefined>(undefined)
+        .map((iou) =>
+          iou.chain((_) => io.fail_(err))
+        )
+    );
+}
+
+export function arbConstErrorIO<E, A>(e: E): Arbitrary<IO<E, A>> {
+  return arbErrorIO(fc.constant(e));
 }

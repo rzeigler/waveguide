@@ -13,23 +13,20 @@
 // limitations under the License.
 
 import { Either, right } from "fp-ts/lib/Either";
-import { Function1, Lazy } from "fp-ts/lib/function";
+import { Function1, Lazy, compose, Function2 } from "fp-ts/lib/function";
 import { Driver } from "./driver";
 import { Aborted, Cause, Exit, Failed, Interrupted, Value } from "./exit";
 import { defaultRuntime, Runtime } from "./runtime";
 
-export type Step<E, A> = Initial<E, A> |
-  More<E, A> |
-  AccessRuntimeGADT<E, A>;
-
-export type More<E, A> = Chain<E, any, A> |
-  Fold<any, E, any, A>;
-
-export type Initial<E, A> = Succeeded<E, A> |
+export type Step<E, A> = 
+  Succeeded<E, A> |
   Caused<E, A> |
   Complete<E, A> |
   Suspend<E, A> |
-  Async<E, A>;
+  Async<E, A> |
+  Chain<E, any, A> |
+  Fold<any, E, any, A> |
+  PlatformInterface<E, A>;
 
 export class Succeeded<E, A> {
   public readonly _tag: "succeed" = "succeed";
@@ -53,24 +50,30 @@ export class Suspend<E, A> {
 
 export class Async<E, A> {
   public readonly _tag: "async" = "async";
-  constructor(public readonly op: (callback: (result: Either<E, A>) => void) => (Lazy<void>)) {  }
+  constructor(public readonly op: Function1<Function1<Either<E, A>, void>, Lazy<void>>) {  }
 }
 
 export class Chain<E, Z, A> {
   public readonly _tag: "chain" = "chain";
   constructor(public readonly left: IO<E, Z>,
-              public readonly bind: (z: Z) => IO<E, A>) { }
+              public readonly bind: Function1<Z, IO<E, A>>) { }
 }
 
 export class Fold<E1, E2, A1, A2> {
   public readonly _tag: "fold" = "fold";
   constructor(public readonly left: IO<E1, A1>,
-              public readonly success: (z: A1) => IO<E2, A2>,
-              public readonly failure: (f: Cause<E1>) => IO<E2, A2>) { }
+              public readonly success: Function1<A1, IO<E2, A2>>,
+              public readonly failure: Function1<Cause<E1>, IO<E2, A2>>) { }
 }
 
-// Additional GADT constructors to access platform services
-export type AccessRuntimeGADT<E, A> = Runtime extends A ? GetRuntime<E> : never;
+export class PlatformInterface<E, A> {
+  public readonly _tag: "platform-interface" = "platform-interface";
+  constructor(public readonly platform: PlatformGADT<E, A>) { }
+}
+
+export type PlatformGADT<E, A> =
+  Runtime extends A ? GetRuntime<A> : never;
+
 export class GetRuntime<E> {
   public readonly _tag: "get-runtime" = "get-runtime";
 }
@@ -78,31 +81,43 @@ export class GetRuntime<E> {
 export class IO<E, A> {
   constructor(public readonly step: Step<E, A>) { }
 
-  public map<B>(f: (a: A) => B): IO<E, B> {
-    return this.chain((a) => succeed(f(a)));
+  public map<B>(f: Function1<A, B>): IO<E, B> {
+    return this.chain(compose(succeed, f));
   }
 
-  public map2<B, C>(iob: IO<E, B>, f: (a: A, b: B) => C): IO<E, C> {
+  public mapError<E2>(f: Function1<E, E2>): IO<E2, A> {
+    return this.chainError(compose(fail, f));
+  }
+
+  public map2<B, C>(iob: IO<E, B>, f: Function2<A, B, C>): IO<E, C> {
     return this.chain((a) => iob.map((b) => f(a, b)));
   }
 
-  public ap<B>(iof: IO<E, (a: A) => B>): IO<E, B> {
+  public ap<B>(iof: IO<E, Function1<A, B>>): IO<E, B> {
     return this.map2(iof, (a, f) => f(a));
   }
 
-  public ap_<B, C>(this: IO<E, (b: B) => C>, iob: IO<E, B>): IO<E, C> {
+  public ap_<B, C>(this: IO<E, Function1<B, C>>, iob: IO<E, B>): IO<E, C> {
     return this.map2(iob, (f, b) => f(b));
   }
 
-  public chain<B>(f: (a: A) => IO<E, B>): IO<E, B> {
+  public chain<B>(f: Function1<A, IO<E, B>>): IO<E, B> {
     return new IO(new Chain(this, f));
   }
 
-  public chainError<E2>(f: (e: E) => IO<E2, A>): IO<E2, A> {
+  public chainError<E2>(f: Function1<E, IO<E2, A>>): IO<E2, A> {
     return new IO(new Fold(
       this,
       succeed,
       (cause) => cause._tag === "failed" ? f(cause.error) : completeWith(cause)
+    ));
+  }
+
+  public flip(): IO<A, E> {
+    return new IO(new Fold(
+      this,
+      (a) => io.fail(a),
+      (e) => e._tag === "failed" ? io.succeed(e.error) : io.completeWith(e)
     ));
   }
 
@@ -160,11 +175,15 @@ function succeed<A>(a: A): IO<never, A> {
  * @param a
  */
 function succeed_<E, A>(a: A): IO<E, A> {
-  return new IO(new Succeeded(a));
+  return succeed(a);
 }
 
 function fail<E>(e: E): IO<E, never> {
   return new IO(new Caused(new Failed(e)));
+}
+
+function fail_<E, A>(e: E): IO<E, A> {
+  return fail(e);
 }
 
 function abort(e: unknown): IO<never, never> {
@@ -193,15 +212,30 @@ function async<E, A>(op: Function1<Function1<Either<E, A>, void>, Lazy<void>>) {
   return new IO(new Async(op));
 }
 
-const getRuntime: IO<never, Runtime> = new IO(new GetRuntime());
+const getRuntime: IO<never, Runtime> = new IO(new PlatformInterface(new GetRuntime()));
 
 const interrupted: IO<never, never> = new IO(new Caused(new Interrupted()));
+
+/**
+ * An IO that never completes with a value.
+ *
+ * This does however, schedule a setInterval for 60s in the background.
+ * This should, therefore, prevent node from exiting cleanly if not interrupted
+ */
+const never: IO<never, never> = new IO(new Async((_) => {
+  // tslint:disable-next-line:no-empty
+  const handle = setInterval(() => { }, 60000);
+  return () => {
+    clearInterval(handle);
+  };
+}));
 
 export const io = {
   succeed,
   of: succeed,
   succeed_,
   fail,
+  fail_,
   abort,
   completeWith,
   interrupted,

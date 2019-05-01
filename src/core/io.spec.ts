@@ -17,7 +17,7 @@ import { left, right } from "fp-ts/lib/Either";
 import { compose, Function1, identity } from "fp-ts/lib/function";
 import { Aborted, Failed, Interrupted, Value } from "./exit";
 import { io, IO } from "./io";
-import { adaptMocha, arbIO, eqvIO, arbKleisliIO } from "./tools.spec";
+import { adaptMocha, arbIO, arbKleisliIO, eqvIO, arbConstIO, arbErrorKleisliIO } from "./tools.spec";
 
 // Tests for the io module
 describe("io", () => {
@@ -304,6 +304,26 @@ describe("IO", () => {
             fc.constant(strlen),
             arbIO(fc.string()),
             monad.derivedMap
+          )
+        )
+      );
+    });
+    describe("MonadError", () => {
+      const monadError = {
+        // The host exists to ensure we are testing in async boundaries
+        recoveryEquivalence: <E, E2, A>(host: IO<E2, A>, e: E, kea: (e: E) => IO<E2, A>) =>
+          eqvIO(
+           host.chain((_) => io.fail_(e).chainError(kea)),
+           host.chain((_) => kea(e))
+          )
+      };
+      it(" - recovery equivalence", () =>
+        fc.assert(
+          fc.asyncProperty(
+            arbConstIO(undefined),
+            fc.string(),
+            arbErrorKleisliIO(fc.constant(strlen)),
+            monadError.recoveryEquivalence
           )
         )
       );
