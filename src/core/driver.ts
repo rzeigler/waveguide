@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import { Either } from "fp-ts/lib/Either";
+import { Lazy, Function1 } from "fp-ts/lib/function";
 import { Completable } from "./completable";
 import { Cause, Exit, Failed, Value } from "./exit";
 import { IO, io } from "./io";
@@ -41,7 +42,7 @@ export class Driver<E, A> {
   private started: boolean = false;
   private readonly result: Completable<Exit<E, A>> = new Completable();
   private readonly stack: MutableStack<FrameType> = new MutableStack();
-  private cancel: (() => void) | undefined;
+  private cancel: Lazy<void> | undefined;
 
   constructor(private readonly init: IO<E, A>, private readonly runtime: Runtime = defaultRuntime) {  }
 
@@ -121,7 +122,7 @@ export class Driver<E, A> {
     this.result.complete(exit);
   }
 
-  private contextSwitch(op: (callback: (result: Either<unknown, unknown>) => void) => (() => void)): void {
+  private contextSwitch(op: Function1<Function1<Either<unknown, unknown>, void>, Lazy<void>>): void {
     let complete = false;
     this.cancel = op((result) => {
       if (complete) {

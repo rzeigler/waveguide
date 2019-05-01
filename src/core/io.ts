@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import { Either, right } from "fp-ts/lib/Either";
+import { Function1, Lazy } from "fp-ts/lib/function";
 import { Driver } from "./driver";
 import { Aborted, Cause, Exit, Failed, Interrupted, Value } from "./exit";
 import { defaultRuntime, Runtime } from "./runtime";
@@ -47,12 +48,12 @@ export class Complete<E, A> {
 
 export class Suspend<E, A> {
   public readonly _tag: "suspend" = "suspend";
-  constructor(public readonly thunk: () => IO<E, A>) { }
+  constructor(public readonly thunk: Lazy<IO<E, A>>) { }
 }
 
 export class Async<E, A> {
   public readonly _tag: "async" = "async";
-  constructor(public readonly op: (callback: (result: Either<E, A>) => void) => (() => void)) {  }
+  constructor(public readonly op: (callback: (result: Either<E, A>) => void) => (Lazy<void>)) {  }
 }
 
 export class Chain<E, Z, A> {
@@ -77,7 +78,7 @@ export class GetRuntime<E> {
 export class IO<E, A> {
   constructor(public readonly step: Step<E, A>) { }
 
-  public map<B>(f: (a: A)  => B): IO<E, B> {
+  public map<B>(f: (a: A) => B): IO<E, B> {
     return this.chain((a) => succeed(f(a)));
   }
 
@@ -114,7 +115,7 @@ export class IO<E, A> {
     ));
   }
 
-  public unsafeRun(onComplete: (exit: Exit<E, A>) => void, runtime: Runtime = defaultRuntime): () => void {
+  public unsafeRun(onComplete: (exit: Exit<E, A>) => void, runtime: Runtime = defaultRuntime): Lazy<void> {
     const driver = new Driver(this, runtime);
     driver.onExit(onComplete);
     driver.start();
@@ -152,6 +153,16 @@ function succeed<A>(a: A): IO<never, A> {
   return new IO(new Succeeded(a));
 }
 
+/**
+ * Create an IO that is successful with the provided value.
+ *
+ * Variant of succeed for cases when the E needs to be inferred instead of locked to never
+ * @param a
+ */
+function succeed_<E, A>(a: A): IO<E, A> {
+  return new IO(new Succeeded(a));
+}
+
 function fail<E>(e: E): IO<E, never> {
   return new IO(new Caused(new Failed(e)));
 }
@@ -164,21 +175,21 @@ function completeWith<E, A>(status: Exit<E, A>): IO<E, A> {
   return new IO(new Complete(status));
 }
 
-function effect<A>(thunk: () => A): IO<never, A> {
+function effect<A>(thunk: Lazy<A>): IO<never, A> {
   return new IO(new Suspend(() => succeed(thunk())));
 }
 
-function suspend<E, A>(thunk: () => IO<E, A>): IO<E, A> {
+function suspend<E, A>(thunk: Lazy<IO<E, A>>): IO<E, A> {
   return new IO(new Suspend(thunk));
 }
 
-function delay<A>(op: (callback: (result: A) => void) => () => void): IO<never, A> {
-  const adapted: (callback: (result: Either<never, A>) => void) => () => void =
+function delay<A>(op: Function1<Function1<A, void>, Lazy<void>>): IO<never, A> {
+  const adapted: Function1<Function1<Either<never, A>, void>, Lazy<void>> =
     (callback) => op((v) => callback(right(v)));
   return async(adapted);
 }
 
-function async<E, A>(op: (callback: (result: Either<E, A>) => void) => () => void) {
+function async<E, A>(op: Function1<Function1<Either<E, A>, void>, Lazy<void>>) {
   return new IO(new Async(op));
 }
 
@@ -188,6 +199,8 @@ const interrupted: IO<never, never> = new IO(new Caused(new Interrupted()));
 
 export const io = {
   succeed,
+  of: succeed,
+  succeed_,
   fail,
   abort,
   completeWith,

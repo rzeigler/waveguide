@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { assert, asyncProperty, integer, string } from "fast-check";
+import * as fc from "fast-check";
 import { left, right } from "fp-ts/lib/Either";
-import { compose, identity } from "fp-ts/lib/function";
+import { compose, Function1, identity } from "fp-ts/lib/function";
 import { Aborted, Failed, Interrupted, Value } from "./exit";
-import { io } from "./io";
-import { adaptMocha, arbIO, eqvIO } from "./tools.spec";
+import { io, IO } from "./io";
+import { adaptMocha, arbIO, eqvIO, arbKleisliIO } from "./tools.spec";
 
 // Tests for the io module
 describe("io", () => {
@@ -118,32 +118,196 @@ describe("IO", () => {
       adaptMocha(io.interrupted.run(), new Value(new Interrupted()), done);
     });
   });
-  describe("laws", () => {
-    // Property test utils
-    // base on fp-ts-laws at https://github.com/gcanti/fp-ts-laws but adapter for the fact that we need to run IOs
-    describe("Functor", function() {
-      this.timeout(5000);
-      it("- identity", () => {
-        const arb = integer();
-        return assert(asyncProperty(arbIO(arb), (fa) => eqvIO(fa.map(identity), fa)));
-      });
-      it("- composition", () => {
-        const arb = string();
-        const replicate = (s: string) => s + s;
-        const length = (s: string) => s.length;
-        return assert(asyncProperty(arbIO(arb),
-          (fa) => eqvIO(
-            fa.map(replicate).map(length),
-            fa.map(compose(length, replicate))
+  // Property test utils
+  // base on fp-ts-laws at https://github.com/gcanti/fp-ts-laws but adapter for the fact that we need to run IOs
+  describe("laws", function() {
+    this.timeout(5000);
+    const strlen: Function1<string, number> = (s: string) => s.length;
+    const even: Function1<number, boolean> = (n: number) => n % 2 === 0;
+
+    const functor = {
+      identity: <E, A>(ioa: IO<E, A>) => eqvIO(ioa.map(identity), ioa),
+      composition: <E, A, B, C>(ioa: IO<E, A>, fab: Function1<A, B>, fbc: Function1<B, C>) =>
+        eqvIO(ioa.map(fab).map(fbc), ioa.map(compose(fbc, fab)))
+    };
+
+    const apply = {
+      associativeComposition: <E, A, B, C>(ioa: IO<E, A>,
+                                           iofab: IO<E, Function1<A, B>>,
+                                           iofbc: IO<E, Function1<B, C>>) =>
+        eqvIO(
+          iofbc.map((bc) => (ab: Function1<A, B>) => (a: A) => bc(ab(a))).ap_(iofab).ap_(ioa),
+          iofbc.ap_(iofab.ap_(ioa))
+        )
+    };
+
+    const applicative = {
+      identity: <E, A>(ioa: IO<E, A>) =>
+        eqvIO(
+          io.succeed_(identity).ap_(ioa),
+          ioa
+        ),
+      homomorphism: <A, B>(fab: Function1<A, B>, a: A) =>
+        eqvIO(
+          io.succeed(fab).ap_(io.succeed(a)),
+          io.succeed(fab(a))
+        ),
+      interchange: <E, A, B>(a: A, iofab: IO<E, Function1<A, B>>) =>
+        eqvIO(
+          iofab.ap_(io.succeed(a)),
+          io.succeed_((ab: Function1<A, B>) => ab(a)).ap_(iofab)
+        ),
+      derivedMap: <E, A, B>(ab: Function1<A, B>, ioa: IO<E, A>) =>
+        eqvIO(
+          ioa.map(ab),
+          io.succeed_(ab).ap_(ioa)
+        )
+    };
+
+    const chain = {
+      associativivity: <E, A, B, C>(ioa: IO<E, A>, kab: Function1<A, IO<E, B>>, kbc: Function1<B, IO<E, C>>) =>
+        eqvIO(
+          ioa.chain(kab).chain(kbc),
+          ioa.chain((a) => kab(a).chain(kbc))
+        ),
+      derivedAp: <E, A, B>(iofab: IO<E, Function1<A, B>>, ioa: IO<E, A>) =>
+        eqvIO(
+          ioa.ap(iofab),
+          iofab.chain((f) => ioa.map(f))
+        )
+    };
+
+    const monad = {
+      leftIdentity: <E, A, B>(kab: Function1<A, IO<E, B>>, a: A) =>
+        eqvIO(
+          io.succeed_(a).chain(kab),
+          kab(a)
+        ),
+      rightIdentity: <E, A>(ioa: IO<E, A>) =>
+        eqvIO(
+          ioa.chain(io.succeed),
+          ioa
+        ),
+      derivedMap: <E, A, B>(ab: Function1<A, B>, ioa: IO<E, A>) =>
+        eqvIO(
+          ioa.map(ab),
+          ioa.chain((a) => io.succeed(ab(a)))
+        )
+    };
+
+    describe("Functor", () => {
+      it("- identity", () =>
+        fc.assert(fc.asyncProperty(arbIO(fc.integer()), functor.identity))
+      );
+      it("- composition", () =>
+        fc.assert(
+          fc.asyncProperty(
+            arbIO(fc.string()),
+            fc.constant(strlen),
+            fc.constant(even),
+            functor.composition
           )
-        ));
-      });
+        )
+      );
     });
-    describe("Apply", function() {
-      this.timeout(5000);
-      it("- associaive composition", () => {
-        
-      });
+    describe("Apply", () => {
+      it("- associaive composition", () =>
+        fc.assert(
+          fc.asyncProperty(
+            arbIO(fc.string()),
+            fc.constant(strlen).map(io.succeed),
+            fc.constant(even).map(io.succeed),
+            apply.associativeComposition
+          )
+        )
+      );
+    });
+    describe("Applicative", () => {
+      it("- identity", () => 
+        fc.assert(
+          fc.asyncProperty(
+            arbIO(fc.string()),
+            applicative.identity
+          )
+        )
+      );
+      it("- homomorphism", () =>
+        fc.assert(
+          fc.asyncProperty(
+            fc.constant(strlen),
+            fc.string(),
+            applicative.homomorphism
+          )
+        )
+      );
+      it("- interchange", () =>
+        fc.assert(
+          fc.asyncProperty(
+            fc.string(),
+            arbIO(fc.constant(strlen)),
+            applicative.interchange
+          )
+        )
+      );
+      it("- derived map", () =>
+        fc.assert(
+          fc.asyncProperty(
+            fc.constant(strlen),
+            arbIO(fc.string()),
+            applicative.derivedMap
+          )
+        )
+      );
+    });
+    describe("Chain", () => {
+      it(" - associativity", () =>
+        fc.assert(
+          fc.asyncProperty(
+            arbIO(fc.string()),
+            arbKleisliIO(fc.constant(strlen)),
+            arbKleisliIO(fc.constant(even)),
+            chain.associativivity
+          )
+        )
+      );
+      it(" - derived ap", () =>
+        fc.assert(
+          fc.asyncProperty(
+            fc.constant(strlen).map(io.succeed_),
+            arbIO(fc.string()),
+            chain.derivedAp
+          )
+        )
+      );
+    });
+    describe("Monad", () => {
+      it(" - left identity", () =>
+        fc.assert(
+          fc.asyncProperty(
+            arbKleisliIO(fc.constant(strlen)),
+            fc.string(),
+            monad.leftIdentity
+          )
+        )
+      );
+      it(" - right identity", () =>
+        fc.assert(
+          fc.asyncProperty(
+            arbIO(fc.string()),
+            monad.rightIdentity
+          )
+        )
+      );
+      it(" - derived map", () =>
+        fc.assert(
+          fc.asyncProperty(
+            fc.constant(strlen),
+            arbIO(fc.string()),
+            monad.derivedMap
+          )
+        )
+      );
     });
   });
+
 });
