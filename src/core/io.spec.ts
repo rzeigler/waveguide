@@ -17,7 +17,7 @@ import { left, right } from "fp-ts/lib/Either";
 import { compose, Function1, identity } from "fp-ts/lib/function";
 import { Aborted, Failed, Interrupted, Value } from "./exit";
 import { io, IO } from "./io";
-import { adaptMocha, arbIO, arbKleisliIO, eqvIO, arbConstIO, arbErrorKleisliIO } from "./tools.spec";
+import { adaptMocha, arbConstIO, arbErrorKleisliIO, arbIO, arbKleisliIO, eqvIO } from "./tools.spec";
 
 // Tests for the io module
 describe("io", () => {
@@ -223,7 +223,7 @@ describe("IO", () => {
       );
     });
     describe("Applicative", () => {
-      it("- identity", () => 
+      it("- identity", () =>
         fc.assert(
           fc.asyncProperty(
             arbIO(fc.string()),
@@ -330,4 +330,7 @@ describe("IO", () => {
     });
   });
 
+  describe("properties", () => {
+    
+  });
 });

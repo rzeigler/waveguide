@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { Lazy } from "fp-ts/lib/function";
 import { Trampoline } from "./trampoline";
 
 /**
@@ -26,7 +27,7 @@ export interface Runtime {
    * The default runtime trampolines this dispatch to for stack safety.
    * @param thunk the action to execute
    */
-  dispatch(thunk: () => void): void;
+  dispatch(thunk: Lazy<void>): void;
   /**
    * Dispatch a thunk after some amount of time has elapsed.
    *
@@ -35,17 +36,17 @@ export interface Runtime {
    * @param thunk the action to execute
    * @param ms delay in milliseconds
    */
-  dispatchLater(thunk: () => void, ms: number): () => void;
+  dispatchLater(thunk: Lazy<void>, ms: number): Lazy<void>;
 }
 
 class JsRuntime implements Runtime {
   private readonly trampoline: Trampoline = new Trampoline();
 
-  public dispatch(thunk: () => void): void {
+  public dispatch(thunk: Lazy<void>): void {
     this.trampoline.dispatch(thunk);
   }
 
-  public dispatchLater(thunk: () => void, ms: number): () => void {
+  public dispatchLater(thunk: Lazy<void>, ms: number): Lazy<void> {
     const handle = setTimeout(() => this.dispatch(thunk), ms);
     return () => {
       clearTimeout(handle);
