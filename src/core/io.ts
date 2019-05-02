@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import { Either, right } from "fp-ts/lib/Either";
-import { compose, Function1, Function2, Lazy } from "fp-ts/lib/function";
+import { compose, constant, Function1, Function2, Lazy } from "fp-ts/lib/function";
 import { Monad2 } from "fp-ts/lib/Monad";
 import { Driver } from "./driver";
 import { Aborted, Cause, Exit, Failed, Interrupted, Value } from "./exit";
@@ -99,6 +99,21 @@ export class IO<E, A> {
    */
   public map<B>(f: Function1<A, B>): IO<E, B> {
     return this.chain(compose(succeed, f));
+  }
+
+  /**
+   * Construct a new IO that discards the value this produces in favor of b
+   * @param b the value the new IO should produce
+   */
+  public as<B>(b: B): IO<E, B> {
+    return this.map(constant(b));
+  }
+
+  /**
+   * Construct a new IOI that discards the value this produces in favor of void (undefined)
+   */
+  public unit(): IO<E, void> {
+    return this.as(undefined);
   }
 
   /**
