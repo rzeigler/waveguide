@@ -12,9 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { Lazy } from "fp-ts/lib/function";
 import { MutableQueue } from "./mutable-queue";
-
-export type Thunk = () => void;
 
 /**
  * A trampolined execution environment.
@@ -25,7 +24,7 @@ export type Thunk = () => void;
  */
 export class Trampoline {
   private running: boolean = false;
-  private queue: MutableQueue<Thunk> = new MutableQueue();
+  private queue: MutableQueue<Lazy<void>> = new MutableQueue();
 
   /**
    * Dispatch a thunk against this trampoline.
@@ -34,7 +33,7 @@ export class Trampoline {
    * If the trampoline is currently active then the thunk will be appended to a queue
    * @param thunk
    */
-  public dispatch(thunk: Thunk): void {
+  public dispatch(thunk: Lazy<void>): void {
     this.queue.enqueue(thunk);
     if (!this.running) {
       this.run();

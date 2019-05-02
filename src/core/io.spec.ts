@@ -13,11 +13,12 @@
 // limitations under the License.
 
 import * as fc from "fast-check";
+import { array } from "fp-ts/lib/Array";
 import { left, right } from "fp-ts/lib/Either";
 import { compose, Function1, identity } from "fp-ts/lib/function";
 import { Aborted, Failed, Interrupted, Value } from "./exit";
 import { io, IO } from "./io";
-import { adaptMocha, arbIO, arbKleisliIO, eqvIO, arbConstIO, arbErrorKleisliIO } from "./tools.spec";
+import { adaptMocha, arbConstIO, arbErrorIO, arbErrorKleisliIO, arbIO, arbKleisliIO, eqvIO } from "./tools.spec";
 
 // Tests for the io module
 describe("io", () => {
@@ -223,7 +224,7 @@ describe("IO", () => {
       );
     });
     describe("Applicative", () => {
-      it("- identity", () => 
+      it("- identity", () =>
         fc.assert(
           fc.asyncProperty(
             arbIO(fc.string()),
@@ -311,7 +312,7 @@ describe("IO", () => {
     describe("MonadError", () => {
       const monadError = {
         // The host exists to ensure we are testing in async boundaries
-        recoveryEquivalence: <E, E2, A>(host: IO<E2, A>, e: E, kea: (e: E) => IO<E2, A>) =>
+        recoveryEquivalence: <E, E2, A>(host: IO<E2, A>, e: E, kea: Function1<E, IO<E2, A>>) =>
           eqvIO(
            host.chain((_) => io.failC<A>()(e).chainError(kea)),
            host.chain((_) => kea(e))
@@ -330,4 +331,21 @@ describe("IO", () => {
     });
   });
 
+  describe("properties", function() {
+    this.timeout(10000);
+    it("any number of successful IOs surrounding a failed IO produces the error of the failed IO", () =>
+      fc.assert(
+        fc.asyncProperty(
+          fc.array(arbIO(fc.integer())),
+          arbErrorIO(fc.constant("failure")),
+          fc.array(arbIO(fc.integer())),
+          (before, err, after) =>
+            eqvIO(
+              array.sequence(io.monad)([...before, err, ...after]),
+              err.as([])
+            )
+        )
+      )
+    );
+  });
 });

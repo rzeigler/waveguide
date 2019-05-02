@@ -33,9 +33,9 @@ export function adaptMocha<E, A>(ioa: IO<E, A>, expected: Exit<E, A>, done: (a?:
 
 export function eqvIO<E, A>(io1: IO<E, A>, io2: IO<E, A>): Promise<boolean> {
   // TODO: Use additional machinery rather than promises
-  return io1.unsafeRunToPromiseTotal()
+  return io1.unsafeRunExitToPromise()
     .then((result1) =>
-      io2.unsafeRunToPromiseTotal()
+      io2.unsafeRunExitToPromise()
         .then((result2) => expect(result1).to.deep.equal(result2))
         .then(constTrue)
     );
@@ -93,6 +93,10 @@ export function arbErrorKleisliIO<E, E2, A>(arbEE: Arbitrary<Function1<E, E2>>):
     .map((f) => (e: E) => f(e).flip());
 }
 
+/**
+ * Given an Arbitrary<E> produce an Arbitrary<IO<E, A>> that fails with some evaluation model (sync, succeed, async...)
+ * @param arbE 
+ */
 export function arbErrorIO<E, A>(arbE: Arbitrary<E>): Arbitrary<IO<E, A>> {
   return arbE
     .chain((err) =>
@@ -103,6 +107,15 @@ export function arbErrorIO<E, A>(arbE: Arbitrary<E>): Arbitrary<IO<E, A>> {
     );
 }
 
+/**
+ * * Given an E produce an Arbitrary<IO<E, A>> that fails with some evaluation model (sync, succeed, async...)
+ * @param e
+ */
 export function arbConstErrorIO<E, A>(e: E): Arbitrary<IO<E, A>> {
   return arbErrorIO(fc.constant(e));
+}
+
+export function arbEitherIO<E, A>(arbe: Arbitrary<E>, arba: Arbitrary<A>): Arbitrary<IO<E, A>> {
+  return fc.boolean()
+    .chain((error) => error ? arbErrorIO(arbe) : arbIO(arba));
 }

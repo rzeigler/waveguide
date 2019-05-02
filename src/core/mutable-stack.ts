@@ -13,7 +13,7 @@
 // limitations under the License.
 
 export class MutableStack<A> {
-  private array: A[] = [];
+  constructor(private readonly array: A[] = []) { }
 
   public push(a: A): void {
     this.array.push(a);
