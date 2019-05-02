@@ -79,14 +79,14 @@ export class PlatformInterface<E, A> {
 }
 
 export type PlatformGADT<E, A> =
-  (Runtime extends A ? GetRuntime<A> : never) |
-  (boolean extends A ? GetInterruptible<A> : never);
+  (Runtime extends A ? GetRuntime : never) |
+  (boolean extends A ? GetInterruptible : never);
 
-export class GetRuntime<A> {
+export class GetRuntime {
   public readonly _tag: "get-runtime" = "get-runtime";
 }
 
-export class GetInterruptible<A> {
+export class GetInterruptible {
   public readonly _tag: "get-interruptible" = "get-interruptible";
 }
 

@@ -102,7 +102,7 @@ export function arbErrorIO<E, A>(arbE: Arbitrary<E>): Arbitrary<IO<E, A>> {
     .chain((err) =>
       arbConstIO<E, undefined>(undefined)
         .map((iou) =>
-          iou.chain((_) => io.fail_(err))
+          iou.chain((_) => io.fail(err))
         )
     );
 }
