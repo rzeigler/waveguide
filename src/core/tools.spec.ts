@@ -95,7 +95,7 @@ export function arbErrorKleisliIO<E, E2, A>(arbEE: Arbitrary<Function1<E, E2>>):
 
 /**
  * Given an Arbitrary<E> produce an Arbitrary<IO<E, A>> that fails with some evaluation model (sync, succeed, async...)
- * @param arbE 
+ * @param arbE
  */
 export function arbErrorIO<E, A>(arbE: Arbitrary<E>): Arbitrary<IO<E, A>> {
   return arbE
