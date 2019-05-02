@@ -19,8 +19,16 @@ import { none, Option, some } from "fp-ts/lib/Option";
  * An initial empty receptacle for a value that may be set at most once
  */
 export class Completable<A> {
+  // Use option so that Completable<void> is possible
   private completed: Option<A> = none;
   private listeners: Array<(a: A) => void> = [];
+
+  /**
+   * Get the value that has been set
+   */
+  public value(): Option<A> {
+    return this.completed;
+  }
 
   /**
    * Is this completed filled

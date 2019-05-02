@@ -219,6 +219,18 @@ export class IO<E, A> {
     ));
   }
 
+  public interruptible(): IO<E, A> {
+    return interruptible(this);
+  }
+
+  public uninterruptible(): IO<E, A> {
+    return uninterruptible(this);
+  }
+
+  public interruptibleState(state: boolean): IO<E, A> {
+    return interruptibleState(this, state);
+  }
+
   /**
    * Begin executing this for its side effects and value.
    *
@@ -372,7 +384,7 @@ const shift: IO<never, void> = getRuntime
     return () => {
 
     };
-  })); // TODO: Mark this as uninterruptible
+  }).uninterruptible()); // TODO: Mark this as uninterruptible
 
 /**
  * An IO that uses the runtime to introduce an asynchronous boundary
@@ -398,6 +410,18 @@ const never: IO<never, never> = new IO(new Async((_) => {
     clearInterval(handle);
   };
 }));
+
+function interruptible<E, A>(inner: IO<E, A>): IO<E, A> {
+  return new IO(new InterruptibleState(inner, true));
+}
+
+function uninterruptible<E, A>(inner: IO<E, A>): IO<E, A> {
+  return new IO(new InterruptibleState(inner, false));
+}
+
+function interruptibleState<E, A>(inner: IO<E, A>, state: boolean): IO<E, A> {
+  return new IO(new InterruptibleState(inner, state));
+}
 
 declare module "fp-ts/lib/HKT" {
   interface URI2HKT2<L, A> {

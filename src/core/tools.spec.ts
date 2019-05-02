@@ -20,6 +20,9 @@ import { constTrue, Function1 } from "fp-ts/lib/function";
 import { Exit, Value } from "./exit";
 import { IO, io } from "./io";
 
+/**
+ * @deprecated use eqvIO instead
+ */
 export function adaptMocha<E, A>(ioa: IO<E, A>, expected: Exit<E, A>, done: (a?: any) => void) {
   ioa.unsafeRun((result) => {
     try {
@@ -39,6 +42,12 @@ export function eqvIO<E, A>(io1: IO<E, A>, io2: IO<E, A>): Promise<boolean> {
         .then((result2) => expect(result1).to.deep.equal(result2))
         .then(constTrue)
     );
+}
+
+export function exitType<E, A>(io1: IO<E, A>, tag: Exit<E, A>["_tag"]): Promise<void> {
+  return io1.unsafeRunExitToPromise()
+    .then((result) => expect(result._tag).to.equal(tag))
+    .then(() => undefined);
 }
 
 export const arbVariant: Arbitrary<string> =
