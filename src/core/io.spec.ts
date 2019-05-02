@@ -144,7 +144,7 @@ describe("IO", () => {
     const applicative = {
       identity: <E, A>(ioa: IO<E, A>) =>
         eqvIO(
-          io.succeed_(identity).ap_(ioa),
+          io.succeedC<E>()(identity).ap_(ioa),
           ioa
         ),
       homomorphism: <A, B>(fab: Function1<A, B>, a: A) =>
@@ -155,12 +155,12 @@ describe("IO", () => {
       interchange: <E, A, B>(a: A, iofab: IO<E, Function1<A, B>>) =>
         eqvIO(
           iofab.ap_(io.succeed(a)),
-          io.succeed_((ab: Function1<A, B>) => ab(a)).ap_(iofab)
+          io.succeedC<E>()((ab: Function1<A, B>) => ab(a)).ap_(iofab)
         ),
       derivedMap: <E, A, B>(ab: Function1<A, B>, ioa: IO<E, A>) =>
         eqvIO(
           ioa.map(ab),
-          io.succeed_(ab).ap_(ioa)
+          io.succeedC<E>()(ab).ap_(ioa)
         )
     };
 
@@ -180,7 +180,7 @@ describe("IO", () => {
     const monad = {
       leftIdentity: <E, A, B>(kab: Function1<A, IO<E, B>>, a: A) =>
         eqvIO(
-          io.succeed_(a).chain(kab),
+          io.succeedC<E>()(a).chain(kab),
           kab(a)
         ),
       rightIdentity: <E, A>(ioa: IO<E, A>) =>
@@ -273,7 +273,7 @@ describe("IO", () => {
       it(" - derived ap", () =>
         fc.assert(
           fc.asyncProperty(
-            fc.constant(strlen).map(io.succeed_),
+            fc.constant(strlen).map(io.succeed),
             arbIO(fc.string()),
             chain.derivedAp
           )
@@ -313,7 +313,7 @@ describe("IO", () => {
         // The host exists to ensure we are testing in async boundaries
         recoveryEquivalence: <E, E2, A>(host: IO<E2, A>, e: E, kea: (e: E) => IO<E2, A>) =>
           eqvIO(
-           host.chain((_) => io.fail_(e).chainError(kea)),
+           host.chain((_) => io.failC<A>()(e).chainError(kea)),
            host.chain((_) => kea(e))
           )
       };

@@ -164,27 +164,27 @@ export class IO<E, A> {
   }
 }
 
-function succeed<A>(a: A): IO<never, A> {
-  return new IO(new Succeeded(a));
-}
+/**
+ * A curried factory function for successful IOs
+ * 
+ * Usage: succeedC<number>()(5) : IO<string, number>
+ * 
+ * If you do not need an E parameter other than never, you may use succeed instead.
+ */
+const succeedC = <E = never>() => <A>(a: A): IO<E, A> => new IO(new Succeeded(a));
+
+const succeed = succeedC();
 
 /**
- * Create an IO that is successful with the provided value.
- *
- * Variant of succeed for cases when the E needs to be inferred instead of locked to never
- * @param a
+ * A curried factory function for failed IOs
+ * 
+ * Usage: failC<number>()("boom"): IO<string, number>
+ * 
+ * If you do not need an A paramter other than enver, you may use fail instead
  */
-function succeed_<E, A>(a: A): IO<E, A> {
-  return succeed(a);
-}
+const failC = <A = never>() => <E>(e: E): IO<E, A> => new IO(new Caused(new Failed(e)));
 
-function fail<E>(e: E): IO<E, never> {
-  return new IO(new Caused(new Failed(e)));
-}
-
-function fail_<E, A>(e: E): IO<E, A> {
-  return fail(e);
-}
+const fail = failC();
 
 function abort(e: unknown): IO<never, never> {
   return new IO(new Caused(new Aborted(e)));
@@ -233,9 +233,9 @@ const never: IO<never, never> = new IO(new Async((_) => {
 export const io = {
   succeed,
   of: succeed,
-  succeed_,
+  succeedC,
   fail,
-  fail_,
+  failC,
   abort,
   completeWith,
   interrupted,
