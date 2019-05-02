@@ -114,3 +114,8 @@ export function arbErrorIO<E, A>(arbE: Arbitrary<E>): Arbitrary<IO<E, A>> {
 export function arbConstErrorIO<E, A>(e: E): Arbitrary<IO<E, A>> {
   return arbErrorIO(fc.constant(e));
 }
+
+export function arbEitherIO<E, A>(arbe: Arbitrary<E>, arba: Arbitrary<A>): Arbitrary<IO<E, A>> {
+  return fc.boolean()
+    .chain((error) => error ? arbErrorIO(arbe) : arbIO(arba));
+}
