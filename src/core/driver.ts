@@ -14,6 +14,7 @@
 
 import { Either } from "fp-ts/lib/Either";
 import { Function1, Lazy } from "fp-ts/lib/function";
+import { Option } from "fp-ts/lib/Option";
 import { Completable } from "./completable";
 import { Cause, Exit, Failed, Value } from "./exit";
 import { IO, io } from "./io";
@@ -82,8 +83,12 @@ export class Driver<E, A> {
     }
   }
 
-  public onExit(f: (exit: Exit<E, A>) => void): () => void {
+  public onExit(f: Function1<Exit<E, A>, void>): Lazy<void> {
     return this.result.listen(f);
+  }
+
+  public exit(): Option<Exit<E, A>> {
+    return this.result.value();
   }
 
   private loop(next: IO<unknown, unknown>): void {

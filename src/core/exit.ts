@@ -33,3 +33,5 @@ export class Aborted {
 export class Interrupted {
   public readonly _tag: "interrupted" = "interrupted";
 }
+
+// TODO: Monad and Bifunctor interface for Exit<E,A>

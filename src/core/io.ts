@@ -18,6 +18,7 @@ import { Monad2 } from "fp-ts/lib/Monad";
 import { Driver } from "./driver";
 import { Aborted, Cause, Exit, Failed, Interrupted, Value } from "./exit";
 import { defaultRuntime, Runtime } from "./runtime";
+import { fiber, Fiber } from "./fiber";
 
 export type Step<E, A> =
   Succeeded<E, A> |
@@ -64,8 +65,8 @@ export class Chain<E, Z, A> {
 export class Fold<E1, E2, A1, A2> {
   public readonly _tag: "fold" = "fold";
   constructor(public readonly left: IO<E1, A1>,
-              public readonly success: Function1<A1, IO<E2, A2>>,
-              public readonly failure: Function1<Cause<E1>, IO<E2, A2>>) { }
+              public readonly failure: Function1<Cause<E1>, IO<E2, A2>>,
+              public readonly success: Function1<A1, IO<E2, A2>>) { }
 }
 
 export class InterruptibleState<E, A> {
@@ -191,8 +192,24 @@ export class IO<E, A> {
   public chainError<E2>(f: Function1<E, IO<E2, A>>): IO<E2, A> {
     return new IO(new Fold(
       this,
-      succeed,
-      (cause) => cause._tag === "failed" ? f(cause.error) : completeWith(cause)
+      (cause) => cause._tag === "failed" ? f(cause.error) : completeWith(cause),
+      succeed
+    ));
+  }
+
+  public fold<B>(failed: Function1<E, IO<E, B>>, succeeded: Function1<A, IO<E, B>>): IO<E, B> {
+    return new IO(new Fold(
+      this,
+      (cause) => cause._tag === "failed" ? failed(cause.error) : completeWith(cause),
+      succeeded
+    ));
+  }
+
+  public foldCause<B>(failed: Function1<Cause<E>, IO<E, B>>, succeeded: Function1<A, IO<E, B>>): IO<E, B> {
+    return new IO(new Fold(
+      this,
+      failed,
+      succeeded
     ));
   }
 
@@ -202,8 +219,8 @@ export class IO<E, A> {
   public flip(): IO<A, E> {
     return new IO(new Fold(
       this,
-      (a) => io.fail(a),
-      (e) => e._tag === "failed" ? io.succeed(e.error) : io.completeWith(e)
+      (e) => e._tag === "failed" ? io.succeed(e.error) : io.completeWith(e),
+      (a) => io.fail(a)
     ));
   }
 
@@ -214,21 +231,55 @@ export class IO<E, A> {
     // This could probably be a static property hwoever, for now,
     return new IO(new Fold(
       this,
-      (a) => succeed(new Value(a) as Exit<E, A>),
-      (cause) => succeed(cause)
+      (cause) => succeed(cause),
+      (a) => succeed(new Value(a) as Exit<E, A>)
     ));
   }
 
+  /**
+   * Construct an IO like this only is encased in an interruptible region
+   */
   public interruptible(): IO<E, A> {
     return interruptible(this);
   }
 
+  /**
+   * Cosntruct an IO like this only is encased in an uninterruptible region
+   */
   public uninterruptible(): IO<E, A> {
     return uninterruptible(this);
   }
 
+  /**
+   * Construct an IO like this only is encased in a region where interruptibility is set to state
+   * @param state
+   */
   public interruptibleState(state: boolean): IO<E, A> {
     return interruptibleState(this, state);
+  }
+
+  /**
+   * Allow downcasting the error type parameter.
+   *
+   * Most useful for introducing an error type when currently set to never
+   * @param this
+   */
+  public widenError<EE>(this: IO<E extends EE ? EE : never, A>): IO<EE, A> {
+    return this;
+  }
+
+  /**
+   * Allow downcasting the value type parameter.
+   *
+   * Most useful for introducing a value when when currently set to never`
+   * @param this
+   */
+  public widen<AA>(this: IO<E, A extends AA ? AA : never>): IO<E, AA> {
+    return this;
+  }
+
+  public fork(): IO<never, Fiber<E, A>> {
+    return getRuntime.chain((runtime) => fiber.create(this, runtime));
   }
 
   /**
@@ -244,7 +295,7 @@ export class IO<E, A> {
     driver.onExit(onComplete);
     driver.start();
     return () => {
-      // TODO: Implement the interrupt logic
+      driver.interrupt();
     };
   }
 
