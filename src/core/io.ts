@@ -15,10 +15,11 @@
 import { Either, right } from "fp-ts/lib/Either";
 import { compose, constant, Function1, Function2, Lazy } from "fp-ts/lib/function";
 import { Monad2 } from "fp-ts/lib/Monad";
+import { Do } from "fp-ts-contrib/lib/Do";
 import { Driver } from "./driver";
 import { Aborted, Cause, Exit, Failed, Interrupted, Value } from "./exit";
-import { defaultRuntime, Runtime } from "./runtime";
 import { fiber, Fiber } from "./fiber";
+import { defaultRuntime, Runtime } from "./runtime";
 
 export type Step<E, A> =
   Succeeded<E, A> |
@@ -91,6 +92,10 @@ export class GetInterruptible {
   public readonly _tag: "get-interruptible" = "get-interruptible";
 }
 
+export class GetDriver {
+  public readonly _tag: "get-driver" = "get-driver";
+}
+
 export class IO<E, A> {
   constructor(public readonly step: Step<E, A>) { }
 
@@ -130,7 +135,7 @@ export class IO<E, A> {
    * @param iob an io to produce the second argument to f
    * @param f the function to apply
    */
-  public map2<B, C>(iob: IO<E, B>, f: Function2<A, B, C>): IO<E, C> {
+  public zipWith<B, C>(iob: IO<E, B>, f: Function2<A, B, C>): IO<E, C> {
     return this.chain((a) => iob.map((b) => f(a, b)));
   }
 
@@ -138,8 +143,8 @@ export class IO<E, A> {
    * Construct a new IO by forming a tuple from the values produced by this and iob
    * @param iob
    */
-  public product<B>(iob: IO<E, B>): IO<E, [A, B]> {
-    return this.map2(iob, (a, b) => [a, b]);
+  public zip<B>(iob: IO<E, B>): IO<E, [A, B]> {
+    return this.zipWith(iob, (a, b) => [a, b]);
   }
 
   /**
@@ -147,7 +152,7 @@ export class IO<E, A> {
    * @param iob
    */
   public applyFirst<B>(iob: IO<E, B>): IO<E, A> {
-    return this.map2(iob, (a, _) => a);
+    return this.zipWith(iob, (a, _) => a);
   }
 
   /**
@@ -155,7 +160,7 @@ export class IO<E, A> {
    * @param iob
    */
   public applySecond<B>(iob: IO<E, B>): IO<E, B> {
-    return this.map2(iob, (_, b) => b);
+    return this.zipWith(iob, (_, b) => b);
   }
 
   /**
@@ -163,7 +168,7 @@ export class IO<E, A> {
    * @param iof
    */
   public ap<B>(iof: IO<E, Function1<A, B>>): IO<E, B> {
-    return this.map2(iof, (a, f) => f(a));
+    return this.zipWith(iof, (a, f) => f(a));
   }
 
   /**
@@ -172,7 +177,7 @@ export class IO<E, A> {
    * @param iob
    */
   public ap_<B, C>(this: IO<E, Function1<B, C>>, iob: IO<E, B>): IO<E, C> {
-    return this.map2(iob, (f, b) => f(b));
+    return this.zipWith(iob, (f, b) => f(b));
   }
 
   /**
@@ -278,8 +283,12 @@ export class IO<E, A> {
     return this;
   }
 
+  public delay(ms: number): IO<E, A> {
+    return delay(this, ms);
+  }
+
   public fork(): IO<never, Fiber<E, A>> {
-    return getRuntime.chain((runtime) => fiber.create(this, runtime));
+    return getRuntime.chain((runtime) => io.shift.applySecond(fiber.create(this, runtime)));
   }
 
   /**
@@ -397,7 +406,7 @@ function suspend<E, A>(thunk: Lazy<IO<E, A>>): IO<E, A> {
  * @param op the asynchronous operation.
  * op will receive a callback to resume execution when the async op is done and must return a cancellation action
  */
-function delay<A>(op: Function1<Function1<A, void>, Lazy<void>>): IO<never, A> {
+function asyncTotal<A>(op: Function1<Function1<A, void>, Lazy<void>>): IO<never, A> {
   const adapted: Function1<Function1<Either<never, A>, void>, Lazy<void>> =
     (callback) => op((v) => callback(right(v)));
   return async(adapted);
@@ -418,6 +427,8 @@ function async<E, A>(op: Function1<Function1<Either<E, A>, void>, Lazy<void>>) {
  */
 const getRuntime: IO<never, Runtime> = new IO(new PlatformInterface(new GetRuntime()));
 
+const getInterruptible: IO<never, boolean> = new IO(new PlatformInterface(new GetInterruptible()));
+
 /**
  * An IO that has been interrupted
  */
@@ -429,13 +440,11 @@ const interrupted: IO<never, never> = new IO(new Caused(new Interrupted()));
  * This can be used to acheive fairness between multiple cooperating synchronous fibers
  */
 const shift: IO<never, void> = getRuntime
-  .chain((runtime) => delay<void>((callback) => {
+  .chain((runtime) => asyncTotal<void>((callback) => {
     runtime.dispatch(() => callback(undefined));
     // tslint:disable-next-line
-    return () => {
-
-    };
-  }).uninterruptible()); // TODO: Mark this as uninterruptible
+    return () => { };
+  }).uninterruptible());
 
 /**
  * An IO that uses the runtime to introduce an asynchronous boundary
@@ -444,7 +453,7 @@ const shift: IO<never, void> = getRuntime
  */
 const shiftAsync: IO<never, void> = getRuntime
   .chain((runtime) =>
-    delay<void>((callback) =>
+    asyncTotal<void>((callback) =>
       runtime.dispatchLater(() => callback(undefined), 0)
     ));
 
@@ -472,6 +481,64 @@ function uninterruptible<E, A>(inner: IO<E, A>): IO<E, A> {
 
 function interruptibleState<E, A>(inner: IO<E, A>, state: boolean): IO<E, A> {
   return new IO(new InterruptibleState(inner, state));
+}
+
+export type InterruptMaskCutout<E, A> = Function1<IO<E, A>, IO<E, A>>;
+
+function makeInterruptibleRestore<E, A>(state: boolean): InterruptMaskCutout<E, A> {
+  return (inner) => inner.interruptibleState(state);
+}
+
+function uninterruptibleMask<E, A>(f: Function1<InterruptMaskCutout<E, A>, IO<E, A>>): IO<E, A> {
+  return getInterruptible
+    .widenError<E>()
+    .chain((state) => f(makeInterruptibleRestore<E, A>(state)).uninterruptible());
+}
+
+function interruptibleMask<E, A>(f: Function1<InterruptMaskCutout<E, A>, IO<E, A>>): IO<E, A> {
+  return getInterruptible
+    .widenError<E>()
+    .chain((state) => f(makeInterruptibleRestore<E, A>(state)).interruptible());
+}
+
+const bracketExitC = <E, A>(acquire: IO<E, A>) =>
+  <B>(release: Function2<A, Exit<E, B>, IO<E, unknown>>, use: Function1<A, IO<E, B>>): IO<E, B> =>
+    bracketExit(acquire, release, use);
+
+function bracketExit<E, A, B>(acquire: IO<E, A>,
+                              release: Function2<A, Exit<E, B>, IO<E, unknown>>,
+                              use: Function1<A, IO<E, B>>): IO<E, B> {
+  return uninterruptibleMask<E, B>((cutout) => 
+    io.abort("boom")
+  );
+}
+
+const bracketC = <E, A>(acquire: IO<E, A>) =>
+  <B>(release: Function1<A, IO<E, unknown>>, use: Function1<A, IO<E, B>>): IO<E, B> =>
+    bracket(acquire, release, use);
+
+function bracket<E, A, B>(acquire: IO<E, A>,
+                          release: Function1<A, IO<E, unknown>>,
+                          use: Function1<A, IO<E, B>>): IO<E, B> {
+  return bracketExit(acquire, (a, _) => release(a), use);
+}
+
+function after<E = never>(ms: number): IO<E, void> {
+  return getRuntime
+    .chain((runtime) =>
+      io.asyncTotal((callback) =>
+        runtime.dispatchLater(() => callback(undefined), ms)
+      )
+    );
+}
+
+/**
+ * Construct an IO that delays the evaluation of inner by some duratino
+ * @param inner the io to delay
+ * @param ms how many ms to wait
+ */
+function delay<E, A>(inner: IO<E, A>, ms: number): IO<E, A> {
+  return after<E>(ms).applySecond(inner);
 }
 
 declare module "fp-ts/lib/HKT" {
@@ -506,10 +573,21 @@ export const io = {
   interrupted,
   effect,
   suspend,
-  delay,
+  asyncTotal,
   async,
   shift,
   shiftAsync,
   never,
+  after,
+  delay,
+  interruptible,
+  uninterruptible,
+  interruptibleMask,
+  uninterruptibleMask,
+  bracketExitC,
+  bracketExit,
+  bracketC,
+  bracket,
+  getInterruptible,
   monad
 };

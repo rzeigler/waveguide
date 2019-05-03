@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { none, Option, some } from "fp-ts/lib/Option";
+import { Option } from "fp-ts/lib/Option";
 import { Completable } from "../core/completable";
 import { IO, io } from "../core/io";
 
@@ -29,7 +29,7 @@ class DeferredIO<A> implements Deferred<A> {
 
   private completable: Completable<A> = new Completable();
   constructor() {
-    this.wait = io.delay((callback) =>
+    this.wait = io.asyncTotal((callback) =>
       this.completable.listen(callback)
     );
     this.get = io.effect(() => this.completable.value());

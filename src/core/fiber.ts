@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Option, none, some } from "fp-ts/lib/Option";
+import { none, Option, some } from "fp-ts/lib/Option";
 import { Driver } from "./driver";
 import { Exit } from "./exit";
 import { IO, io } from "./io";
@@ -31,16 +31,11 @@ export class FiberContext<E, A> implements Fiber<E, A> {
   public readonly join: IO<E, A>;
   public readonly result: IO<E, Option<A>>;
 
-  private readonly driver: Driver<E, A>;
-  constructor(init: IO<E, A>, runtime: Runtime) {
-    this.driver = new Driver(init, runtime);
-
+  constructor(private readonly driver: Driver<E, A>) {
     const sendInterrupt = io.effect(() => {
       this.driver.interrupt();
     });
-
-    this.exit = io.delay(this.driver.onExit);
-
+    this.exit = io.asyncTotal(this.driver.onExit);
     this.interrupt = sendInterrupt.applySecond(this.exit.unit());
     this.join = this.exit.widenError<E>().chain((exit) => io.completeWith(exit));
     this.result = io.effect(() => this.driver.exit())
@@ -56,12 +51,23 @@ export class FiberContext<E, A> implements Fiber<E, A> {
 
 function create<E, A>(init: IO<E, A>, runtime: Runtime): IO<never, Fiber<E, A>> {
   return io.effect(() => {
-    const ctx = new FiberContext(init, runtime);
+    const driver = new Driver(init, runtime);
+    const ctx = new FiberContext(driver);
     ctx.start();
     return ctx;
   });
 }
 
+function wrap<E, A>(driver: Driver<E, A>): Fiber<E, A> {
+  return new FiberContext(driver);
+}
+
+function join<E, A>(fib: Fiber<E, A>): IO<E, A> {
+  return fib.join;
+}
+
 export const fiber = {
-  create
+  create,
+  wrap,
+  join
 };

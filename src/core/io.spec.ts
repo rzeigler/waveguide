@@ -18,106 +18,133 @@ import { left, right } from "fp-ts/lib/Either";
 import { compose, Function1, identity } from "fp-ts/lib/function";
 import { Aborted, Failed, Interrupted, Value } from "./exit";
 import { io, IO } from "./io";
-import { adaptMocha, arbConstIO, arbErrorIO, arbErrorKleisliIO, arbIO, arbKleisliIO, eqvIO } from "./tools.spec";
+import { arbConstIO, arbErrorIO, arbErrorKleisliIO, arbIO, arbKleisliIO, eqvIO, expectExit } from "./tools.spec";
 
 // Tests for the io module
 describe("io", () => {
   describe("#succeed", () => {
-    it("should complete with a completed", (done) => {
-      adaptMocha(io.succeed(42), new Value(42), done);
-    });
+    it("should complete with a completed", () =>
+      expectExit(io.succeed(42), new Value(42))
+    );
   });
   describe("#fail", () => {
-    it("should complete with a failed", (done) => {
-      adaptMocha(io.fail("boom"), new Failed("boom"), done);
-    });
+    it("should complete with a failed", () =>
+      expectExit(io.fail("boom"), new Failed("boom"))
+    );
   });
   describe("#abort", () => {
-    it("should complete with an aborted", (done) => {
-      adaptMocha(io.abort("boom"), new Aborted("boom"), done);
-    });
+    it("should complete with an aborted", () =>
+      expectExit(io.abort("boom"), new Aborted("boom"))
+    );
   });
   describe("#interrupted", () => {
-    it("should complete with an interrupted", (done) => {
-      adaptMocha(io.interrupted, new Interrupted(), done);
-    });
+    it("should complete with an interrupted", () =>
+      expectExit(io.interrupted, new Interrupted())
+    );
   });
   describe("#exitWith", () => {
-    it("should complete with a completed when provided", (done) => {
-      adaptMocha(io.completeWith(new Value(42)), new Value(42), done);
-    });
-    it("should complete with a failed when provided", (done) => {
-      adaptMocha(io.completeWith(new Failed("boom")), new Failed("boom"), done);
-    });
-    it("should complete with an aborted when provided", (done) => {
-      adaptMocha(io.completeWith(new Aborted("boom")), new Aborted("boom"), done);
-    });
-    it("should complete with an interrupted when provided", (done) => {
-      adaptMocha(io.completeWith(new Interrupted()), new Interrupted(), done);
-    });
+    it("should complete with a completed when provided", () =>
+      expectExit(io.completeWith(new Value(42)), new Value(42))
+    );
+    it("should complete with a failed when provided", () =>
+      expectExit(io.completeWith(new Failed("boom")), new Failed("boom"))
+    );
+    it("should complete with an aborted when provided", () =>
+      expectExit(io.completeWith(new Aborted("boom")), new Aborted("boom"))
+    );
+    it("should complete with an interrupted when provided", () =>
+      expectExit(io.completeWith(new Interrupted()), new Interrupted())
+    );
   });
   describe("#effect", () => {
-    it("should complete at some a success", (done) => {
-      adaptMocha(io.effect(() => 42), new Value(42), done);
-    });
+    it("should complete at some a success", () =>
+      expectExit(io.effect(() => 42), new Value(42))
+    );
   });
   describe("#suspend", () => {
-    it("should complete with synchronous effects", (done) => {
-      adaptMocha(io.suspend(() => io.succeed(42)), new Value(42), done);
-    });
-    it("should complete with asynchronous effects", (done) => {
-      adaptMocha(io.suspend(() =>
-        io.delay((callback) => {
+    it("should complete with synchronous effects", () =>
+      expectExit(io.suspend(() => io.succeed(42)), new Value(42))
+    );
+    it("should complete with asynchronous effects", () =>
+      expectExit(io.suspend(() =>
+        io.asyncTotal((callback) => {
           const handle = setTimeout(() => callback(42), 0);
           return () => { clearTimeout(handle); };
         })
-      ), new Value(42), done);
-    });
+      ), new Value(42))
+    );
   });
   describe("#delay", () => {
-    it("should complete with a success eventually", (done) => {
-      adaptMocha(io.delay((callback) => {
+    it("should complete with a success eventually", () =>
+      expectExit(io.asyncTotal((callback) => {
         const handle = setTimeout(() => callback(42), 0);
         return () => { clearTimeout(handle); };
-      }), new Value(42), done);
-    });
+      }), new Value(42))
+    );
   });
   describe("#async", () => {
-    it("should complete with a success eventually", (done) => {
-      adaptMocha(io.async((callback) => {
+    it("should complete with a success eventually", () =>
+      expectExit(io.async((callback) => {
         const handle = setTimeout(() => callback(right(42)), 0);
         return () => { clearTimeout(handle); };
-      }), new Value(42), done);
-    });
-    it("should complete with a failed eventually", (done) => {
-      adaptMocha(io.async((callback) => {
+      }), new Value(42))
+    );
+    it("should complete with a failed eventually", () =>
+      expectExit(io.async((callback) => {
         const handle = setTimeout(() => callback(left("boom")), 0);
         return () => { clearTimeout(handle); };
-      }), new Failed("boom"), done);
-    });
+      }), new Failed("boom"))
+    );
   });
   describe("#interrupted", () => {
-    it("should complete with interrupted", (done) => {
-      adaptMocha(io.interrupted, new Interrupted(), done);
-    });
+    it("should complete with interrupted", () =>
+      expectExit(io.interrupted, new Interrupted())
+    );
   });
 });
 
 // Tests for IO instances
 describe("IO", () => {
   describe("#run", () => {
-    it("should complete with an expected completion", (done) => {
-      adaptMocha(io.succeed(42).run(), new Value(new Value(42)), done);
-    });
-    it("should complete with an expected failure", (done) => {
-      adaptMocha(io.fail("boom").run(), new Value(new Failed("boom")), done);
-    });
-    it("shoudl complete with an expected abort", (done) => {
-      adaptMocha(io.abort("boom").run(), new Value(new Aborted("boom")), done);
-    });
-    it("should complete with an expected interrupt", (done) => {
-      adaptMocha(io.interrupted.run(), new Value(new Interrupted()), done);
-    });
+    it("should complete with an expected completion", () =>
+      expectExit(io.succeed(42).run(), new Value(new Value(42)))
+    );
+    it("should complete with an expected failure", () =>
+      expectExit(io.fail("boom").run(), new Value(new Failed("boom")))
+    );
+    it("should complete with an expected abort", () =>
+      expectExit(io.abort("boom").run(), new Value(new Aborted("boom")))
+    );
+    // Interrupted is internal v external so we see interrupted inside the value rather than immediately propagating
+    it("should complete with an expected interrupt", () =>
+      expectExit(io.interrupted.run(), new Value(new Interrupted()))
+    );
+  });
+  describe("interruptible state", () => {
+    it("should set interrupt status", () => 
+      expectExit(
+        io.interruptible(io.getInterruptible),
+        new Value(true)
+      )
+    );
+    it("should set nested interrupt status", () =>
+      expectExit(
+        io.uninterruptible(io.interruptible(io.getInterruptible)),
+        new Value(true)
+      )
+    );
+    it("should compose", () =>
+      expectExit(
+        io.uninterruptible(io.interruptible(io.uninterruptible(io.getInterruptible))),
+        new Value(false)
+      )
+    );
+    it("should allow setting uninterruptible", () =>
+      expectExit(
+        io.uninterruptible(io.getInterruptible),
+        new Value(false)
+      )
+    );
   });
   // Property test utils
   // base on fp-ts-laws at https://github.com/gcanti/fp-ts-laws but adapter for the fact that we need to run IOs

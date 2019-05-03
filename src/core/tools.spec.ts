@@ -16,30 +16,30 @@
 
 import { expect } from "chai";
 import fc, { Arbitrary } from "fast-check";
-import { constTrue, Function1 } from "fp-ts/lib/function";
+import { constant, constTrue, Function1, identity } from "fp-ts/lib/function";
 import { Exit, Value } from "./exit";
 import { IO, io } from "./io";
 
 /**
  * @deprecated use eqvIO instead
  */
-export function adaptMocha<E, A>(ioa: IO<E, A>, expected: Exit<E, A>, done: (a?: any) => void) {
-  ioa.unsafeRun((result) => {
-    try {
-      expect(result).to.deep.equal(expected);
-      done();
-    } catch (e) {
-      done(e);
-    }
-  });
+export function expectExit<E, A>(ioa: IO<E, A>, expected: Exit<E, A>): Promise<void> {
+  return expectExitIn(ioa, identity, expected);
+}
+
+export function expectExitIn<E, A, B>(ioa: IO<E, A>, f: Function1<Exit<E, A>, B>, expected: B): Promise<void> {
+  return ioa.unsafeRunExitToPromise()
+    .then((result) => expect(f(result)).to.deep.equal(expected))
+    .then(constant(undefined));
 }
 
 export function eqvIO<E, A>(io1: IO<E, A>, io2: IO<E, A>): Promise<boolean> {
-  // TODO: Use additional machinery rather than promises
   return io1.unsafeRunExitToPromise()
     .then((result1) =>
       io2.unsafeRunExitToPromise()
-        .then((result2) => expect(result1).to.deep.equal(result2))
+        .then((result2) => {
+          return expect(result1).to.deep.equal(result2);
+        })
         .then(constTrue)
     );
 }
@@ -68,7 +68,7 @@ export function arbIO<E, A>(arb: Arbitrary<A>): Arbitrary<IO<E, A>> {
         return fc.tuple(fc.nat(50), arb)
           .map(
             ([delay, val]) =>
-              io.delay((callback) => {
+              io.asyncTotal((callback) => {
                 const handle = setTimeout(() => callback(val), delay);
                 return () => {
                   clearTimeout(handle);

@@ -12,6 +12,69 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import fc from "fast-check";
+import { none } from "fp-ts/lib/Option";
+import { Value } from "../core/exit";
+import { io } from "../core/io";
+import { eqvIO, expectExit, expectExitIn } from "../core/tools.spec";
+import { deferred } from "./deferred";
+
 describe("Deferred", () => {
-  
-})
+  it("can bet set", () =>
+    eqvIO(
+      deferred.alloc<number>()
+        .chain((def) =>
+          def.complete(42).applySecond(def.wait)
+        ),
+      io.succeed(42)
+    )
+  );
+  it("multiple sets fail", () =>
+      expectExitIn(
+        deferred.alloc<number>()
+          .chain((def) => {
+            const c42 = def.complete(42);
+            return c42.applySecond(c42);
+          }),
+        (exit) => exit._tag === "aborted" ? (exit.error as Error).message : undefined,
+        "Die: Completable is already completed"
+      )
+  );
+  it("subsequent tryCompletes return false", () =>
+    expectExit(
+      deferred.alloc<number>()
+        .chain((def) => {
+          const complete = def.tryComplete(42);
+          return complete.zip(complete).zip(def.wait);
+        }),
+      new Value([[true, false], 42])
+    )
+  );
+  it("get on an unset deferred should return none", () =>
+    expectExit(
+      deferred.alloc<number>()
+        .chain((def) => def.get),
+      new Value(none)
+    )
+  );
+  describe("properties", function() {
+    this.timeout(5000);
+    it("allows for multiple fibers to coordinate", () =>
+      fc.assert(
+        fc.asyncProperty(
+          fc.nat(50),
+          (delay) =>
+            expectExit(
+              deferred.alloc<number>()
+                .chain((def) =>
+                  def.complete(42).delay(delay).fork()
+                    .applySecond(def.wait)
+                ),
+              new Value(42)
+            )
+
+        )
+      )
+    );
+  });
+});

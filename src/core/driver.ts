@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { boundMethod } from "autobind-decorator";
 import { Either } from "fp-ts/lib/Either";
 import { Function1, Lazy } from "fp-ts/lib/function";
 import { Option } from "fp-ts/lib/Option";
 import { Completable } from "./completable";
-import { Cause, Exit, Failed, Value } from "./exit";
+import { Cause, Exit, Failed, Interrupted, Value } from "./exit";
 import { IO, io } from "./io";
 import { MutableStack } from "./mutable-stack";
 import { defaultRuntime, Runtime } from "./runtime";
@@ -67,6 +68,7 @@ export class Driver<E, A> {
    * This executes the runloop in a trampoline so start may unwind before IO begin evaluating depending on the
    * state of the stack
    */
+  @boundMethod
   public start() {
     if (this.started) {
       throw new Error("Bug: Runtime may not be started multiple times");
@@ -77,23 +79,40 @@ export class Driver<E, A> {
   /**
    * Interrupt the execution of the fiber running on this driver
    */
+  @boundMethod
   public interrupt(): void {
     if (this.interrupted) {
       return;
     }
+    this.interrupted = true;
+    if (this.cancel && this.isInterruptible()) {
+      this.cancel();
+      this.resumeInterrupt();
+    }
   }
 
+  @boundMethod
   public onExit(f: Function1<Exit<E, A>, void>): Lazy<void> {
     return this.result.listen(f);
   }
 
+  @boundMethod
   public exit(): Option<Exit<E, A>> {
     return this.result.value();
   }
 
+  private resumeInterrupt(): void {
+    this.runtime.dispatch(() => {
+      const next = this.handle(new Interrupted());
+      if (next) {
+        this.loop(next);
+      }
+    });
+  }
+
   private loop(next: IO<unknown, unknown>): void {
     let current: IO<unknown, unknown> | undefined = next;
-    while (current && (!this.interruptibleState() || !this.interrupted)) {
+    while (current && (!this.isInterruptible() || !this.interrupted)) {
       const step = current.step;
       try {
         if (step._tag === "succeed") {
@@ -118,6 +137,7 @@ export class Driver<E, A> {
           this.frameStack.push(new FoldFrame(step.success, step.failure));
           current = step.left;
         } else if (step._tag === "interruptible-state") {
+          this.interruptRegionStack.push(step.state);
           this.frameStack.push(new InterruptFrame(this.interruptRegionStack));
           this.interruptRegionStack.push(step.state);
           current = step.inner;
@@ -125,7 +145,7 @@ export class Driver<E, A> {
           if (step.platform._tag === "get-runtime") {
             current = io.succeed(this.runtime);
           } else if (step.platform._tag === "get-interruptible") {
-            current = io.succeed(this.interruptibleState());
+            current = io.succeed(this.isInterruptible());
           } else {
             throw new Error(`Die: Unrecognized platform-interface tag ${step.platform}`);
           }
@@ -140,16 +160,24 @@ export class Driver<E, A> {
     }
     // If !current then the interrupt came to late and we completed everything
     if (this.interrupted && current) {
-      this.runtime.dispatch(() => this.loop(io.interrupted));
+      this.resumeInterrupt();
     }
   }
 
-  private interruptibleState(): boolean {
+  private isInterruptible(): boolean {
     const result =  this.interruptRegionStack.peek();
     if (result === undefined) {
       return true;
     }
     return result;
+  }
+
+  private canRecover(cause: Cause<unknown>): boolean {
+    // it is always possible to recovery from fiber internal interrupts
+    if (cause._tag === "interrupted" && this.interrupted) {
+      return !this.isInterruptible();
+    }
+    return true;
   }
 
   private next(value: unknown): IO<unknown, unknown> | undefined {
@@ -165,7 +193,7 @@ export class Driver<E, A> {
     let frame = this.frameStack.pop();
     while (frame) {
       // TODO: Can we trap exceptions always?
-      if (frame._tag === "fold-frame") {
+      if (frame._tag === "fold-frame" && this.canRecover(e)) {
         return frame.recover(e);
       }
       // We need to make sure we leave an interrupt region while unwinding on errors
