@@ -15,6 +15,7 @@
 import { Option } from "fp-ts/lib/Option";
 import { Completable } from "../core/completable";
 import { IO, io } from "../core/io";
+import { boundMethod } from "autobind-decorator";
 
 export interface Deferred<A> {
   readonly wait: IO<never, A>;
@@ -35,12 +36,14 @@ class DeferredIO<A> implements Deferred<A> {
     this.get = io.effect(() => this.completable.value());
   }
 
+  @boundMethod
   public complete(a: A): IO<never, void> {
     return io.effect(() => {
       this.completable.complete(a);
     });
   }
 
+  @boundMethod
   public tryComplete(a: A): IO<never, boolean> {
     return io.effect(() => {
       if (this.completable.isComplete()) {

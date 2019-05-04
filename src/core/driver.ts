@@ -101,15 +101,6 @@ export class Driver<E, A> {
     return this.result.value();
   }
 
-  private resumeInterrupt(): void {
-    this.runtime.dispatch(() => {
-      const next = this.handle(new Interrupted());
-      if (next) {
-        this.loop(next);
-      }
-    });
-  }
-
   private loop(next: IO<unknown, unknown>): void {
     let current: IO<unknown, unknown> | undefined = next;
     while (current && (!this.isInterruptible() || !this.interrupted)) {
@@ -162,7 +153,19 @@ export class Driver<E, A> {
       this.resumeInterrupt();
     }
   }
-
+  
+  /**
+   * Resume the runloop with an interrupted
+   */
+  private resumeInterrupt(): void {
+    this.runtime.dispatch(() => {
+      const next = this.handle(new Interrupted());
+      if (next) {
+        this.loop(next);
+      }
+    });
+  }
+  
   private isInterruptible(): boolean {
     const result =  this.interruptRegionStack.peek();
     if (result === undefined) {
@@ -171,6 +174,10 @@ export class Driver<E, A> {
     return result;
   }
 
+  /**
+   * Recovering from a failure is allowed when that failure is not interrupted or we are in an uninterruptible region
+   * @param cause
+   */
   private canRecover(cause: Cause<unknown>): boolean {
     // it is always possible to recovery from fiber internal interrupts
     if (cause._tag === "interrupted" && this.interrupted) {
