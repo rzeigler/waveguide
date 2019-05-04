@@ -13,10 +13,12 @@
 // limitations under the License.
 
 import fc from "fast-check";
+import { Do } from "fp-ts-contrib/lib/Do";
 import { deferred } from "../concurrent/deferred";
+import { ref } from "../concurrent/ref";
 import { Interrupted, Value } from "./exit";
-import { IO, io } from "./io";
-import { arbEitherIO, arbIO, eqvIO, expectExit } from "./tools.spec";
+import { io } from "./io";
+import { arbEitherIO, eqvIO, expectExit } from "./tools.spec";
 
 describe("fiber", () => {
   it("fibers are joinable", () =>
@@ -35,7 +37,7 @@ describe("fiber", () => {
       new Value(new Interrupted())
     )
   );
-  describe("properties", function () {
+  describe("properties", function() {
     this.timeout(5000);
     it("fork/join is the same result as initial", () =>
       fc.assert(
@@ -50,24 +52,32 @@ describe("fiber", () => {
       )
     );
     // Fuzz timing effects
-    it("uninterruptible fibers are not uninterruptible", () =>
+    it("uninterruptible fibers are not interruptible", () =>
       fc.assert(
         fc.asyncProperty(
-          fc.integer(0, 50),
+          fc.nat(50),
           (delay) =>
             expectExit(
-              deferred.alloc<void>()
-                .chain((latch) =>
-                  latch.wait.as(42).uninterruptible().fork()
-                    .chain((child) =>
-                      child.interrupt.fork()
-                        .applySecond(latch.complete(undefined).delay(delay))
-                        .applySecond(child.exit)
-                    )
-                ),
-              new Value(new Value(42))
+              Do(io.monad)
+                .bind("latch", deferred.alloc<void>())
+                .bind("cell", ref.alloc(false))
+                .bindL("child", ({latch, cell}) =>
+                  latch.wait.applySecond(cell.set(true)).uninterruptible().fork()
+                )
+                .bindL("result", ({latch, cell, child}) =>
+                  // Interrupt the child first, this always happens before latch release
+                  child.interrupt.shiftAsync().fork()
+                  // Then release the latch
+                  .applySecond(latch.complete(undefined).delay(delay))
+                  // Then wait for the child to complete
+                  .applySecond(child.exit)
+                  // Then ensure child ran to completion
+                  .applySecond(cell.get))
+                .return(({result}) => result),
+              new Value(true)
             )
-        )
+        ),
+        {verbose: true}
       )
     );
     // Counter-example from above

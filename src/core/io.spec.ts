@@ -16,9 +16,19 @@ import * as fc from "fast-check";
 import { array } from "fp-ts/lib/Array";
 import { left, right } from "fp-ts/lib/Either";
 import { compose, Function1, identity } from "fp-ts/lib/function";
+import { ref } from "../concurrent/ref";
 import { Aborted, Failed, Interrupted, Value } from "./exit";
 import { io, IO } from "./io";
-import { arbConstIO, arbErrorIO, arbErrorKleisliIO, arbIO, arbKleisliIO, eqvIO, expectExit } from "./tools.spec";
+import {
+  arbConstIO,
+  arbEitherIO,
+  arbErrorIO,
+  arbErrorKleisliIO,
+  arbIO,
+  arbKleisliIO,
+  eqvIO,
+  expectExit
+} from "./tools.spec";
 
 // Tests for the io module
 describe("io", () => {
@@ -101,6 +111,39 @@ describe("io", () => {
       expectExit(io.interrupted, new Interrupted())
     );
   });
+
+  describe("#bracketExit", () => {
+    describe("properties", function() {
+      this.timeout(5000);
+      // Verify that bracketExit has the cleanup semantics that we expect
+      // We produce an acquisition and release that wait for a random time and then increment/decrement a ref
+      // We also have a use that waits some time then succeeds or fails randomly
+      // Finally, we interrupt this thread after some random delay
+      // In all cases the value of the resuling ref should be 0 because of cleanup
+      it("finalizer should execute in all cases", () =>
+        fc.assert(
+          fc.asyncProperty(
+            fc.nat(30),
+            fc.nat(30),
+            fc.nat(30),
+            fc.nat(90),
+            arbEitherIO(fc.string(), fc.nat()),
+            (acqDelay, useDelay, relDelay, interruptDelay, useResult) =>
+              expectExit(
+                ref.alloc(0)
+                .chain((cell) => {
+                  const action = (cell.update((n) => n + 1).delay(acqDelay)).widenError<string>()
+                    .bracket((_) => cell.update((n) => n - 1).delay(relDelay), (_) => useResult.delay(useDelay));
+                  return action.fork()
+                    .chain((child) => child.interrupt.delay(interruptDelay).applySecond(cell.get));
+                }),
+                new Value(0)
+              )
+          )
+        )
+      );
+    });
+  });
 });
 
 // Tests for IO instances
@@ -121,7 +164,7 @@ describe("IO", () => {
     );
   });
   describe("interruptible state", () => {
-    it("should set interrupt status", () => 
+    it("should set interrupt status", () =>
       expectExit(
         io.interruptible(io.getInterruptible),
         new Value(true)

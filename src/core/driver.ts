@@ -58,7 +58,7 @@ export class Driver<E, A> {
   private readonly result: Completable<Exit<E, A>> = new Completable();
   private readonly frameStack: MutableStack<FrameType> = new MutableStack();
   private readonly interruptRegionStack: MutableStack<boolean> = new MutableStack();
-  private cancel: Lazy<void> | undefined;
+  private cancelAsync: Lazy<void> | undefined;
 
   constructor(private readonly init: IO<E, A>, private readonly runtime: Runtime = defaultRuntime) {  }
 
@@ -85,8 +85,8 @@ export class Driver<E, A> {
       return;
     }
     this.interrupted = true;
-    if (this.cancel && this.isInterruptible()) {
-      this.cancel();
+    if (this.cancelAsync && this.isInterruptible()) {
+      this.cancelAsync();
       this.resumeInterrupt();
     }
   }
@@ -139,7 +139,6 @@ export class Driver<E, A> {
         } else if (step._tag === "interruptible-state") {
           this.interruptRegionStack.push(step.state);
           this.frameStack.push(new InterruptFrame(this.interruptRegionStack));
-          this.interruptRegionStack.push(step.state);
           current = step.inner;
         } else if (step._tag === "platform-interface") {
           if (step.platform._tag === "get-runtime") {
@@ -220,14 +219,14 @@ export class Driver<E, A> {
       complete = true;
       this.resume(result);
     });
-    this.cancel = () => {
+    this.cancelAsync = () => {
       complete = true;
       cancelAsync();
     };
   }
 
   private resume(result: Either<unknown, unknown>): void {
-    this.cancel = undefined;
+    this.cancelAsync = undefined;
     this.runtime.dispatch(() => {
       result.fold(
         (cause) => {

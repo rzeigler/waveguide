@@ -29,8 +29,9 @@ export function expectExit<E, A>(ioa: IO<E, A>, expected: Exit<E, A>): Promise<v
 
 export function expectExitIn<E, A, B>(ioa: IO<E, A>, f: Function1<Exit<E, A>, B>, expected: B): Promise<void> {
   return ioa.unsafeRunExitToPromise()
-    .then((result) => expect(f(result)).to.deep.equal(expected))
-    .then(constant(undefined));
+    .then((result) => {
+      expect(f(result)).to.deep.equal(expected);
+    });
 }
 
 export function eqvIO<E, A>(io1: IO<E, A>, io2: IO<E, A>): Promise<boolean> {

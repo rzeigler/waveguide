@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { Do } from "fp-ts-contrib/lib/Do";
 import { Either, right } from "fp-ts/lib/Either";
 import { compose, constant, Function1, Function2, Lazy } from "fp-ts/lib/function";
 import { Monad2 } from "fp-ts/lib/Monad";
-import { Do } from "fp-ts-contrib/lib/Do";
 import { Driver } from "./driver";
 import { Aborted, Cause, Exit, Failed, Interrupted, Value } from "./exit";
 import { fiber, Fiber } from "./fiber";
@@ -231,8 +231,10 @@ export class IO<E, A> {
 
   /**
    * Construct a new IO that will run this to completion and produce the resulting exit status
+   *
+   * Any error type may be set for easier integration into other chains
    */
-  public run(): IO<never, Exit<E, A>> {
+  public run<EE = never>(): IO<EE, Exit<E, A>> {
     // This could probably be a static property hwoever, for now,
     return new IO(new Fold(
       this,
@@ -287,8 +289,38 @@ export class IO<E, A> {
     return delay(this, ms);
   }
 
+  public bracketExit<B>(release: Function2<A, Exit<E, B>, IO<E, unknown>>, use: Function1<A, IO<E, B>>): IO<E, B> {
+    return bracketExit(this, release, use);
+  }
+
+  public bracket<B>(release: Function1<A, IO<E, unknown>>, use: Function1<A, IO<E, B>>): IO<E, B> {
+    return bracket(this, release, use);
+  }
+
   public fork(): IO<never, Fiber<E, A>> {
     return getRuntime.chain((runtime) => io.shift.applySecond(fiber.create(this, runtime)));
+  }
+
+  public shift(): IO<E, A> {
+    return shift.widenError<E>().applySecond(this);
+  }
+
+  public shiftAsync(): IO<E, A> {
+    return shift.widenError<E>().applySecond(this);
+  }
+
+  public onCompleted(finalizer: IO<E, unknown>): IO<E, A> {
+    return uninterruptibleMask((cutout) =>
+      cutout(this).run<E>().chain((exit) => finalizer.applySecond(io.completeWith(exit)))
+    );
+  }
+
+  public onInterrupted(finalizer: IO<E, unknown>): IO<E, A> {
+    return uninterruptibleMask((cutout) =>
+      cutout(this).run<E>().chain((exit) =>
+        exit._tag === "interrupted" ? finalizer.applySecond(io.completeWith(exit)) : io.completeWith(exit)
+      )
+    );
   }
 
   /**
@@ -485,20 +517,20 @@ function interruptibleState<E, A>(inner: IO<E, A>, state: boolean): IO<E, A> {
 
 export type InterruptMaskCutout<E, A> = Function1<IO<E, A>, IO<E, A>>;
 
-function makeInterruptibleRestore<E, A>(state: boolean): InterruptMaskCutout<E, A> {
+function makeInterruptMaskCutout<E, A>(state: boolean): InterruptMaskCutout<E, A> {
   return (inner) => inner.interruptibleState(state);
 }
 
 function uninterruptibleMask<E, A>(f: Function1<InterruptMaskCutout<E, A>, IO<E, A>>): IO<E, A> {
   return getInterruptible
     .widenError<E>()
-    .chain((state) => f(makeInterruptibleRestore<E, A>(state)).uninterruptible());
+    .chain((state) => f(makeInterruptMaskCutout<E, A>(state)).uninterruptible());
 }
 
 function interruptibleMask<E, A>(f: Function1<InterruptMaskCutout<E, A>, IO<E, A>>): IO<E, A> {
   return getInterruptible
     .widenError<E>()
-    .chain((state) => f(makeInterruptibleRestore<E, A>(state)).interruptible());
+    .chain((state) => f(makeInterruptMaskCutout<E, A>(state)).interruptible());
 }
 
 const bracketExitC = <E, A>(acquire: IO<E, A>) =>
@@ -508,8 +540,13 @@ const bracketExitC = <E, A>(acquire: IO<E, A>) =>
 function bracketExit<E, A, B>(acquire: IO<E, A>,
                               release: Function2<A, Exit<E, B>, IO<E, unknown>>,
                               use: Function1<A, IO<E, B>>): IO<E, B> {
-  return uninterruptibleMask<E, B>((cutout) => 
-    io.abort("boom")
+  return uninterruptibleMask<E, B>((cutout) =>
+    Do(monad)
+      .bind("a", acquire)
+      .bindL("e", ({a}) => cutout(use(a)).run().widenError<E>()
+        .chain((e) => release(a, e).as(e)))
+      .bindL("b", ({e}) => io.completeWith(e))
+      .return(({b}) => b)
   );
 }
 
