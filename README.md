@@ -1,7 +1,7 @@
 # waveguide
 
 [![npm version](https://badge.fury.io/js/waveguide.svg)](https://badge.fury.io/js/waveguide)
-[![CircleCI](https://circleci.com/gh/rzeigler/waveguide.svg?style=svg)](https://circleci.com/gh/rzeigler/waveguide)
+[![CircleCI](https://circleci.com/gh/rzeigler/waveguide.svg?style=svg)](https://circleci.com/gh/rzeigler/waveguide) [![Join the chat at https://gitter.im/waveguide-core/community](https://badges.gitter.im/waveguide-core/community.svg)](https://gitter.im/waveguide-core/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 Waveguide is a set of modules provided datatypes for encoding effects on Javascript platforms inspired by projects like [Cats Effect](https://github.com/typelevel/cats-effect) and [ZIO](https://github.com/scalaz/scalaz-zio). 
 This is the core module which provides the effect type IO as well as a number of concurrency primatives.
