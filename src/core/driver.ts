@@ -109,6 +109,9 @@ export class Driver<E, A> {
         if (step._tag === "succeed") {
           current = this.next(step.value);
         } else if (step._tag === "caused") {
+          if (step.cause._tag === "interrupted") {
+            this.interrupted = true;
+          }
           current = this.handle(step.cause);
         } else if (step._tag === "complete") {
           if (step.status._tag === "value") {
@@ -153,7 +156,7 @@ export class Driver<E, A> {
       this.resumeInterrupt();
     }
   }
-  
+
   /**
    * Resume the runloop with an interrupted
    */
@@ -165,7 +168,7 @@ export class Driver<E, A> {
       }
     });
   }
-  
+
   private isInterruptible(): boolean {
     const result =  this.interruptRegionStack.peek();
     if (result === undefined) {
@@ -180,7 +183,7 @@ export class Driver<E, A> {
    */
   private canRecover(cause: Cause<unknown>): boolean {
     // it is always possible to recovery from fiber internal interrupts
-    if (cause._tag === "interrupted" && this.interrupted) {
+    if (cause._tag === "interrupted") {
       return !this.isInterruptible();
     }
     return true;

@@ -28,6 +28,7 @@ export interface Runtime {
    * @param thunk the action to execute
    */
   dispatch(thunk: Lazy<void>): void;
+
   /**
    * Dispatch a thunk after some amount of time has elapsed.
    *

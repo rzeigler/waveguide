@@ -14,12 +14,14 @@
 
 import { Do } from "fp-ts-contrib/lib/Do";
 import { Either, right } from "fp-ts/lib/Either";
-import { compose, constant, Function1, Function2, Lazy } from "fp-ts/lib/function";
+import { compose, constant, Function1, Function2, Lazy, identity } from "fp-ts/lib/function";
 import { Monad2 } from "fp-ts/lib/Monad";
+import { Deferred, deferred } from "../concurrent/deferred";
 import { Driver } from "./driver";
 import { Aborted, Cause, Exit, Failed, Interrupted, Value } from "./exit";
 import { fiber, Fiber } from "./fiber";
 import { defaultRuntime, Runtime } from "./runtime";
+import { ref, Ref } from "../concurrent/ref";
 
 export type Step<E, A> =
   Succeeded<E, A> |
@@ -323,6 +325,17 @@ export class IO<E, A> {
     );
   }
 
+  public into(target: Deferred<E, A>): IO<never, void> {
+    return this
+      .chain((v) => target.complete(v))
+      .chainError((e) => target.fail(e))
+      .unit();
+  }
+
+  public flatten<EE, AA>(this: IO<EE, IO<EE, AA>>): IO<EE, AA> {
+    return this.chain(identity);
+  }
+
   /**
    * Begin executing this for its side effects and value.
    *
@@ -459,6 +472,9 @@ function async<E, A>(op: Function1<Function1<Either<E, A>, void>, Lazy<void>>) {
  */
 const getRuntime: IO<never, Runtime> = new IO(new PlatformInterface(new GetRuntime()));
 
+/**
+ * An IO that will access the current interruptible state of the fiber
+ */
 const getInterruptible: IO<never, boolean> = new IO(new PlatformInterface(new GetInterruptible()));
 
 /**
@@ -503,10 +519,18 @@ const never: IO<never, never> = new IO(new Async((_) => {
   };
 }));
 
+/**
+ * Create an interruptible version of inner
+ * @param inner
+ */
 function interruptible<E, A>(inner: IO<E, A>): IO<E, A> {
   return new IO(new InterruptibleState(inner, true));
 }
 
+/**
+ * Create an uninterruptible version of inner
+ * @param inner
+ */
 function uninterruptible<E, A>(inner: IO<E, A>): IO<E, A> {
   return new IO(new InterruptibleState(inner, false));
 }
@@ -560,6 +584,10 @@ function bracket<E, A, B>(acquire: IO<E, A>,
   return bracketExit(acquire, (a, _) => release(a), use);
 }
 
+/**
+ * Create an IO that when executed will complete after a fixed amount of millisenconds
+ * @param ms the wait duration
+ */
 function after<E = never>(ms: number): IO<E, void> {
   return getRuntime
     .chain((runtime) =>
@@ -567,6 +595,21 @@ function after<E = never>(ms: number): IO<E, void> {
         runtime.dispatchLater(() => callback(undefined), ms)
       )
     );
+}
+
+function raceWith<E1, E2, A, B, C>(l: IO<E1, A>, r: IO<E1, B>,
+                                   leftWin: Function2<Exit<E1, A>, Fiber<E1, B>, IO<E2, C>>,
+                                   rightWin: Function2<Exit<E1, B>, Fiber<E1, A>, IO<E2, C>>): IO<E2, C> {
+
+  const gateCompletion: any = null;
+  const result = Do(monad)
+    .bind("trip", ref.alloc<boolean>(false))
+    .bind("slot", deferred.alloc<E2, C>())
+    .bind("leftSpawn", l.fork())
+    .bind("rightSpawn", r.fork())
+    .doL(({trip, slot, rightSpawn, leftSpawn}) => leftSpawn.exit.chain(gateCompletion(trip, slot, rightSpawn, leftWin)))
+    .done();
+  return io.abort("boom");
 }
 
 /**

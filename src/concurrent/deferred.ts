@@ -12,45 +12,45 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { boundMethod } from "autobind-decorator";
+import { Either, left, right } from "fp-ts/lib/Either";
 import { Option } from "fp-ts/lib/Option";
 import { Completable } from "../core/completable";
 import { IO, io } from "../core/io";
-import { boundMethod } from "autobind-decorator";
 
-export interface Deferred<A> {
-  readonly wait: IO<never, A>;
-  readonly get: IO<never, Option<A>>;
+export interface Deferred<E, A> {
+  readonly wait: IO<E, A>;
+  interrupt: IO<never, void>;
   complete(a: A): IO<never, void>;
-  tryComplete(a: A): IO<never, boolean>;
+  fail(e: E): IO<never, void>;
 }
 
-class DeferredIO<A> implements Deferred<A> {
-  public readonly wait: IO<never, A>;
-  public readonly get: IO<never, Option<A>>;
+class DeferredIO<E, A> implements Deferred<E, A> {
+  public readonly wait: IO<E, A>;
+  public readonly interrupt: IO<never, void>;
 
-  private completable: Completable<A> = new Completable();
+  private completable: Completable<IO<E, A>> = new Completable();
   constructor() {
-    this.wait = io.asyncTotal((callback) =>
+    this.wait = io.asyncTotal<IO<E, A>>((callback) =>
       this.completable.listen(callback)
-    );
-    this.get = io.effect(() => this.completable.value());
+    ).flatten();
+
+    this.interrupt = io.effect(() => {
+      this.completable.complete(io.interrupted);
+    });
   }
 
   @boundMethod
   public complete(a: A): IO<never, void> {
     return io.effect(() => {
-      this.completable.complete(a);
+      this.completable.complete(io.succeed(a));
     });
   }
 
   @boundMethod
-  public tryComplete(a: A): IO<never, boolean> {
+  public fail(e: E): IO<never, void> {
     return io.effect(() => {
-      if (this.completable.isComplete()) {
-        return false;
-      }
-      this.completable.complete(a);
-      return true;
+      this.completable.complete(io.fail(e));
     });
   }
 }
@@ -59,10 +59,10 @@ class DeferredIO<A> implements Deferred<A> {
  * Creates an IO that will allocate a Deferred.
  *
  */
-const allocC = <E = never>() => <A>(): IO<E, Deferred<A>> => io.effect(() => new DeferredIO<A>());
-const alloc = allocC();
+function alloc<E, A>(): IO<never, Deferred<E, A>> {
+  return io.effect(() => new DeferredIO());
+}
 
 export const deferred = {
-  allocC,
   alloc
 };

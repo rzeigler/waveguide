@@ -158,9 +158,15 @@ describe("IO", () => {
     it("should complete with an expected abort", () =>
       expectExit(io.abort("boom").run(), new Value(new Aborted("boom")))
     );
-    // Interrupted is internal v external so we see interrupted inside the value rather than immediately propagating
+    /**
+     * This may be counter-intruitive, but the interrupted io sets the interrupted flag.
+     * Additionally, because of how the driver operates, there is always a at least 1 more action following leaving an
+     * uninterruptible region
+     * Therefore it is never possible to fully complete a fiber that has been interrupted and we don't get a 'value' as 
+     * above
+     */
     it("should complete with an expected interrupt", () =>
-      expectExit(io.interrupted.run(), new Value(new Interrupted()))
+      expectExit(io.uninterruptible(io.interrupted.run()), new Interrupted())
     );
   });
   describe("interruptible state", () => {
@@ -418,4 +424,5 @@ describe("IO", () => {
       )
     );
   });
+  // TODO: Need a test of failures in the case of interrupts
 });

@@ -59,7 +59,7 @@ describe("fiber", () => {
           (delay) =>
             expectExit(
               Do(io.monad)
-                .bind("latch", deferred.alloc<void>())
+                .bind("latch", deferred.alloc<never, void>())
                 .bind("cell", ref.alloc(false))
                 .bindL("child", ({latch, cell}) =>
                   latch.wait.applySecond(cell.set(true)).uninterruptible().fork()
@@ -87,7 +87,7 @@ describe("fiber", () => {
           fc.integer(0, 50),
           (delay) =>
             expectExit(
-              deferred.alloc<void>()
+              deferred.alloc<never, void>()
                 .chain((latch) =>
                   latch.wait.as(42).fork()
                     .chain((child) =>
