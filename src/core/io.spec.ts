@@ -424,5 +424,15 @@ describe("IO", () => {
       )
     );
   });
+  it("many successful ios should be parZipWithAble", () => {
+    let ios = [];
+    for (let i = 0; i < 10000; i++) {
+      ios.push(io.succeed(1).delay(Math.random() * 100));
+    }
+    return eqvIO(
+      array.reduce(ios, io.succeed(42), (l, r) => l.parApplyFirst(r)),
+      io.succeed(42)
+    );
+  });
   // TODO: Need a test of failures in the case of interrupts
 });
