@@ -144,10 +144,7 @@ describe("io", () => {
       );
     });
   });
-});
 
-// Tests for IO instances
-describe("IO", () => {
   describe("#run", () => {
     it("should complete with an expected completion", () =>
       expectExit(io.succeed(42).run(), new Value(new Value(42)))
@@ -434,5 +431,4 @@ describe("IO", () => {
       io.succeed(42)
     );
   });
-  // TODO: Need a test of failures in the case of interrupts
 });
