@@ -111,40 +111,6 @@ describe("io", () => {
       expectExit(io.interrupted, new Interrupted())
     );
   });
-
-  describe("#bracketExit", () => {
-    describe("properties", function() {
-      this.timeout(5000);
-      // Verify that bracketExit has the cleanup semantics that we expect
-      // We produce an acquisition and release that wait for a random time and then increment/decrement a ref
-      // We also have a use that waits some time then succeeds or fails randomly
-      // Finally, we interrupt this thread after some random delay
-      // In all cases the value of the resuling ref should be 0 because of cleanup
-      it("finalizer should execute in all cases", () =>
-        fc.assert(
-          fc.asyncProperty(
-            fc.nat(30),
-            fc.nat(30),
-            fc.nat(30),
-            fc.nat(90),
-            arbEitherIO(fc.string(), fc.nat()),
-            (acqDelay, useDelay, relDelay, interruptDelay, useResult) =>
-              expectExit(
-                ref.alloc(0)
-                .chain((cell) => {
-                  const action = (cell.update((n) => n + 1).delay(acqDelay)).widenError<string>()
-                    .bracket((_) => cell.update((n) => n - 1).delay(relDelay), (_) => useResult.delay(useDelay));
-                  return action.fork()
-                    .chain((child) => child.interrupt.delay(interruptDelay).applySecond(cell.get));
-                }),
-                new Value(0)
-              )
-          )
-        )
-      );
-    });
-  });
-
   describe("#run", () => {
     it("should complete with an expected completion", () =>
       expectExit(io.succeed(42).run(), new Value(new Value(42)))
@@ -429,6 +395,36 @@ describe("io", () => {
     return eqvIO(
       array.reduce(ios, io.succeed(42), (l, r) => l.parApplyFirst(r)),
       io.succeed(42)
+    );
+  });
+  describe("#bracketExit", function() {
+    this.timeout(10000);
+    // Verify that bracketExit has the cleanup semantics that we expect
+    // We produce an acquisition and release that wait for a random time and then increment/decrement a ref
+    // We also have a use that waits some time then succeeds or fails randomly
+    // Finally, we interrupt this thread after some random delay
+    // In all cases the value of the resuling ref should be 0 because of cleanup
+    it("finalizer should execute in all cases", () =>
+      fc.assert(
+        fc.asyncProperty(
+          fc.nat(30),
+          fc.nat(30),
+          fc.nat(30),
+          fc.nat(90),
+          arbEitherIO(fc.string(), fc.nat()),
+          (acqDelay, useDelay, relDelay, interruptDelay, useResult) =>
+            expectExit(
+              ref.alloc(0)
+              .chain((cell) => {
+                const action = (cell.update((n) => n + 1).delay(acqDelay)).widenError<string>()
+                  .bracket((_) => cell.update((n) => n - 1).delay(relDelay), (_) => useResult.delay(useDelay));
+                return action.fork()
+                  .chain((child) => child.interrupt.delay(interruptDelay).applySecond(cell.get));
+              }),
+              new Value(0)
+            )
+        )
+      )
     );
   });
 });
