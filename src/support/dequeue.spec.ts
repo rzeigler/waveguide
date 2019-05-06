@@ -66,4 +66,31 @@ describe.only("Dequeue", () => {
       }
     );
   });
+
+  interface Model {
+    fake: number[];
+  }
+  interface Real {
+    actual: Dequeue<number>;
+  }
+
+  const commandArb: Arbitrary<Command<Model, Real>> = 
+    fc.tuple(fc.constantFrom("push", "pull", "offer", "take"), fc.nat())
+      .map(([command, n]) => {
+        if (command === "push") {
+          return {
+            check(m: Model): boolean {
+              return true;
+            },
+            run(m: Model, r: Real): void {
+              m.fake.push(n);
+              r.actual = r.actual.push(n);
+            },
+            toString() {
+              return `push $n`;
+            }
+          };
+        }
+        throw new Error();
+      })
 });
