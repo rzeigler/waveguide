@@ -201,7 +201,6 @@ export class Driver<E, A> {
   private handle(e: Cause<unknown>): IO<unknown, unknown> | undefined {
     let frame = this.frameStack.pop();
     while (frame) {
-      // TODO: Can we trap exceptions always?
       if (frame._tag === "fold-frame" && this.canRecover(e)) {
         return frame.recover(e);
       }

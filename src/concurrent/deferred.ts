@@ -21,8 +21,9 @@ import { IO, io } from "../core/io";
 export interface Deferred<E, A> {
   readonly wait: IO<E, A>;
   interrupt: IO<never, void>;
-  complete(a: A): IO<never, void>;
+  succeed(a: A): IO<never, void>;
   fail(e: E): IO<never, void>;
+  from(source: IO<E, A>): IO<never, void>;
 }
 
 class DeferredIO<E, A> implements Deferred<E, A> {
@@ -41,7 +42,7 @@ class DeferredIO<E, A> implements Deferred<E, A> {
   }
 
   @boundMethod
-  public complete(a: A): IO<never, void> {
+  public succeed(a: A): IO<never, void> {
     return io.effect(() => {
       this.completable.complete(io.succeed(a));
     });
@@ -52,6 +53,20 @@ class DeferredIO<E, A> implements Deferred<E, A> {
     return io.effect(() => {
       this.completable.complete(io.fail(e));
     });
+  }
+
+  @boundMethod
+  public completeWith(result: IO<E, A>): IO<never, void> {
+    return io.effect(() => {
+      this.completable.complete(result);
+    });
+  }
+
+  @boundMethod
+  public from(source: IO<E, A>): IO<never, void> {
+    return source.run()
+      .chain((exit) => this.completeWith(io.completeWith(exit)))
+      .onInterrupted(this.interrupt);
   }
 }
 

@@ -14,14 +14,14 @@
 
 import { Do } from "fp-ts-contrib/lib/Do";
 import { Either, right } from "fp-ts/lib/Either";
-import { compose, constant, Function1, Function2, Lazy, identity } from "fp-ts/lib/function";
+import { compose, constant, Function1, Function2, identity, Lazy, flip } from "fp-ts/lib/function";
 import { Monad2 } from "fp-ts/lib/Monad";
 import { Deferred, deferred } from "../concurrent/deferred";
+import { ref, Ref } from "../concurrent/ref";
 import { Driver } from "./driver";
 import { Aborted, Cause, Exit, Failed, Interrupted, Value } from "./exit";
 import { fiber, Fiber } from "./fiber";
 import { defaultRuntime, Runtime } from "./runtime";
-import { ref, Ref } from "../concurrent/ref";
 
 export type Step<E, A> =
   Succeeded<E, A> |
@@ -326,14 +326,34 @@ export class IO<E, A> {
   }
 
   public into(target: Deferred<E, A>): IO<never, void> {
-    return this
-      .chain((v) => target.complete(v))
-      .chainError((e) => target.fail(e))
-      .unit();
+    return target.from(this);
   }
 
   public flatten<EE, AA>(this: IO<EE, IO<EE, AA>>): IO<EE, AA> {
     return this.chain(identity);
+  }
+
+  public parZipWith<B, C>(other: IO<E, B>, f: Function2<A, B, C>): IO<E, C> {
+    return raceWith(this, other,
+      (thisExit, otherFiber) => io.completeWith(thisExit).zipWith(otherFiber.join, f),
+      (otherExit, thisFiber) => io.completeWith(otherExit).zipWith(thisFiber.join, (b, a) => f(a, b))
+    );
+  }
+
+  public parAp<B>(other: IO<E, Function1<A, B>>): IO<E, B> {
+    return this.parZipWith(other, (a, f) => f(a));
+  }
+
+  public parAp_<B, C>(this: IO<E, Function1<B, C>>, other: IO<E, B>): IO<E, C> {
+    return this.parZipWith(other, (f, b) => f(b));
+  }
+
+  public parApplySecond<B>(other: IO<E, B>): IO<E, B> {
+    return this.parZipWith(other, (a, b) => b);
+  }
+
+  public parApplyFirst(other: IO<E, unknown>): IO<E, A> {
+    return this.parZipWith(other, (a, b) => a);
   }
 
   /**
@@ -519,6 +539,8 @@ const never: IO<never, never> = new IO(new Async((_) => {
   };
 }));
 
+const unit: IO<never, void> = succeed(undefined);
+
 /**
  * Create an interruptible version of inner
  * @param inner
@@ -597,19 +619,35 @@ function after<E = never>(ms: number): IO<E, void> {
     );
 }
 
-function raceWith<E1, E2, A, B, C>(l: IO<E1, A>, r: IO<E1, B>,
-                                   leftWin: Function2<Exit<E1, A>, Fiber<E1, B>, IO<E2, C>>,
-                                   rightWin: Function2<Exit<E1, B>, Fiber<E1, A>, IO<E2, C>>): IO<E2, C> {
+function raceWith<E1, E2, A, B, C>(first: IO<E1, A>, second: IO<E1, B>,
+                                   onFirstWon: Function2<Exit<E1, A>, Fiber<E1, B>, IO<E2, C>>,
+                                   onSecondWon: Function2<Exit<E1, B>, Fiber<E1, A>, IO<E2, C>>): IO<E2, C> {
+  // tslint:disable-next-line:no-shadowed-variable
+  function latchDeferred<E1, E2, A, B, C>(latch: Ref<boolean>,
+                                          channel: Deferred<E2, C>,
+                                          fold: Function2<Exit<E1, A>, Fiber<E1, B>, IO<E2, C>>,
+                                          other: Fiber<E1, B>): Function1<Exit<E1, A>, IO<never, void>> {
+    return (exit) =>
+      latch.modify((flag) =>
+        flag ? [unit, flag] : [channel.from(fold(exit, other)), true]
+      ).flatten();
 
-  const gateCompletion: any = null;
-  const result = Do(monad)
-    .bind("trip", ref.alloc<boolean>(false))
-    .bind("slot", deferred.alloc<E2, C>())
-    .bind("leftSpawn", l.fork())
-    .bind("rightSpawn", r.fork())
-    .doL(({trip, slot, rightSpawn, leftSpawn}) => leftSpawn.exit.chain(gateCompletion(trip, slot, rightSpawn, leftWin)))
-    .done();
-  return io.abort("boom");
+  }
+  return uninterruptibleMask((cutout) =>
+      Do(monad)
+      .bind("latch", ref.allocC<E2>()(false))
+      .bind("channel", deferred.alloc<E2, C>())
+      .bind("firstFiber", first.fork())
+      .bind("secondFiber", second.fork())
+      .doL(({latch, channel, firstFiber, secondFiber}) =>
+        firstFiber.exit.chain(latchDeferred(latch, channel, onFirstWon, secondFiber)).fork())
+      .doL(({latch, channel, firstFiber, secondFiber}) =>
+        secondFiber.exit.chain(latchDeferred(latch, channel, onSecondWon, firstFiber)).fork())
+      .bindL("result", ({channel, firstFiber, secondFiber}) =>
+        cutout(channel.wait)
+          .onInterrupted(firstFiber.interrupt.applySecond(secondFiber.interrupt)))
+      .return(({result}) => result)
+    );
 }
 
 /**
@@ -658,6 +696,7 @@ export const io = {
   shift,
   shiftAsync,
   never,
+  unit,
   after,
   delay,
   interruptible,

@@ -162,7 +162,7 @@ describe("IO", () => {
      * This may be counter-intruitive, but the interrupted io sets the interrupted flag.
      * Additionally, because of how the driver operates, there is always a at least 1 more action following leaving an
      * uninterruptible region
-     * Therefore it is never possible to fully complete a fiber that has been interrupted and we don't get a 'value' as 
+     * Therefore it is never possible to fully complete a fiber that has been interrupted and we don't get a 'value' as
      * above
      */
     it("should complete with an expected interrupt", () =>

@@ -68,7 +68,7 @@ describe("fiber", () => {
                   // Interrupt the child first, this always happens before latch release
                   child.interrupt.shiftAsync().fork()
                   // Then release the latch
-                  .applySecond(latch.complete(undefined).delay(delay))
+                  .applySecond(latch.succeed(undefined).delay(delay))
                   // Then wait for the child to complete
                   .applySecond(child.exit)
                   // Then ensure child ran to completion
@@ -92,7 +92,7 @@ describe("fiber", () => {
                   latch.wait.as(42).fork()
                     .chain((child) =>
                       child.interrupt.fork()
-                        .applySecond(latch.complete(undefined).delay(delay))
+                        .applySecond(latch.succeed(undefined).delay(delay))
                         .applySecond(child.exit)
                     )
                 ),
