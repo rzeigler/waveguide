@@ -33,7 +33,7 @@ describe("fiber", () => {
       io.never.fork()
         .chain((fiber) =>
           fiber.interrupt.delay(10)
-            .applySecond(fiber.exit)),
+            .applySecond(fiber.wait)),
       new Value(new Interrupted())
     )
   );
@@ -45,7 +45,7 @@ describe("fiber", () => {
           arbEitherIO(fc.string(), fc.integer()),
           (inner) => eqvIO(
             inner.run(),
-            inner.fork().chain((fiber) => fiber.exit)
+            inner.fork().chain((fiber) => fiber.wait)
           )
         ),
         { verbose: true }
@@ -70,7 +70,7 @@ describe("fiber", () => {
                   // Then release the latch
                   .applySecond(latch.succeed(undefined).delay(delay))
                   // Then wait for the child to complete
-                  .applySecond(child.exit)
+                  .applySecond(child.wait)
                   // Then ensure child ran to completion
                   .applySecond(cell.get))
                 .return(({result}) => result),
@@ -93,7 +93,7 @@ describe("fiber", () => {
                     .chain((child) =>
                       child.interrupt.fork()
                         .applySecond(latch.succeed(undefined).delay(delay))
-                        .applySecond(child.exit)
+                        .applySecond(child.wait)
                     )
                 ),
               new Value(new Interrupted())

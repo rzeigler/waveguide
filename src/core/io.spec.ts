@@ -132,6 +132,29 @@ describe("io", () => {
       expectExit(io.uninterruptible(io.interrupted.run()), new Interrupted())
     );
   });
+  describe("raceFirstDone", () => {
+    it("should resolve with the first success", () => 
+      expectExit(io.succeed(42).delay(10).raceFirstDone(io.never), new Value(42))
+    );
+    it("should resolve with the first success (flipped)", () =>
+      expectExit(io.never.widen<number>().raceFirstDone(io.succeed(42).delay(10)), new Value(42))
+    );
+    it("should resolve with the first error", () => 
+      expectExit(io.fail("boom").delay(10).raceFirstDone(io.never), new Failed("boom"))
+    );
+    it("should resolve with the first error (flipped)", () =>
+      expectExit(io.never.widenError<string>().raceFirstDone(io.fail("boom").delay(10)), new Failed("boom"))
+    );
+  });
+  describe("raceFirst", () => {
+    it("should resolve wih a success", () => 
+      expectExit(io.succeed(42).delay(10).raceFirst(io.never)
+                  .zip(io.never.widen<number>().raceFirst(io.succeed(42).delay(14))), new Value([42, 42]))
+    );
+    it("should resolve to a success on a failure", () =>
+      expectExit(io.failC<number>()("boom!").raceFirst(io.succeed(42).delay(10)), new Value(42))
+    );
+  });
   describe("interruptible state", () => {
     it("should set interrupt status", () =>
       expectExit(
@@ -387,10 +410,20 @@ describe("io", () => {
       )
     );
   });
-  it("many successful ios should be parZipWithAble", () => {
-    let ios = [];
+  it("many async ios should be parZipWithAble", () => {
+    const ios: Array<IO<never, number>> = [];
     for (let i = 0; i < 10000; i++) {
       ios.push(io.succeed(1).delay(Math.random() * 100));
+    }
+    return eqvIO(
+      array.reduce(ios, io.succeed(42), (l, r) => l.parApplyFirst(r)),
+      io.succeed(42)
+    );
+  });
+  it("many sync ios should be parZipWithAble", () => {
+    const ios: Array<IO<never, number>> = [];
+    for (let i = 0; i < 10000; i++) {
+      ios.push(io.succeed(1));
     }
     return eqvIO(
       array.reduce(ios, io.succeed(42), (l, r) => l.parApplyFirst(r)),

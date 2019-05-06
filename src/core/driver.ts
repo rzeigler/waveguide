@@ -126,10 +126,10 @@ export class Driver<E, A> {
           current = undefined;
         } else if (step._tag === "chain") {
           this.frameStack.push(new Frame(step.bind));
-          current = step.left;
+          current = step.inner;
         } else if (step._tag === "fold") {
           this.frameStack.push(new FoldFrame(step.success, step.failure));
-          current = step.left;
+          current = step.inner;
         } else if (step._tag === "interruptible-state") {
           this.interruptRegionStack.push(step.state);
           this.frameStack.push(new InterruptFrame(this.interruptRegionStack));

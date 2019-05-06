@@ -13,9 +13,13 @@
 // limitations under the License.
 
 import { Do } from "fp-ts-contrib/lib/Do";
-import { Either, right } from "fp-ts/lib/Either";
-import { compose, constant, Function1, Function2, identity, Lazy, flip } from "fp-ts/lib/function";
+import { Either, left, right } from "fp-ts/lib/Either";
+import { compose, constant, Function1, Function2, identity, Lazy } from "fp-ts/lib/function";
+import { IO as SyncIO } from "fp-ts/lib/IO";
+import { IOEither } from "fp-ts/lib/IOEither";
 import { Monad2 } from "fp-ts/lib/Monad";
+import { Task } from "fp-ts/lib/Task";
+import { TaskEither } from "fp-ts/lib/TaskEither";
 import { Deferred, deferred } from "../concurrent/deferred";
 import { ref, Ref } from "../concurrent/ref";
 import { Driver } from "./driver";
@@ -61,13 +65,13 @@ export class Async<E, A> {
 
 export class Chain<E, Z, A> {
   public readonly _tag: "chain" = "chain";
-  constructor(public readonly left: IO<E, Z>,
+  constructor(public readonly inner: IO<E, Z>,
               public readonly bind: Function1<Z, IO<E, A>>) { }
 }
 
 export class Fold<E1, E2, A1, A2> {
   public readonly _tag: "fold" = "fold";
-  constructor(public readonly left: IO<E1, A1>,
+  constructor(public readonly inner: IO<E1, A1>,
               public readonly failure: Function1<Cause<E1>, IO<E2, A2>>,
               public readonly success: Function1<A1, IO<E2, A2>>) { }
 }
@@ -299,8 +303,8 @@ export class IO<E, A> {
     return bracket(this, release, use);
   }
 
-  public fork(): IO<never, Fiber<E, A>> {
-    return getRuntime.chain((runtime) => io.shift.applySecond(fiber.create(this, runtime)));
+  public fork(name?: string): IO<never, Fiber<E, A>> {
+    return getRuntime.chain((runtime) => io.shift.applySecond(fiber.create(this, runtime, name)));
   }
 
   public shift(): IO<E, A> {
@@ -329,10 +333,19 @@ export class IO<E, A> {
     return target.from(this);
   }
 
+  /**
+   * Flatten an IO. This is equivalent to io.chain(identity) when applicable
+   * @param this
+   */
   public flatten<EE, AA>(this: IO<EE, IO<EE, AA>>): IO<EE, AA> {
     return this.chain(identity);
   }
 
+  /**
+   * Zip the results of 2 IOs that are evaluated in parallel
+   * @param other
+   * @param f
+   */
   public parZipWith<B, C>(other: IO<E, B>, f: Function2<A, B, C>): IO<E, C> {
     return raceWith(this, other,
       (thisExit, otherFiber) => io.completeWith(thisExit).zipWith(otherFiber.join, f),
@@ -340,20 +353,68 @@ export class IO<E, A> {
     );
   }
 
-  public parAp<B>(other: IO<E, Function1<A, B>>): IO<E, B> {
-    return this.parZipWith(other, (a, f) => f(a));
+  /**
+   * Evaluate the function produced by fio against the value produced by this
+   *
+   * Execution occurs in parallel.
+   * @param other
+   */
+  public parAp<B>(fio: IO<E, Function1<A, B>>): IO<E, B> {
+    return this.parZipWith(fio, (a, f) => f(a));
   }
 
+  /**
+   * Apply the function produced by this to the value produced by other.
+   *
+   * Execution occurs in parallel
+   * @param this
+   * @param other
+   */
   public parAp_<B, C>(this: IO<E, Function1<B, C>>, other: IO<E, B>): IO<E, C> {
     return this.parZipWith(other, (f, b) => f(b));
   }
 
+  /**
+   * Evaluate both this and other in parallel taking the value produced by other
+   */
   public parApplySecond<B>(other: IO<E, B>): IO<E, B> {
     return this.parZipWith(other, (a, b) => b);
   }
 
+  /**
+   * Evaluate both this and other in parallel, taking the value produced by this
+   * @param other
+   */
   public parApplyFirst(other: IO<E, unknown>): IO<E, A> {
     return this.parZipWith(other, (a, b) => a);
+  }
+
+  /**
+   * Evaluate the race of this with other.
+   *
+   * Takes the first result, whether a success or a failure
+   * @param other
+   */
+  public raceFirstDone(other: IO<E, A>): IO<E, A> {
+    function interruptLoser(exit: Exit<E, A>, loser: Fiber<E, A>): IO<E, A> {
+      // Interrupt the loser first, because if exit is a failure, we don't want to bail out on the interrupt
+      return loser.interrupt.widenError<E>().applySecond(io.completeWith(exit));
+    }
+    return raceWith(this, other, interruptLoser, interruptLoser);
+  }
+
+  /**
+   * Evaluate the race of this with other.
+   *
+   * Takes the first successful result. If both fail, will fail with one of the resulting errors
+   */
+  public raceFirst(other: IO<E, A>): IO<E, A> {
+    function consumeLoser(exit: Exit<E, A>, loser: Fiber<E, A>): IO<E, A> {
+      return exit._tag === "value" ?
+        succeed(exit.value).applyFirst(loser.interrupt) :
+        loser.join;
+    }
+    return raceWith(this, other, consumeLoser, consumeLoser);
   }
 
   /**
@@ -596,6 +657,10 @@ function bracketExit<E, A, B>(acquire: IO<E, A>,
   );
 }
 
+/**
+ * A type curried version of bracket for better inference.
+ * @param acquire
+ */
 const bracketC = <E, A>(acquire: IO<E, A>) =>
   <B>(release: Function1<A, IO<E, unknown>>, use: Function1<A, IO<E, B>>): IO<E, B> =>
     bracket(acquire, release, use);
@@ -623,10 +688,10 @@ function raceWith<E1, E2, A, B, C>(first: IO<E1, A>, second: IO<E1, B>,
                                    onFirstWon: Function2<Exit<E1, A>, Fiber<E1, B>, IO<E2, C>>,
                                    onSecondWon: Function2<Exit<E1, B>, Fiber<E1, A>, IO<E2, C>>): IO<E2, C> {
   // tslint:disable-next-line:no-shadowed-variable
-  function latchDeferred<E1, E2, A, B, C>(latch: Ref<boolean>,
-                                          channel: Deferred<E2, C>,
-                                          fold: Function2<Exit<E1, A>, Fiber<E1, B>, IO<E2, C>>,
-                                          other: Fiber<E1, B>): Function1<Exit<E1, A>, IO<never, void>> {
+  function completeLatched<E1, E2, A, B, C>(latch: Ref<boolean>,
+                                            channel: Deferred<E2, C>,
+                                            fold: Function2<Exit<E1, A>, Fiber<E1, B>, IO<E2, C>>,
+                                            other: Fiber<E1, B>): Function1<Exit<E1, A>, IO<never, void>> {
     return (exit) =>
       latch.modify((flag) =>
         flag ? [unit, flag] : [channel.from(fold(exit, other)), true]
@@ -640,9 +705,9 @@ function raceWith<E1, E2, A, B, C>(first: IO<E1, A>, second: IO<E1, B>,
       .bind("firstFiber", first.fork())
       .bind("secondFiber", second.fork())
       .doL(({latch, channel, firstFiber, secondFiber}) =>
-        firstFiber.exit.chain(latchDeferred(latch, channel, onFirstWon, secondFiber)).fork())
+        firstFiber.wait.chain(completeLatched(latch, channel, onFirstWon, secondFiber)).fork("first"))
       .doL(({latch, channel, firstFiber, secondFiber}) =>
-        secondFiber.exit.chain(latchDeferred(latch, channel, onSecondWon, firstFiber)).fork())
+        secondFiber.wait.chain(completeLatched(latch, channel, onSecondWon, firstFiber)).fork("second"))
       .bindL("result", ({channel, firstFiber, secondFiber}) =>
         cutout(channel.wait)
           .onInterrupted(firstFiber.interrupt.applySecond(secondFiber.interrupt)))
@@ -657,6 +722,57 @@ function raceWith<E1, E2, A, B, C>(first: IO<E1, A>, second: IO<E1, B>,
  */
 function delay<E, A>(inner: IO<E, A>, ms: number): IO<E, A> {
   return after<E>(ms).applySecond(inner);
+}
+
+/**
+ * Create an IO from an already running promise
+ *
+ * The resulting IO is uninterruptible (due to the lack of cancellation semantics for es6 promises).
+ * Note that this fits poorly with the execution model of IO which is lazy by nature.
+ * Prefer fromPromiseL unless absolutely necessary.
+ * @param promise
+ */
+function fromPromise<A>(promise: Promise<A>): IO<unknown, A> {
+  return io.async<unknown, A>((callback) => {
+    promise.then((v) => callback(right(v)), (e) => callback(left(e)));
+    // tslint:disable-next-line
+    return () => {};
+  }).uninterruptible();
+}
+
+function fromPromiseL<A>(thunk: Lazy<Promise<A>>): IO<unknown, A> {
+  return io.async<unknown, A>((callback) => {
+    thunk().then((v) => callback(right(v)), (e) => callback(left(e)));
+    // tslint:disable-next-line
+    return () => {};
+  }).uninterruptible();
+}
+
+function fromTask<A>(task: Task<A>): IO<never, A> {
+  return io.asyncTotal<A>((callback) => {
+    task.run().then((v) => callback(v));
+    // tslint:disable-next-line
+    return  () => {};
+  }).uninterruptible();
+}
+
+function fromTaskEither<E, A>(task: TaskEither<E, A>): IO<E, A> {
+  return io.async<E, A>((callback) => {
+    task.run().then(callback);
+    // tslint:disable-next-line
+    return () => {};
+  }).uninterruptible();
+}
+
+function fromSyncIO<A>(fpio: SyncIO<A>): IO<never, A> {
+  return io.effect(() => fpio.run());
+}
+
+function fromSyncIOEither<E, A>(ioe: IOEither<E, A>): IO<E, A> {
+  return io.suspend(() => ioe.run().fold(
+    failC<A>(),
+    succeedC<E>()
+  ));
 }
 
 declare module "fp-ts/lib/HKT" {
@@ -708,5 +824,11 @@ export const io = {
   bracketC,
   bracket,
   getInterruptible,
+  fromPromise,
+  fromPromiseL,
+  fromTask,
+  fromTaskEither,
+  fromSyncIO,
+  fromSyncIOEither,
   monad
 };

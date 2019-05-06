@@ -12,44 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Function1 } from "fp-ts/lib/function";
-
 export type Exit<E, A> = Value<A> | Cause<E>;
 
 export class Value<A> {
   public readonly _tag: "value" = "value";
   constructor(public readonly value: A) { }
-  public fold<B>(failed: Function1<Cause<unknown>, B>,
-                 succeeded: Function1<A, B>): B {
-    return succeeded(this.value);
-  }
 }
 
 export type Cause<E> = Failed<E> | Aborted | Interrupted;
 export class Failed<E> {
   public readonly _tag: "failed" = "failed";
   constructor(public readonly error: E) { }
-  public fold<B>(failed: Function1<Cause<E>, B>,
-                 succeeded: Function1<unknown, B>): B {
-    return failed(this);
-  }
 }
 
 export class Aborted {
   public readonly _tag: "aborted" = "aborted";
   constructor(public readonly error: unknown) { }
-  public fold<B>(failed: Function1<Cause<unknown>, B>,
-                 succeeded: Function1<unknown, B>): B {
-    return failed(this);
-  }
 }
 
 export class Interrupted {
   public readonly _tag: "interrupted" = "interrupted";
-  public fold<B>(failed: Function1<Cause<unknown>, B>,
-                 succeeded: Function1<unknown, B>): B {
-    return failed(this);
-  }
 }
 
 // TODO: Monad and Bifunctor interface for Exit<E,A>
