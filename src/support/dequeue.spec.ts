@@ -139,7 +139,7 @@ describe("Dequeue", () => {
       const expected = m.fake.pop();
       r.actual.take()
         .foldL(
-          () => { 
+          () => {
             if (expected) {
               throw new Error("expected there to be something");
             }

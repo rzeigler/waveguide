@@ -76,4 +76,4 @@ export const fiber = {
   create,
   wrap,
   join
-};
+} as const;

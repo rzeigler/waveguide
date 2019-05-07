@@ -317,6 +317,7 @@ export class IO<E, A> {
 
   public onCompleted(finalizer: IO<E, unknown>): IO<E, A> {
     return uninterruptibleMask((cutout) =>
+      // TODO: Recover in the face of buggy finalizer...
       cutout(this).run<E>().chain((exit) => finalizer.applySecond(io.completeWith(exit)))
     );
   }
@@ -395,7 +396,7 @@ export class IO<E, A> {
    * Takes the first result, whether a success or a failure
    * @param other
    */
-  public raceFirstDone(other: IO<E, A>): IO<E, A> {
+  public race(other: IO<E, A>): IO<E, A> {
     function interruptLoser(exit: Exit<E, A>, loser: Fiber<E, A>): IO<E, A> {
       // Interrupt the loser first, because if exit is a failure, we don't want to bail out on the interrupt
       return loser.interrupt.widenError<E>().applySecond(io.completeWith(exit));
@@ -408,7 +409,7 @@ export class IO<E, A> {
    *
    * Takes the first successful result. If both fail, will fail with one of the resulting errors
    */
-  public raceFirst(other: IO<E, A>): IO<E, A> {
+  public raceSuccess(other: IO<E, A>): IO<E, A> {
     function consumeLoser(exit: Exit<E, A>, loser: Fiber<E, A>): IO<E, A> {
       return exit._tag === "value" ?
         succeed(exit.value).applyFirst(loser.interrupt) :
@@ -651,6 +652,7 @@ function bracketExit<E, A, B>(acquire: IO<E, A>,
     Do(monad)
       .bind("a", acquire)
       .bindL("e", ({a}) => cutout(use(a)).run().widenError<E>()
+        // TODO: Recover in the face of buggy finalizer
         .chain((e) => release(a, e).as(e)))
       .bindL("b", ({e}) => io.completeWith(e))
       .return(({b}) => b)
@@ -831,4 +833,4 @@ export const io = {
   fromSyncIO,
   fromSyncIOEither,
   monad
-};
+} as const;

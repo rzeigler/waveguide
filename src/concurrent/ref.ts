@@ -65,4 +65,4 @@ const alloc = allocC();
 export const ref = {
   allocC,
   alloc
-};
+} as const;

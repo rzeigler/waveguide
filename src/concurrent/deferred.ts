@@ -80,4 +80,4 @@ function alloc<E, A>(): IO<never, Deferred<E, A>> {
 
 export const deferred = {
   alloc
-};
+} as const;

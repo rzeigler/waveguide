@@ -133,26 +133,26 @@ describe("io", () => {
     );
   });
   describe("raceFirstDone", () => {
-    it("should resolve with the first success", () => 
-      expectExit(io.succeed(42).delay(10).raceFirstDone(io.never), new Value(42))
+    it("should resolve with the first success", () =>
+      expectExit(io.succeed(42).delay(10).race(io.never), new Value(42))
     );
     it("should resolve with the first success (flipped)", () =>
-      expectExit(io.never.widen<number>().raceFirstDone(io.succeed(42).delay(10)), new Value(42))
+      expectExit(io.never.widen<number>().race(io.succeed(42).delay(10)), new Value(42))
     );
-    it("should resolve with the first error", () => 
-      expectExit(io.fail("boom").delay(10).raceFirstDone(io.never), new Failed("boom"))
+    it("should resolve with the first error", () =>
+      expectExit(io.fail("boom").delay(10).race(io.never), new Failed("boom"))
     );
     it("should resolve with the first error (flipped)", () =>
-      expectExit(io.never.widenError<string>().raceFirstDone(io.fail("boom").delay(10)), new Failed("boom"))
+      expectExit(io.never.widenError<string>().race(io.fail("boom").delay(10)), new Failed("boom"))
     );
   });
   describe("raceFirst", () => {
-    it("should resolve wih a success", () => 
-      expectExit(io.succeed(42).delay(10).raceFirst(io.never)
-                  .zip(io.never.widen<number>().raceFirst(io.succeed(42).delay(14))), new Value([42, 42]))
+    it("should resolve wih a success", () =>
+      expectExit(io.succeed(42).delay(10).raceSuccess(io.never)
+                  .zip(io.never.widen<number>().raceSuccess(io.succeed(42).delay(14))), new Value([42, 42]))
     );
     it("should resolve to a success on a failure", () =>
-      expectExit(io.failC<number>()("boom!").raceFirst(io.succeed(42).delay(10)), new Value(42))
+      expectExit(io.failC<number>()("boom!").raceSuccess(io.succeed(42).delay(10)), new Value(42))
     );
   });
   describe("interruptible state", () => {
