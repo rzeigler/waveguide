@@ -14,11 +14,10 @@
 
 import { expect } from "chai";
 import fc, {Arbitrary, Command} from "fast-check";
-import { Do } from "fp-ts-contrib/lib/Do";
 import { none, some, Some } from "fp-ts/lib/Option";
 import { dequeue, Dequeue } from "./dequeue";
 
-describe.only("Dequeue", () => {
+describe("Dequeue", () => {
   it("take on empty is none", () => {
     expect(dequeue.empty().take()).to.deep.equal(none);
   });
@@ -74,23 +73,95 @@ describe.only("Dequeue", () => {
     actual: Dequeue<number>;
   }
 
-  const commandArb: Arbitrary<Command<Model, Real>> = 
-    fc.tuple(fc.constantFrom("push", "pull", "offer", "take"), fc.nat())
-      .map(([command, n]) => {
-        if (command === "push") {
-          return {
-            check(m: Model): boolean {
-              return true;
-            },
-            run(m: Model, r: Real): void {
-              m.fake.push(n);
-              r.actual = r.actual.push(n);
-            },
-            toString() {
-              return `push $n`;
-            }
-          };
+  // push addss to the right, offer adds to the left
+  // pull takes from the left, take takes from the right
+  const pushCommandArb: Arbitrary<Command<Model, Real>> = fc.nat()
+    .map((n) => {
+      return {
+        check(m: Model): boolean {
+          return true;
+        },
+        run(m: Model, r: Real): void {
+          m.fake.push(n);
+          r.actual = r.actual.push(n);
+        },
+        toString() {
+          return `push $n`;
         }
-        throw new Error();
+      };
+    });
+
+  const pullCommandArb: Arbitrary<Command<Model, Real>> = fc.constant({
+    check(m: Model): boolean {
+      return true;
+    },
+    run(m: Model, r: Real): void {
+      const expected = m.fake.shift();
+      r.actual.pull()
+        .foldL(
+          () => {
+            if (expected) {
+              throw new Error("expected there to be something");
+            }
+          },
+          ([n, q]) => {
+            expect(n).to.equal(expected);
+            r.actual = q;
+          }
+        );
+    },
+    toString() {
+      return "pull";
+    }
+  });
+
+  const offerCommandArb: Arbitrary<Command<Model, Real>> = fc.nat()
+    .map((n) => {
+      return {
+        check(m: Model): boolean {
+          return true;
+        },
+        run(m: Model, r: Real): void {
+          m.fake.unshift(n);
+          r.actual = r.actual.offer(n);
+        },
+        toString() {
+          return `offer $n`;
+        }
+      };
+    });
+
+  const takeCommandArb: Arbitrary<Command<Model, Real>> = fc.constant({
+    check(m: Model): boolean {
+      return true;
+    },
+    run(m: Model, r: Real): void {
+      const expected = m.fake.pop();
+      r.actual.take()
+        .foldL(
+          () => { 
+            if (expected) {
+              throw new Error("expected there to be something");
+            }
+          },
+          ([n, q]) => {
+            expect(n).to.equal(expected);
+            r.actual = q;
+          }
+        );
+    },
+    toString() {
+      return "take";
+    }
+  });
+
+  const commandsArb = fc.commands([pushCommandArb, pullCommandArb, offerCommandArb, takeCommandArb]);
+
+  it("should never lose elements", () => {
+    fc.assert(
+      fc.property(commandsArb, (commands) => {
+        fc.modelRun(() => ({model: {fake: []}, real: {actual: dequeue.empty()}}), commands);
       })
+    );
+  });
 });
