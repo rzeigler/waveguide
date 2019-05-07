@@ -71,7 +71,7 @@ export class Cons<A> {
 
   public last(): Option<A> {
     let head: A = this.a;
-    let tail: List<A> = this.rest; 
+    let tail: List<A> = this.rest;
     while (tail._tag !== "nil") {
       head = tail.a;
       tail = tail.rest;

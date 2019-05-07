@@ -71,7 +71,7 @@ describe("Ref", function() {
         fc.asyncProperty(
           fc.nat(),
           fc.nat(),
-          (before, after) => 
+          (before, after) =>
             eqvIO(
               ref.alloc(before)
                 .chain((cell) => cell.set(after)),
