@@ -20,7 +20,7 @@ export interface Ref<A> {
   readonly get: IO<never, A>;
   set(a: A): IO<never, A>;
   update(f: Function1<A, A>): IO<never, A>;
-  modify<B>(f: Function1<A, [B, A]>): IO<never, B>;
+  modify<B>(f: Function1<A, readonly [B, A]>): IO<never, B>;
 }
 
 class RefIO<A> implements Ref<A> {
@@ -46,7 +46,7 @@ class RefIO<A> implements Ref<A> {
   }
 
   @boundMethod
-  public modify<B>(f: Function1<A, [B, A]>): IO<never, B> {
+  public modify<B>(f: Function1<A, readonly [B, A]>): IO<never, B> {
     return io.effect(() => {
       const [b, a] = f(this.value);
       this.value = a;

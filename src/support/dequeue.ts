@@ -14,6 +14,7 @@ import { List, list } from "./list";
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { Predicate } from "fp-ts/lib/function";
 import { none, Option, some } from "fp-ts/lib/Option";
 
 export class Dequeue<A> {
@@ -71,6 +72,14 @@ export class Dequeue<A> {
 
   public size(): number {
     return this.front.size() + this.back.size();
+  }
+
+  public find(f: Predicate<A>): Option<A> {
+    return this.front.find(f).orElse(() => this.back.find(f));
+  }
+
+  public filter(f: Predicate<A>): Dequeue<A> {
+    return new Dequeue(this.front.filter(f), this.back.filter(f));
   }
 }
 

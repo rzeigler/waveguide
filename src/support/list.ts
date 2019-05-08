@@ -83,6 +83,17 @@ export class Cons<A> {
     return this.foldl<List<A>>(nil, (tail, head) => f(head) ? tail.prepend(head) : tail);
   }
 
+  public find(f: Predicate<A>): Option<A> {
+    let current: List<A> = this;
+    while (current._tag === "cons") {
+      if (f(current.a)) {
+        return some(current.a);
+      }
+      current = current.rest;
+    }
+    return none;
+  }
+
   public isEmpty(): this is Nil<A> {
     return false;
   }
@@ -147,6 +158,10 @@ export class Nil<A> {
 
   public isEmpty(): this is Nil<A> {
     return true;
+  }
+
+  public find(f: Predicate<A>): Option<A> {
+    return none;
   }
 
   public size(): number {

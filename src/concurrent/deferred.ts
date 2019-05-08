@@ -78,6 +78,9 @@ function alloc<E, A>(): IO<never, Deferred<E, A>> {
   return io.effect(() => new DeferredIO());
 }
 
+const allocC = <E = never>() => <A = void>() => alloc<E, A>();
+
 export const deferred = {
+  allocC,
   alloc
 } as const;
