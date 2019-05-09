@@ -19,7 +19,7 @@ import { compose, Function1, identity } from "fp-ts/lib/function";
 import { Aborted, Failed, Interrupted, Value } from "../src/exit";
 import { abort, async, asyncTotal, completeWith, effect, fail, failC, getInterruptible, interrupted, interruptible,
    IO, io, never, succeed, succeedC, suspend, uninterruptible } from "../src/io";
-import { alloc as allocRef, makeRef } from "../src/ref";
+import { makeRef } from "../src/ref";
 import {
   arbConstIO,
   arbEitherIO,

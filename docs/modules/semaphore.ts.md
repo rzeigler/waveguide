@@ -1,6 +1,6 @@
 ---
-title: concurrent/semaphore.ts
-nav_order: 8
+title: semaphore.ts
+nav_order: 12
 parent: Modules
 ---
 
@@ -9,7 +9,7 @@ parent: Modules
 <h2 class="text-delta">Table of contents</h2>
 
 - [Semaphore (interface)](#semaphore-interface)
-- [semaphore (constant)](#semaphore-constant)
+- [makeSemaphore (function)](#makesemaphore-function)
 
 ---
 
@@ -30,10 +30,12 @@ export interface Semaphore {
 }
 ```
 
-# semaphore (constant)
+# makeSemaphore (function)
+
+Allocate a semaphore.
 
 **Signature**
 
 ```ts
-export const semaphore = ...
+export function makeSemaphore(n: number): IO<never, Semaphore> { ... }
 ```

@@ -1,6 +1,6 @@
 ---
-title: concurrent/mutex.ts
-nav_order: 3
+title: mutex.ts
+nav_order: 7
 parent: Modules
 ---
 
@@ -9,7 +9,7 @@ parent: Modules
 <h2 class="text-delta">Table of contents</h2>
 
 - [Mutex (interface)](#mutex-interface)
-- [mutex (constant)](#mutex-constant)
+- [makeMutex (constant)](#makemutex-constant)
 
 ---
 
@@ -26,10 +26,10 @@ export interface Mutex {
 }
 ```
 
-# mutex (constant)
+# makeMutex (constant)
 
 **Signature**
 
 ```ts
-export const mutex = ...
+export const makeMutex: IO<never, Mutex> = ...
 ```

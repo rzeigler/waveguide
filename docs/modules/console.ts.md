@@ -1,6 +1,6 @@
 ---
-title: concurrent/semaphore.spec.ts
-nav_order: 7
+title: console.ts
+nav_order: 1
 parent: Modules
 ---
 

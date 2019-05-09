@@ -1,6 +1,6 @@
 ---
-title: concurrent/ref.ts
-nav_order: 6
+title: ref.ts
+nav_order: 9
 parent: Modules
 ---
 
@@ -9,7 +9,8 @@ parent: Modules
 <h2 class="text-delta">Table of contents</h2>
 
 - [Ref (interface)](#ref-interface)
-- [ref (constant)](#ref-constant)
+- [makeRef (constant)](#makeref-constant)
+- [makeRefC (function)](#makerefc-function)
 
 ---
 
@@ -26,10 +27,20 @@ export interface Ref<A> {
 }
 ```
 
-# ref (constant)
+# makeRef (constant)
 
 **Signature**
 
 ```ts
-export const ref = ...
+export const makeRef = ...
+```
+
+# makeRefC (function)
+
+Creates an IO that will allocate a Ref.
+
+**Signature**
+
+```ts
+export const makeRefC = <E = never>() => <A>(a: A): IO<E, Ref<A>> => effect(() => ...
 ```

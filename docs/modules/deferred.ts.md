@@ -1,5 +1,5 @@
 ---
-title: concurrent/deferred.ts
+title: deferred.ts
 nav_order: 2
 parent: Modules
 ---
@@ -9,7 +9,8 @@ parent: Modules
 <h2 class="text-delta">Table of contents</h2>
 
 - [Deferred (interface)](#deferred-interface)
-- [deferred (constant)](#deferred-constant)
+- [makeDeferred (function)](#makedeferred-function)
+- [makeDeferredC (function)](#makedeferredc-function)
 
 ---
 
@@ -27,10 +28,20 @@ export interface Deferred<E, A> {
 }
 ```
 
-# deferred (constant)
+# makeDeferred (function)
+
+Creates an IO that will allocate a Deferred.
 
 **Signature**
 
 ```ts
-export const deferred = ...
+export function makeDeferred<E, A>(): IO<never, Deferred<E, A>> { ... }
+```
+
+# makeDeferredC (function)
+
+**Signature**
+
+```ts
+export const makeDeferredC = <E = never>() => <A>() => ...
 ```

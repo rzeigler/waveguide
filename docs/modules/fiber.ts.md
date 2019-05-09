@@ -1,6 +1,6 @@
 ---
-title: core/fiber.ts
-nav_order: 16
+title: fiber.ts
+nav_order: 5
 parent: Modules
 ---
 
@@ -11,7 +11,9 @@ parent: Modules
 - [Fiber (interface)](#fiber-interface)
 - [FiberContext (class)](#fibercontext-class)
   - [start (method)](#start-method)
-- [fiber (constant)](#fiber-constant)
+- [joinFiber (function)](#joinfiber-function)
+- [makeFiber (function)](#makefiber-function)
+- [wrapFiber (function)](#wrapfiber-function)
 
 ---
 
@@ -49,10 +51,26 @@ export class FiberContext<E, A> {
 public start() { ... }
 ```
 
-# fiber (constant)
+# joinFiber (function)
 
 **Signature**
 
 ```ts
-export const fiber = ...
+export function joinFiber<E, A>(fib: Fiber<E, A>): IO<E, A> { ... }
+```
+
+# makeFiber (function)
+
+**Signature**
+
+```ts
+export function makeFiber<E, A>(init: IO<E, A>, runtime: Runtime, name?: string): IO<never, Fiber<E, A>> { ... }
+```
+
+# wrapFiber (function)
+
+**Signature**
+
+```ts
+export function wrapFiber<E, A>(driver: Driver<E, A>): Fiber<E, A> { ... }
 ```

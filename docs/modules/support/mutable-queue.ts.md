@@ -1,6 +1,6 @@
 ---
-title: core/mutable-queue.ts
-nav_order: 20
+title: support/mutable-queue.ts
+nav_order: 16
 parent: Modules
 ---
 

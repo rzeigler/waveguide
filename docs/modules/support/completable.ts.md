@@ -1,6 +1,6 @@
 ---
-title: core/completable.ts
-nav_order: 11
+title: support/completable.ts
+nav_order: 13
 parent: Modules
 ---
 

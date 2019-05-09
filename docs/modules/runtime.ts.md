@@ -1,6 +1,6 @@
 ---
-title: core/runtime.ts
-nav_order: 24
+title: runtime.ts
+nav_order: 11
 parent: Modules
 ---
 

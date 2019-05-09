@@ -1,6 +1,6 @@
 ---
-title: core/exit.ts
-nav_order: 14
+title: exit.ts
+nav_order: 4
 parent: Modules
 ---
 

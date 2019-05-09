@@ -14,8 +14,8 @@
 
 import { Either, left, right } from "fp-ts/lib/Either";
 import { constant, identity, not } from "fp-ts/lib/function";
-import { Deferred, makeDeferredC, makeDeferred } from "./deferred";
-import { abort, bracketC, bracketExitC, IO, io, unit } from "./io";
+import { Deferred, makeDeferred } from "./deferred";
+import { abort, bracketC, bracketExitC, IO, unit } from "./io";
 import { makeRef as allocRef, Ref } from "./ref";
 import { Dequeue, dequeue } from "./support/dequeue";
 import { Ticket, ticketExit, ticketUse } from "./ticket";

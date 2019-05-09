@@ -1,6 +1,6 @@
 ---
-title: core/mutable-stack.spec.ts
-nav_order: 21
+title: queue.ts
+nav_order: 8
 parent: Modules
 ---
 

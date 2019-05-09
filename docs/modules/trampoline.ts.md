@@ -1,6 +1,6 @@
 ---
-title: core/trampoline.ts
-nav_order: 27
+title: trampoline.ts
+nav_order: 19
 parent: Modules
 ---
 

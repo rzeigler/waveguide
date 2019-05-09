@@ -1,6 +1,6 @@
 ---
-title: core/mutable-stack.ts
-nav_order: 22
+title: support/mutable-stack.ts
+nav_order: 17
 parent: Modules
 ---
 
