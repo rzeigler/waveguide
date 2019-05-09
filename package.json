@@ -8,11 +8,9 @@
   "scripts": {
     "clean": "rimraf lib/",
     "build": "tsc",
-    "build-watch": "nodemon -w src/ -e ts -x tsc",
-    "test": "ts-mocha -p tsconfig.json test/**/*.ts",
-    "test-watch": "ts-mocha -p tsconfig.json --watch --reporter min test/**/*.ts",
+    "test": "tsc -p tsconfig.test.json && mocha --recursive build/**/*.js",
     "lint": "tslint --project .",
-    "docs": "typedoc --ignoreCompilerErrors --theme markdown",
+    "docs": "docs-ts",
     "prepublishOnly": "npm run clean && npm run lint && npm run build && npm run test"
   },
   "keywords": [
@@ -48,7 +46,6 @@
     "np": "^4.0.2",
     "rimraf": "^2.6.3",
     "source-map-support": "^0.5.10",
-    "ts-mocha": "^6.0.0",
     "ts-node": "^8.1.0",
     "tslint": "^5.12.1",
     "typescript": "^3.4.4"
