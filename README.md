@@ -13,16 +13,10 @@ IO is:
 - Resource safe. Exposes a number of primitives for working with resources
 - Concurrent. Exposes a logical fiber threading model with support for joins and interrupts.
 
-
-For more information see the [docs](./docs/README.md)
-Also, there are a [number](./src/examples) [of](./examples/node) [examples](./examples/browser)
-
 ## Getting Started
 ```
 import * as w, { IO } from "waveguide/lib/io"
 ```
-
-Consider simple examples for [node](./examples/node/src/index.ts) and the [browser](./examples/browser/src/index.tx)
 waveguide's API is still very much in flux. 
 If you have questions don't hesitate to ask them in the gitter.
 

@@ -1,6 +1,0 @@
-src/
-lib/spec/
-lib/examples/
-dist/
-tsconfig.json
-tslint.json
