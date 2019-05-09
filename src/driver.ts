@@ -16,11 +16,11 @@ import { boundMethod } from "autobind-decorator";
 import { Either } from "fp-ts/lib/Either";
 import { Function1, Lazy } from "fp-ts/lib/function";
 import { Option } from "fp-ts/lib/Option";
-import { Completable } from "./completable";
 import { Cause, Exit, Failed, Interrupted, Value } from "./exit";
-import { IO, io } from "./io";
-import { MutableStack } from "./mutable-stack";
+import { abort, IO, succeed } from "./io";
 import { defaultRuntime, Runtime } from "./runtime";
+import { Completable } from "./support/completable";
+import { MutableStack } from "./support/mutable-stack";
 
 export type FrameType = Frame | FoldFrame | InterruptFrame;
 
@@ -40,7 +40,7 @@ class InterruptFrame {
   constructor(private readonly interruptStatus: MutableStack<boolean>) { }
   public apply(u: unknown): IO<unknown, unknown> {
     this.exitRegion();
-    return io.succeed(u);
+    return succeed(u);
   }
   public exitRegion(): void {
     this.interruptStatus.pop();
@@ -136,9 +136,9 @@ export class Driver<E, A> {
           current = step.inner;
         } else if (step._tag === "platform-interface") {
           if (step.platform._tag === "get-runtime") {
-            current = io.succeed(this.runtime);
+            current = succeed(this.runtime);
           } else if (step.platform._tag === "get-interruptible") {
-            current = io.succeed(this.isInterruptible());
+            current = succeed(this.isInterruptible());
           } else {
             throw new Error(`Die: Unrecognized platform-interface tag ${step.platform}`);
           }
@@ -148,7 +148,7 @@ export class Driver<E, A> {
           throw new Error(`Die: Unrecognized step type ${step}`);
         }
       } catch (e) {
-        current = io.abort(e);
+        current = abort(e);
       }
     }
     // If !current then the interrupt came to late and we completed everything

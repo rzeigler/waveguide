@@ -14,7 +14,7 @@
 
 import { boundMethod } from "autobind-decorator";
 import { Function1 } from "fp-ts/lib/function";
-import { IO, io } from "../core/io";
+import { effect, IO } from "./io";
 
 export interface Ref<A> {
   readonly get: IO<never, A>;
@@ -24,13 +24,13 @@ export interface Ref<A> {
 }
 
 class RefIO<A> implements Ref<A> {
-  public readonly get: IO<never, A> = io.effect(() => this.value);
+  public readonly get: IO<never, A> = effect(() => this.value);
 
   constructor(private value: A) { }
 
   @boundMethod
   public set(a: A): IO<never, A> {
-    return io.effect(() => {
+    return effect(() => {
       const prev = this.value;
       this.value = a;
       return prev;
@@ -39,7 +39,7 @@ class RefIO<A> implements Ref<A> {
 
   @boundMethod
   public update(f: Function1<A, A>): IO<never, A> {
-    return io.effect(() => {
+    return effect(() => {
       this.value = f(this.value);
       return this.value;
     });
@@ -47,7 +47,7 @@ class RefIO<A> implements Ref<A> {
 
   @boundMethod
   public modify<B>(f: Function1<A, readonly [B, A]>): IO<never, B> {
-    return io.effect(() => {
+    return effect(() => {
       const [b, a] = f(this.value);
       this.value = a;
       return b;
@@ -59,10 +59,5 @@ class RefIO<A> implements Ref<A> {
  * Creates an IO that will allocate a Ref.
  *
  */
-const allocC = <E = never>() => <A>(a: A): IO<E, Ref<A>> => io.effect(() => new RefIO(a));
-const alloc = allocC();
-
-export const ref = {
-  allocC,
-  alloc
-} as const;
+export const makeRefC = <E = never>() => <A>(a: A): IO<E, Ref<A>> => effect(() => new RefIO(a));
+export const makeRef = makeRefC();

@@ -14,24 +14,24 @@
 
 import fc from "fast-check";
 import { none } from "fp-ts/lib/Option";
-import { Value } from "../core/exit";
-import { io } from "../core/io";
-import { eqvIO, expectExit, expectExitIn } from "../core/tools.spec";
-import { deferred } from "./deferred";
+import { makeDeferred  } from "../src/deferred";
+import { Value } from "../src/exit";
+import { succeed } from "../src/io";
+import { eqvIO, expectExit, expectExitIn } from "./tools.spec";
 
 describe("Deferred", () => {
   it("can bet set", () =>
     eqvIO(
-      deferred.alloc<never, number>()
+      makeDeferred<never, number>()
         .chain((def) =>
           def.succeed(42).applySecond(def.wait)
         ),
-      io.succeed(42)
+      succeed(42)
     )
   );
   it("multiple sets fail", () =>
       expectExitIn(
-        deferred.alloc<never, number>()
+        makeDeferred<never, number>()
           .chain((def) => {
             const c42 = def.succeed(42);
             return c42.applySecond(c42);
@@ -48,7 +48,7 @@ describe("Deferred", () => {
           fc.nat(50),
           (delay) =>
             expectExit(
-              deferred.alloc<never, number>()
+              makeDeferred<never, number>()
                 .chain((def) =>
                   def.succeed(42).delay(delay).fork()
                     .applySecond(def.wait)

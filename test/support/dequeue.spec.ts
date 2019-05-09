@@ -15,7 +15,7 @@
 import { expect } from "chai";
 import fc, {Arbitrary, Command} from "fast-check";
 import { none, some, Some } from "fp-ts/lib/Option";
-import { dequeue, Dequeue } from "./dequeue";
+import { dequeue, Dequeue } from "../../src/support/dequeue";
 
 describe("Dequeue", () => {
   it("take on empty is none", () => {

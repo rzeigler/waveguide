@@ -19,21 +19,25 @@ Also, there are a [number](./src/examples) [of](./examples/node) [examples](./ex
 
 ## Getting Started
 ```
-import { IO, io } from "waveguide"
+import * as w, { IO } from "waveguide/lib/io"
 ```
 
 Consider simple examples for [node](./examples/node/src/index.ts) and the [browser](./examples/browser/src/index.tx)
+waveguide's API is still very much in flux. 
+If you have questions don't hesitate to ask them in the gitter.
 
 ## Constructing an IO
-There are a number of ways of constructing IOs.
-    - `io.succeed` -- create a successful IO
-    - `io.failed` -- create a failed IO
-    - `io.async` -- create an asynchronous effect based on callbacks
-    - `io.suspend` -- create a synchronous efffect
+There are a number of ways of constructing IOs exported from the /lib/io module
+They include
+    - `succeed` -- create a successful IO
+    - `failed` -- create a failed IO
+    - `async` -- create an asynchronous effect based on callbacks
+    - `suspend` -- create a synchronous efffect
 There are also a number of functions to construct IOs from Promises and fp-ts tasks
 
 ## Using an IO
 `IO<E, A>` is a monad and exposes the relevant functions in a naming scheme similar to [fp-ts](https://github.com/gcanti/fp-ts/) along with typeclass instances for Monad and parallel Applicative.
+These instances are the exports io and par respectively from /lib/io
 Furthermore, there are a several resource acquisition functions such as `bracket` and `onComplete` which guarantee IO actions happen in the fact of errors or interuption.
 These respect interruptible state
 
@@ -73,7 +77,7 @@ Both use a similar encoding of higher kinded types based on the paper [Lightweig
 
 funfix provides several building block effect types like Eval and Future that posses fewer capabilities than the most powerfult type IO.
 waveguide does not provide equivalents; there is only the IO type.
-waveguide does not provide an equivalent to funfix's Scheduler abstraction, although there is a trampolining runtime that underlies waveguides runloop and is configurable.
+waveguide does not provide an equivalent to funfix's Scheduler abstraction, although there is a trampolining runtime that underlies waveguides runloop and can be retrieved and is configurable.
 Both waveguide and funfix optimistically run synchronous effects until the first asynchronous boundary.
 In funfix can be customized by providing an `ExecutionModel` and one such use is to perform auto-batching to ensure that every n synchronous steps the runloop will suspend to give other fibers a chance to run.
 By contrast, waveguide will never automatically insert a boundary because doing so could result in unexpected behavior

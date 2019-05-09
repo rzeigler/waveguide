@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import { Lazy } from "fp-ts/lib/function";
-import { MutableQueue } from "./mutable-queue";
+import { MutableQueue } from "./support/mutable-queue";
 
 /**
  * A trampolined execution environment.

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import { expect } from "chai";
-import { Completable } from "./completable";
+import { Completable } from "../src/support/completable";
 
 describe("Completable", () => {
   it("completions should be visible to observers registered after complete", () => {

@@ -4,7 +4,7 @@
     "module": "commonjs",
     "lib": ["dom", "es2015"],
     "declaration": true,
-    "outDir": "./lib",
+    "outDir": "./build",
     "strict": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
@@ -19,6 +19,7 @@
     "sourceMap": true
   },
   "include": [
-    "./src/**/*"
+    "./src/**/*",
+    "./test/**/*"
   ]
 }

@@ -12,31 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { IO, io } from "./io";
+import { Exit } from "./exit";
+import { IO, unit } from "./io";
 
-function log(msg: string): IO<never, void> {
-  return io.effect(() => {
-    // tslint:disable-next-line
-    console.log(msg);
-  });
+export class Ticket<A> {
+  constructor(public readonly acquire: IO<never, A>, public readonly cleanup: IO<never, void>) { }
 }
 
-function warn(msg: string): IO<never, void> {
-  return io.effect(() => {
-    // tslint:disable-next-line
-    console.warn(msg);
-  });
+export function ticketExit(ticket: Ticket<unknown>, exit: Exit<never, unknown>): IO<never, void> {
+  if (exit._tag === "interrupted") {
+    return ticket.cleanup;
+  }
+  return unit;
 }
 
-function error(msg: string): IO<never, void> {
-  return io.effect(() => {
-    // tslint:disable-next-line
-    console.error(msg);
-  });
+export function ticketUse<A>(ticket: Ticket<A>): IO<never, A> {
+  return ticket.acquire;
 }
-
-const console = {
-  log,
-  warn,
-  error
-} as const;

@@ -14,23 +14,23 @@
 
 import fc from "fast-check";
 import { Do } from "fp-ts-contrib/lib/Do";
-import { deferred } from "../concurrent/deferred";
-import { ref } from "../concurrent/ref";
-import { Interrupted, Value } from "./exit";
-import { io } from "./io";
+import { makeDeferred } from "../src/deferred";
+import { Interrupted, Value } from "../src/exit";
+import { io, never, succeed } from "../src/io";
+import { makeRef } from "../src/ref";
 import { arbEitherIO, eqvIO, expectExit } from "./tools.spec";
 
 describe("fiber", () => {
   it("fibers are joinable", () =>
     expectExit(
-      io.succeed(42).delay(10)
+      succeed(42).delay(10)
         .fork().chain((fiber) => fiber.join),
       new Value(42)
     )
   );
   it("fibers are interruptible", () =>
     expectExit(
-      io.never.fork()
+      never.fork()
         .chain((fiber) =>
           fiber.interrupt.delay(10)
             .applySecond(fiber.wait)),
@@ -58,9 +58,9 @@ describe("fiber", () => {
           fc.nat(50),
           (delay) =>
             expectExit(
-              Do(io.monad)
-                .bind("latch", deferred.alloc<never, void>())
-                .bind("cell", ref.alloc(false))
+              Do(io)
+                .bind("latch", makeDeferred<never, void>())
+                .bind("cell", makeRef(false))
                 .bindL("child", ({latch, cell}) =>
                   latch.wait.applySecond(cell.set(true)).uninterruptible().fork()
                 )
@@ -87,7 +87,7 @@ describe("fiber", () => {
           fc.integer(0, 50),
           (delay) =>
             expectExit(
-              deferred.alloc<never, void>()
+              makeDeferred<never, void>()
                 .chain((latch) =>
                   latch.wait.as(42).fork()
                     .chain((child) =>

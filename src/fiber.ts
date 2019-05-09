@@ -15,7 +15,7 @@
 import { fromNullable, none, Option, some } from "fp-ts/lib/Option";
 import { Driver } from "./driver";
 import { Exit } from "./exit";
-import { IO, io } from "./io";
+import { asyncTotal, completeWith, effect, IO, succeed } from "./io";
 import { Runtime } from "./runtime";
 
 export interface Fiber<E, A> {
@@ -37,17 +37,17 @@ export class FiberContext<E, A> implements Fiber<E, A> {
 
   constructor(private readonly driver: Driver<E, A>, name?: string) {
     this.name = fromNullable(name);
-    const sendInterrupt = io.effect(() => {
+    const sendInterrupt = effect(() => {
       this.driver.interrupt();
     });
-    this.wait = io.asyncTotal(this.driver.onExit);
+    this.wait = asyncTotal(this.driver.onExit);
     this.interrupt = sendInterrupt.applySecond(this.wait.unit());
-    this.join = this.wait.widenError<E>().chain((exit) => io.completeWith(exit));
-    this.result = io.effect(() => this.driver.exit())
+    this.join = this.wait.widenError<E>().chain((exit) => completeWith(exit));
+    this.result = effect(() => this.driver.exit())
       .widenError<E>()
       // TODO: When Exit is a functor this gets easier
-      .chain((opt) => opt.fold(io.succeed(none), (exit) => io.completeWith(exit).map(some)));
-    this.isComplete = io.effect(() => this.driver.exit().isSome());
+      .chain((opt) => opt.fold(succeed(none), (exit) => completeWith(exit).map(some)));
+    this.isComplete = effect(() => this.driver.exit().isSome());
    }
 
    public start() {
@@ -55,25 +55,19 @@ export class FiberContext<E, A> implements Fiber<E, A> {
    }
 }
 
-function create<E, A>(init: IO<E, A>, runtime: Runtime, name?: string): IO<never, Fiber<E, A>> {
-  return io.effect(() => {
+export function makeFiber<E, A>(init: IO<E, A>, runtime: Runtime, name?: string): IO<never, Fiber<E, A>> {
+  return effect(() => {
     const driver = new Driver(init, runtime);
-    const ctx = new FiberContext(driver);
+    const ctx = new FiberContext(driver, name);
     ctx.start();
     return ctx;
   });
 }
 
-function wrap<E, A>(driver: Driver<E, A>): Fiber<E, A> {
+export function wrapFiber<E, A>(driver: Driver<E, A>): Fiber<E, A> {
   return new FiberContext(driver);
 }
 
-function join<E, A>(fib: Fiber<E, A>): IO<E, A> {
+export function joinFiber<E, A>(fib: Fiber<E, A>): IO<E, A> {
   return fib.join;
 }
-
-export const fiber = {
-  create,
-  wrap,
-  join
-} as const;

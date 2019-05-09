@@ -14,16 +14,16 @@
 
 import fc from "fast-check";
 import { array } from "fp-ts/lib/Array";
-import { io } from "../core/io";
-import { eqvIO } from "../core/tools.spec";
-import { ref } from "./ref";
+import { io, succeed } from "../src/io";
+import { makeRef } from "../src/ref";
+import { eqvIO } from "./tools.spec";
 
 describe("Ref", function() {
   this.timeout(5000);
   it("should be initialized with a value", () =>
     eqvIO(
-      ref.alloc(42).chain((r) => r.get),
-      io.succeed(42)
+      makeRef(42).chain((r) => r.get),
+      succeed(42)
     )
   );
   describe("properties", () => {
@@ -34,9 +34,9 @@ describe("Ref", function() {
           fc.array(fc.nat(), 1, 10),
           (initial, sets) =>
             eqvIO(
-              ref.alloc(initial)
-                .chain((r) => array.traverse(io.monad)(sets, (v) => r.set(v)).applySecond(r.get)),
-              ref.alloc(initial)
+              makeRef(initial)
+                .chain((r) => array.traverse(io)(sets, (v) => r.set(v)).applySecond(r.get)),
+              makeRef(initial)
                 .chain((r) => r.set(sets[sets.length - 1]).applySecond(r.get))
             )
         )
@@ -57,11 +57,11 @@ describe("Ref", function() {
           fc.nat(1000),
           (initial, value, count) =>
             eqvIO(
-              ref.alloc(initial)
+              makeRef(initial)
                 .chain((cell) => cell.set(value).applySecond(cell.get)),
-              ref.alloc(initial)
+              makeRef(initial)
                 .chain((cell) =>
-                   array.traverse(io.monad)(repeat(value, count + 1), (v) => cell.set(v)).applySecond(cell.get))
+                   array.traverse(io)(repeat(value, count + 1), (v) => cell.set(v)).applySecond(cell.get))
             )
         )
       )
@@ -73,9 +73,9 @@ describe("Ref", function() {
           fc.nat(),
           (before, after) =>
             eqvIO(
-              ref.alloc(before)
+              makeRef(before)
                 .chain((cell) => cell.set(after)),
-              ref.alloc(before)
+              makeRef(before)
                 .chain((cell) => cell.get)
             )
         )

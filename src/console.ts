@@ -12,10 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export { IO, io } from "./core/io";
-export { Exit } from "./core/exit";
-export { Fiber, fiber } from "./core/fiber";
-export { Deferred, deferred } from "./concurrent/deferred";
-export { Ref, ref } from "./concurrent/ref";
-export { Semaphore, semaphore } from "./concurrent/semaphore";
-export { Mutex, mutex } from "./concurrent/mutex";
+import { effect, IO } from "./io";
+
+function log(msg: string): IO<never, void> {
+  return effect(() => {
+    // tslint:disable-next-line
+    console.log(msg);
+  });
+}
+
+function warn(msg: string): IO<never, void> {
+  return effect(() => {
+    // tslint:disable-next-line
+    console.warn(msg);
+  });
+}
+
+function error(msg: string): IO<never, void> {
+  return effect(() => {
+    // tslint:disable-next-line
+    console.error(msg);
+  });
+}
+
+const console = {
+  log,
+  warn,
+  error
+} as const;

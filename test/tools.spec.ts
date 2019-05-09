@@ -17,8 +17,8 @@
 import { expect } from "chai";
 import fc, { Arbitrary } from "fast-check";
 import { constant, constTrue, Function1, identity } from "fp-ts/lib/function";
-import { Exit, Value } from "./exit";
-import { IO, io } from "./io";
+import { Exit, Value } from "../src/exit";
+import { asyncTotal, completeWith, fail, IO, io, succeed, suspend } from "../src/io";
 
 /**
  * @deprecated use eqvIO instead
@@ -58,18 +58,18 @@ export function arbIO<E, A>(arb: Arbitrary<A>): Arbitrary<IO<E, A>> {
   return arbVariant
     .chain((ioStep) => {
       if (ioStep === "succeed") {
-        return arb.map((a) => io.succeed(a));
+        return arb.map((a) => succeed(a));
       } else if (ioStep === "complete") {
-        return arb.map((a) => io.completeWith(new Value(a)));
+        return arb.map((a) => completeWith(new Value(a)));
       } else if (ioStep === "suspend") {
         // We now need to do recursion... wooo
         return arbIO<E, A>(arb)
-          .map((nestedIO) => io.suspend(() => nestedIO));
+          .map((nestedIO) => suspend(() => nestedIO));
       } else { // async with random delay
         return fc.tuple(fc.nat(50), arb)
           .map(
             ([delay, val]) =>
-              io.asyncTotal((callback) => {
+              asyncTotal((callback) => {
                 const handle = setTimeout(() => callback(val), delay);
                 return () => {
                   clearTimeout(handle);
@@ -112,7 +112,7 @@ export function arbErrorIO<E, A>(arbE: Arbitrary<E>): Arbitrary<IO<E, A>> {
     .chain((err) =>
       arbConstIO<E, undefined>(undefined)
         .map((iou) =>
-          iou.chain((_) => io.fail(err))
+          iou.chain((_) => fail(err))
         )
     );
 }

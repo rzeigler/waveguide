@@ -21,11 +21,11 @@ import { IOEither } from "fp-ts/lib/IOEither";
 import { Monad2 } from "fp-ts/lib/Monad";
 import { Task } from "fp-ts/lib/Task";
 import { TaskEither } from "fp-ts/lib/TaskEither";
-import { Deferred, deferred } from "../concurrent/deferred";
-import { ref, Ref } from "../concurrent/ref";
+import { Deferred, makeDeferred } from "./deferred";
 import { Driver } from "./driver";
 import { Aborted, Cause, Exit, Failed, Interrupted, Value } from "./exit";
-import { fiber, Fiber } from "./fiber";
+import { Fiber, makeFiber } from "./fiber";
+import { makeRefC, Ref } from "./ref";
 import { defaultRuntime, Runtime } from "./runtime";
 
 export type Step<E, A> =
@@ -61,7 +61,7 @@ export class Suspend<E, A> {
 
 export class Async<E, A> {
   public readonly _tag: "async" = "async";
-  constructor(public readonly op: Function1<Function1<Either<E, A>, void>, Lazy<void>>) {  }
+  constructor(public readonly op: Function1<Function1<Either<E, A>, void>, Lazy<void>>) { }
 }
 
 export class Chain<E, Z, A> {
@@ -231,8 +231,8 @@ export class IO<E, A> {
   public flip(): IO<A, E> {
     return new IO(new Fold(
       this,
-      (e) => e._tag === "failed" ? io.succeed(e.error) : io.completeWith(e),
-      (a) => io.fail(a)
+      (e) => e._tag === "failed" ? succeed(e.error) : completeWith(e),
+      (a) => fail(a)
     ));
   }
 
@@ -305,7 +305,7 @@ export class IO<E, A> {
   }
 
   public fork(name?: string): IO<never, Fiber<E, A>> {
-    return getRuntime.chain((runtime) => io.shift.applySecond(fiber.create(this, runtime, name)));
+    return getRuntime.chain((runtime) => shift.applySecond(makeFiber(this, runtime, name)));
   }
 
   public shift(): IO<E, A> {
@@ -323,7 +323,7 @@ export class IO<E, A> {
   public onCompleted(finalizer: IO<E, unknown>): IO<E, A> {
     return uninterruptibleMask((cutout) =>
       // TODO: Recover in the face of buggy finalizer...
-      cutout(this).result<E>().chain((exit) => finalizer.applySecond(io.completeWith(exit)))
+      cutout(this).result<E>().chain((exit) => finalizer.applySecond(completeWith(exit)))
     );
   }
 
@@ -334,7 +334,7 @@ export class IO<E, A> {
   public onInterrupted(finalizer: IO<E, unknown>): IO<E, A> {
     return uninterruptibleMask((cutout) =>
       cutout(this).result<E>().chain((exit) =>
-        exit._tag === "interrupted" ? finalizer.applySecond(io.completeWith(exit)) : io.completeWith(exit)
+        exit._tag === "interrupted" ? finalizer.applySecond(completeWith(exit)) : completeWith(exit)
       )
     );
   }
@@ -362,8 +362,8 @@ export class IO<E, A> {
    */
   public parZipWith<B, C>(other: IO<E, B>, f: Function2<A, B, C>): IO<E, C> {
     return raceFold(this, other,
-      (thisExit, otherFiber) => io.completeWith(thisExit).zipWith(otherFiber.join, f),
-      (otherExit, thisFiber) => io.completeWith(otherExit).zipWith(thisFiber.join, (b, a) => f(a, b))
+      (thisExit, otherFiber) => completeWith(thisExit).zipWith(otherFiber.join, f),
+      (otherExit, thisFiber) => completeWith(otherExit).zipWith(thisFiber.join, (b, a) => f(a, b))
     );
   }
 
@@ -412,7 +412,7 @@ export class IO<E, A> {
   public race(other: IO<E, A>): IO<E, A> {
     function interruptLoser(exit: Exit<E, A>, loser: Fiber<E, A>): IO<E, A> {
       // Interrupt the loser first, because if exit is a failure, we don't want to bail out on the interrupt
-      return loser.interrupt.widenError<E>().applySecond(io.completeWith(exit));
+      return loser.interrupt.widenError<E>().applySecond(completeWith(exit));
     }
     return raceFold(this, other, interruptLoser, interruptLoser);
   }
@@ -492,9 +492,9 @@ export class IO<E, A> {
  *
  * If you do not need an E parameter other than never, you may use succeed instead.
  */
-const succeedC = <E = never>() => <A>(a: A): IO<E, A> => new IO(new Succeeded(a));
+export const succeedC = <E = never>() => <A>(a: A): IO<E, A> => new IO(new Succeeded(a));
 
-const succeed = succeedC();
+export const succeed = succeedC();
 
 /**
  * A curried factory function for failed IOs
@@ -503,16 +503,16 @@ const succeed = succeedC();
  *
  * If you do not need an A paramter other than enver, you may use fail instead
  */
-const failC = <A = never>() => <E>(e: E): IO<E, A> => new IO(new Caused(new Failed(e)));
+export const failC = <A = never>() => <E>(e: E): IO<E, A> => new IO(new Caused(new Failed(e)));
 
-const fail = failC();
+export const fail = failC();
 
 /**
  * Create an IO that has aborted with the provided error
  *
  * @param e
  */
-function abort(e: unknown): IO<never, never> {
+export function abort(e: unknown): IO<never, never> {
   return new IO(new Caused(new Aborted(e)));
 }
 
@@ -520,7 +520,7 @@ function abort(e: unknown): IO<never, never> {
  * Create an IO that has exited with the provided status
  * @param status
  */
-function completeWith<E, A>(status: Exit<E, A>): IO<E, A> {
+export function completeWith<E, A>(status: Exit<E, A>): IO<E, A> {
   return new IO(new Complete(status));
 }
 
@@ -528,7 +528,7 @@ function completeWith<E, A>(status: Exit<E, A>): IO<E, A> {
  * Create an IO that will execute the function (and its side effects) synchronously to produce an A
  * @param thunk
  */
-function effect<A>(thunk: Lazy<A>): IO<never, A> {
+export function effect<A>(thunk: Lazy<A>): IO<never, A> {
   return new IO(new Suspend(() => succeed(thunk())));
 }
 
@@ -536,7 +536,7 @@ function effect<A>(thunk: Lazy<A>): IO<never, A> {
  * Create an IO that will execute the function (and its side effects) synchronously to produce the next IO to execute
  * @param thunk
  */
-function suspend<E, A>(thunk: Lazy<IO<E, A>>): IO<E, A> {
+export function suspend<E, A>(thunk: Lazy<IO<E, A>>): IO<E, A> {
   return new IO(new Suspend(thunk));
 }
 
@@ -546,7 +546,7 @@ function suspend<E, A>(thunk: Lazy<IO<E, A>>): IO<E, A> {
  * @param op the asynchronous operation.
  * op will receive a callback to resume execution when the async op is done and must return a cancellation action
  */
-function asyncTotal<A>(op: Function1<Function1<A, void>, Lazy<void>>): IO<never, A> {
+export function asyncTotal<A>(op: Function1<Function1<A, void>, Lazy<void>>): IO<never, A> {
   const adapted: Function1<Function1<Either<never, A>, void>, Lazy<void>> =
     (callback) => op((v) => callback(right(v)));
   return async(adapted);
@@ -558,31 +558,31 @@ function asyncTotal<A>(op: Function1<Function1<A, void>, Lazy<void>>): IO<never,
  * @param op the asynchronous operation.
  * op will receive a callback to resume execution when the async op is done and must return a cancellation action
  */
-function async<E, A>(op: Function1<Function1<Either<E, A>, void>, Lazy<void>>) {
+export function async<E, A>(op: Function1<Function1<Either<E, A>, void>, Lazy<void>>) {
   return new IO(new Async(op));
 }
 
 /**
  * An IO that will access the Runtime being used to execute the IO
  */
-const getRuntime: IO<never, Runtime> = new IO(new PlatformInterface(new GetRuntime()));
+export const getRuntime: IO<never, Runtime> = new IO(new PlatformInterface(new GetRuntime()));
 
 /**
  * An IO that will access the current interruptible state of the fiber
  */
-const getInterruptible: IO<never, boolean> = new IO(new PlatformInterface(new GetInterruptible()));
+export const getInterruptible: IO<never, boolean> = new IO(new PlatformInterface(new GetInterruptible()));
 
 /**
  * An IO that has been interrupted
  */
-const interrupted: IO<never, never> = new IO(new Caused(new Interrupted()));
+export const interrupted: IO<never, never> = new IO(new Caused(new Interrupted()));
 
 /**
  * An IO that uses the runtime to introduce a trampoline boundary
  *
  * This can be used to acheive fairness between multiple cooperating synchronous fibers
  */
-const shift: IO<never, void> = getRuntime
+export const shift: IO<never, void> = getRuntime
   .chain((runtime) => asyncTotal<void>((callback) => {
     runtime.dispatch(() => callback(undefined));
     // tslint:disable-next-line
@@ -594,7 +594,7 @@ const shift: IO<never, void> = getRuntime
  *
  * This can be used to acheive fairness with other processes (i.e. the event loop)
  */
-const shiftAsync: IO<never, void> = getRuntime
+export const shiftAsync: IO<never, void> = getRuntime
   .chain((runtime) =>
     asyncTotal<void>((callback) =>
       runtime.dispatchLater(() => callback(undefined), 0)
@@ -606,7 +606,7 @@ const shiftAsync: IO<never, void> = getRuntime
  * This does however, schedule a setInterval for 60s in the background.
  * This should, therefore, prevent node from exiting cleanly if not interrupted
  */
-const never: IO<never, never> = new IO(new Async((_) => {
+export const never: IO<never, never> = new IO(new Async((_) => {
   // tslint:disable-next-line:no-empty
   const handle = setInterval(() => { }, 60000);
   return () => {
@@ -614,13 +614,13 @@ const never: IO<never, never> = new IO(new Async((_) => {
   };
 }));
 
-const unit: IO<never, void> = succeed(undefined);
+export const unit: IO<never, void> = succeed(undefined);
 
 /**
  * Create an interruptible version of inner
  * @param inner
  */
-function interruptible<E, A>(inner: IO<E, A>): IO<E, A> {
+export function interruptible<E, A>(inner: IO<E, A>): IO<E, A> {
   return new IO(new InterruptibleState(inner, true));
 }
 
@@ -628,7 +628,7 @@ function interruptible<E, A>(inner: IO<E, A>): IO<E, A> {
  * Create an uninterruptible version of inner
  * @param inner
  */
-function uninterruptible<E, A>(inner: IO<E, A>): IO<E, A> {
+export function uninterruptible<E, A>(inner: IO<E, A>): IO<E, A> {
   return new IO(new InterruptibleState(inner, false));
 }
 
@@ -637,7 +637,7 @@ function uninterruptible<E, A>(inner: IO<E, A>): IO<E, A> {
  * @param inner
  * @param state
  */
-function interruptibleState<E, A>(inner: IO<E, A>, state: boolean): IO<E, A> {
+export function interruptibleState<E, A>(inner: IO<E, A>, state: boolean): IO<E, A> {
   return new IO(new InterruptibleState(inner, state));
 }
 
@@ -646,7 +646,7 @@ function interruptibleState<E, A>(inner: IO<E, A>, state: boolean): IO<E, A> {
  */
 export type InterruptMaskCutout<E, A> = Function1<IO<E, A>, IO<E, A>>;
 
-function makeInterruptMaskCutout<E, A>(state: boolean): InterruptMaskCutout<E, A> {
+export function makeInterruptMaskCutout<E, A>(state: boolean): InterruptMaskCutout<E, A> {
   return (inner) => inner.interruptibleState(state);
 }
 
@@ -656,7 +656,7 @@ function makeInterruptMaskCutout<E, A>(state: boolean): InterruptMaskCutout<E, A
  * execution i.e. cut out a piece of the mask
  * @param f
  */
-function uninterruptibleMask<E, A>(f: Function1<InterruptMaskCutout<E, A>, IO<E, A>>): IO<E, A> {
+export function uninterruptibleMask<E, A>(f: Function1<InterruptMaskCutout<E, A>, IO<E, A>>): IO<E, A> {
   return getInterruptible
     .widenError<E>()
     .chain((state) => f(makeInterruptMaskCutout<E, A>(state)).uninterruptible());
@@ -668,13 +668,13 @@ function uninterruptibleMask<E, A>(f: Function1<InterruptMaskCutout<E, A>, IO<E,
  * execution i.e. cut out a piece of the mask
  * @param f
  */
-function interruptibleMask<E, A>(f: Function1<InterruptMaskCutout<E, A>, IO<E, A>>): IO<E, A> {
+export function interruptibleMask<E, A>(f: Function1<InterruptMaskCutout<E, A>, IO<E, A>>): IO<E, A> {
   return getInterruptible
     .widenError<E>()
     .chain((state) => f(makeInterruptMaskCutout<E, A>(state)).interruptible());
 }
 
-const bracketExitC = <E, A>(acquire: IO<E, A>) =>
+export const bracketExitC = <E, A>(acquire: IO<E, A>) =>
   <B>(release: Function2<A, Exit<E, B>, IO<E, unknown>>, use: Function1<A, IO<E, B>>): IO<E, B> =>
     bracketExit(acquire, release, use);
 
@@ -683,17 +683,17 @@ const bracketExitC = <E, A>(acquire: IO<E, A>) =>
  * This ensures that if acquire completes successfully then release will be invoked and its result evaluated with
  * the exit status of the result of use.
  */
-function bracketExit<E, A, B>(acquire: IO<E, A>,
-                              release: Function2<A, Exit<E, B>, IO<E, unknown>>,
-                              use: Function1<A, IO<E, B>>): IO<E, B> {
+export function bracketExit<E, A, B>(acquire: IO<E, A>,
+                                     release: Function2<A, Exit<E, B>, IO<E, unknown>>,
+                                     use: Function1<A, IO<E, B>>): IO<E, B> {
   return uninterruptibleMask<E, B>((cutout) =>
-    Do(monad)
+    Do(io)
       .bind("a", acquire)
-      .bindL("e", ({a}) => cutout(use(a)).result().widenError<E>()
+      .bindL("e", ({ a }) => cutout(use(a)).result().widenError<E>()
         // TODO: Recover in the face of buggy finalizer
         .chain((e) => release(a, e).as(e)))
-      .bindL("b", ({e}) => io.completeWith(e))
-      .return(({b}) => b)
+      .bindL("b", ({ e }) => completeWith(e))
+      .return(({ b }) => b)
   );
 }
 
@@ -701,13 +701,13 @@ function bracketExit<E, A, B>(acquire: IO<E, A>,
  * A type curried version of bracket for better inference.
  * @param acquire
  */
-const bracketC = <E, A>(acquire: IO<E, A>) =>
+export const bracketC = <E, A>(acquire: IO<E, A>) =>
   <B>(release: Function1<A, IO<E, unknown>>, use: Function1<A, IO<E, B>>): IO<E, B> =>
     bracket(acquire, release, use);
 
-function bracket<E, A, B>(acquire: IO<E, A>,
-                          release: Function1<A, IO<E, unknown>>,
-                          use: Function1<A, IO<E, B>>): IO<E, B> {
+export function bracket<E, A, B>(acquire: IO<E, A>,
+                                 release: Function1<A, IO<E, unknown>>,
+                                 use: Function1<A, IO<E, B>>): IO<E, B> {
   return bracketExit(acquire, (a, _) => release(a), use);
 }
 
@@ -715,10 +715,10 @@ function bracket<E, A, B>(acquire: IO<E, A>,
  * Create an IO that when executed will complete after a fixed amount of millisenconds
  * @param ms the wait duration
  */
-function after<E = never>(ms: number): IO<E, void> {
+export function after<E = never>(ms: number): IO<E, void> {
   return getRuntime
     .chain((runtime) =>
-      io.asyncTotal((callback) =>
+      asyncTotal((callback) =>
         runtime.dispatchLater(() => callback(undefined), ms)
       )
     );
@@ -733,9 +733,9 @@ function after<E = never>(ms: number): IO<E, void> {
  * @param onFirstWon
  * @param onSecondWon
  */
-function raceFold<E1, E2, A, B, C>(first: IO<E1, A>, second: IO<E1, B>,
-                                   onFirstWon: Function2<Exit<E1, A>, Fiber<E1, B>, IO<E2, C>>,
-                                   onSecondWon: Function2<Exit<E1, B>, Fiber<E1, A>, IO<E2, C>>): IO<E2, C> {
+export function raceFold<E1, E2, A, B, C>(first: IO<E1, A>, second: IO<E1, B>,
+                                          onFirstWon: Function2<Exit<E1, A>, Fiber<E1, B>, IO<E2, C>>,
+                                          onSecondWon: Function2<Exit<E1, B>, Fiber<E1, A>, IO<E2, C>>): IO<E2, C> {
   // tslint:disable-next-line:no-shadowed-variable
   function completeLatched<E1, E2, A, B, C>(latch: Ref<boolean>,
                                             channel: Deferred<E2, C>,
@@ -748,20 +748,20 @@ function raceFold<E1, E2, A, B, C>(first: IO<E1, A>, second: IO<E1, B>,
 
   }
   return uninterruptibleMask((cutout) =>
-      Do(monad)
-      .bind("latch", ref.allocC<E2>()(false))
-      .bind("channel", deferred.alloc<E2, C>())
+    Do(io)
+      .bind("latch", makeRefC<E2>()(false))
+      .bind("channel", makeDeferred<E2, C>())
       .bind("firstFiber", first.fork())
       .bind("secondFiber", second.fork())
-      .doL(({latch, channel, firstFiber, secondFiber}) =>
+      .doL(({ latch, channel, firstFiber, secondFiber }) =>
         firstFiber.wait.chain(completeLatched(latch, channel, onFirstWon, secondFiber)).fork("first"))
-      .doL(({latch, channel, firstFiber, secondFiber}) =>
+      .doL(({ latch, channel, firstFiber, secondFiber }) =>
         secondFiber.wait.chain(completeLatched(latch, channel, onSecondWon, firstFiber)).fork("second"))
-      .bindL("result", ({channel, firstFiber, secondFiber}) =>
+      .bindL("result", ({ channel, firstFiber, secondFiber }) =>
         cutout(channel.wait)
           .onInterrupted(firstFiber.interrupt.applySecond(secondFiber.interrupt)))
-      .return(({result}) => result)
-    );
+      .return(({ result }) => result)
+  );
 }
 
 /**
@@ -769,7 +769,7 @@ function raceFold<E1, E2, A, B, C>(first: IO<E1, A>, second: IO<E1, B>,
  * @param inner the io to delay
  * @param ms how many ms to wait
  */
-function delay<E, A>(inner: IO<E, A>, ms: number): IO<E, A> {
+export function delay<E, A>(inner: IO<E, A>, ms: number): IO<E, A> {
   return after<E>(ms).applySecond(inner);
 }
 
@@ -781,19 +781,19 @@ function delay<E, A>(inner: IO<E, A>, ms: number): IO<E, A> {
  * Prefer fromPromiseL unless absolutely necessary.
  * @param promise
  */
-function fromPromise<A>(promise: Promise<A>): IO<unknown, A> {
-  return io.async<unknown, A>((callback) => {
+export function fromPromise<A>(promise: Promise<A>): IO<unknown, A> {
+  return async<unknown, A>((callback) => {
     promise.then((v) => callback(right(v)), (e) => callback(left(e)));
     // tslint:disable-next-line
-    return () => {};
+    return () => { };
   }).uninterruptible();
 }
 
-function fromPromiseL<A>(thunk: Lazy<Promise<A>>): IO<unknown, A> {
-  return io.async<unknown, A>((callback) => {
+export function fromPromiseL<A>(thunk: Lazy<Promise<A>>): IO<unknown, A> {
+  return async<unknown, A>((callback) => {
     thunk().then((v) => callback(right(v)), (e) => callback(left(e)));
     // tslint:disable-next-line
-    return () => {};
+    return () => { };
   }).uninterruptible();
 }
 
@@ -801,28 +801,28 @@ function fromPromiseL<A>(thunk: Lazy<Promise<A>>): IO<unknown, A> {
  * Create an IO from an already running task
  * @param task
  */
-function fromTask<A>(task: Task<A>): IO<never, A> {
-  return io.asyncTotal<A>((callback) => {
+export function fromTask<A>(task: Task<A>): IO<never, A> {
+  return asyncTotal<A>((callback) => {
     task.run().then((v) => callback(v));
     // tslint:disable-next-line
-    return  () => {};
+    return () => { };
   }).uninterruptible();
 }
 
-function fromTaskEither<E, A>(task: TaskEither<E, A>): IO<E, A> {
-  return io.async<E, A>((callback) => {
+export function fromTaskEither<E, A>(task: TaskEither<E, A>): IO<E, A> {
+  return async<E, A>((callback) => {
     task.run().then(callback);
     // tslint:disable-next-line
-    return () => {};
+    return () => { };
   }).uninterruptible();
 }
 
-function fromSyncIO<A>(fpio: SyncIO<A>): IO<never, A> {
-  return io.effect(() => fpio.run());
+export function fromSyncIO<A>(fpio: SyncIO<A>): IO<never, A> {
+  return effect(() => fpio.run());
 }
 
-function fromSyncIOEither<E, A>(ioe: IOEither<E, A>): IO<E, A> {
-  return io.suspend(() => ioe.run().fold(
+export function fromSyncIOEither<E, A>(ioe: IOEither<E, A>): IO<E, A> {
+  return suspend(() => ioe.run().fold(
     failC<A>(),
     succeedC<E>()
   ));
@@ -839,9 +839,9 @@ export type URI = typeof URI;
 
 const of = <L, A>(a: A) => succeed(a);
 const map = <L, A, B>(fa: IO<L, A>, f: (a: A) => B): IO<L, B> => fa.map(f);
-const ap = <L, A, B >(fab: IO<L, Function1<A, B>> , fa: IO<L, A>) => fab.ap_(fa);
+const ap = <L, A, B>(fab: IO<L, Function1<A, B>>, fa: IO<L, A>) => fab.ap_(fa);
 const chain = <L, A, B>(fa: IO<L, A>, f: Function1<A, IO<L, B>>) => fa.chain(f);
-const monad: Monad2<URI> = {
+export const io: Monad2<URI> = {
   URI,
   map,
   ap,
@@ -850,47 +850,9 @@ const monad: Monad2<URI> = {
 } as const;
 
 const parAp = <L, A, B>(fab: IO<L, Function1<A, B>>, fa: IO<L, A>) => fab.parAp_(fa);
-const parallelApplicative: Applicative2<URI> = {
+export const par: Applicative2<URI> = {
   URI,
   of,
   map,
   ap: parAp
-} as const;
-
-export const io = {
-  succeed,
-  of: succeed,
-  succeedC,
-  fail,
-  failC,
-  abort,
-  completeWith,
-  interrupted,
-  effect,
-  suspend,
-  asyncTotal,
-  async,
-  shift,
-  shiftAsync,
-  never,
-  unit,
-  after,
-  delay,
-  interruptible,
-  uninterruptible,
-  interruptibleMask,
-  uninterruptibleMask,
-  bracketExitC,
-  bracketExit,
-  bracketC,
-  bracket,
-  getInterruptible,
-  fromPromise,
-  fromPromiseL,
-  fromTask,
-  fromTaskEither,
-  fromSyncIO,
-  fromSyncIOEither,
-  monad,
-  parallelApplicative
 } as const;

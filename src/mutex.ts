@@ -12,27 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { expect } from "chai";
-import { Trampoline } from "./trampoline";
+import { IO } from "./io";
+import { makeSemaphore } from "./semaphore";
 
-describe("trampoline", () => {
-  it("should invoke dispatches immediately", () => {
-    const t = new Trampoline();
-    let n = 1;
-    t.dispatch(() => n++);
-    expect(n).to.equal(2);
-    expect(t.isRunning()).to.equal(false);
-  });
-  it("should trampoline dispatches that occur while running", () => {
-    const t = new Trampoline();
-    let n = 1;
-    t.dispatch(() => {
-      n++;
-      t.dispatch(() => {
-        n *= 2;
-      });
-      n--;
-    });
-    expect(n).to.equal(2);
-  });
-});
+export interface Mutex {
+  readonly acquire: IO<never, void>;
+  readonly release: IO<never, void>;
+  readonly available: IO<never, boolean>;
+  withExclusion<E, A>(inner: IO<E, A>): IO<E, A>;
+}
+
+export const makeMutex: IO<never, Mutex> = makeSemaphore(1)
+  .map((sem) => ({
+    acquire: sem.acquire,
+    release: sem.release,
+    available: sem.available.map((n) => n > 0),
+    withExclusion<E, A>(inner: IO<E, A>): IO<E, A> {
+      return sem.withPermit(inner);
+    }
+  }));

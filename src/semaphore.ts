@@ -14,10 +14,10 @@
 
 import { Either, left, right } from "fp-ts/lib/Either";
 import { constant, identity, not } from "fp-ts/lib/function";
-import { IO, io } from "../core/io";
-import { Dequeue, dequeue } from "../support/dequeue";
-import { Deferred, deferred } from "./deferred";
-import { Ref, ref } from "./ref";
+import { Deferred, makeDeferredC, makeDeferred } from "./deferred";
+import { abort, bracketC, bracketExitC, IO, io, unit } from "./io";
+import { makeRef as allocRef, Ref } from "./ref";
+import { Dequeue, dequeue } from "./support/dequeue";
 import { Ticket, ticketExit, ticketUse } from "./ticket";
 
 export interface Semaphore {
@@ -51,35 +51,35 @@ class SemaphoreImpl implements Semaphore {
 
   public acquireN<E = never>(n: number): IO<E, void> {
     return sanityCheck(n)
-      .applySecond(n === 0 ? io.unit : io.bracketExitC(this.ticketN(n))(ticketExit, ticketUse));
+      .applySecond(n === 0 ? unit : bracketExitC(this.ticketN(n))(ticketExit, ticketUse));
   }
 
   public releaseN<E = never>(n: number): IO<E, void> {
     return sanityCheck(n)
-      .applySecond(n === 0 ? io.unit :
+      .applySecond(n === 0 ? unit :
         this.cell.modify(
           (current) =>
             current.fold<readonly [IO<never, void>, State]>(
               (waiting) => waiting.take()
                 .foldL(
-                  () => [io.unit, right(n) as State] as const,
+                  () => [unit, right(n) as State] as const,
                   ([[needed, latch], q]) => n >= needed ?
                     [
-                      latch.succeed(undefined).applyFirst(n > needed ? this.releaseN(n - needed) : io.unit),
+                      latch.succeed(undefined).applyFirst(n > needed ? this.releaseN(n - needed) : unit),
                       left(q) as State
                     ] as const :
                     [
-                      io.unit,
+                      unit,
                       left(q.push([needed - n, latch] as const)) as State
                     ] as const
                 ),
-              (available) => [io.unit, right(available + n) as State] as const
+              (available) => [unit, right(available + n) as State] as const
             )
         ).flatten().uninterruptible());
   }
 
   public withPermitsN<E, A>(n: number, inner: IO<E, A>): IO<E, A> {
-    return io.bracketC(this.acquireN<E>(n).interruptible())
+    return bracketC(this.acquireN<E>(n).interruptible())
       (constant(this.releaseN(n)), (_) => inner);
   }
 
@@ -88,7 +88,7 @@ class SemaphoreImpl implements Semaphore {
   }
 
   private ticketN(n: number): IO<never, Ticket<void>> {
-    return deferred.allocC()()
+    return makeDeferred<never, void>()
       .chain((latch) =>
         this.cell.modify(
           (current) =>
@@ -99,7 +99,7 @@ class SemaphoreImpl implements Semaphore {
               ] as const,
               (available) => available >= n ?
                 [
-                  new Ticket(io.unit, this.releaseN(n)),
+                  new Ticket(unit, this.releaseN(n)),
                   right(available - n) as State
                 ] as const :
                 [
@@ -123,7 +123,7 @@ class SemaphoreImpl implements Semaphore {
                 left(waiting.filter(not(isReservationFor(latch)))) as State
               ] as const
             ),
-          (available) => [io.unit, right(available + n) as State] as const
+          (available) => [unit, right(available + n) as State] as const
       )
     ).flatten().uninterruptible();
   }
@@ -134,20 +134,22 @@ const isReservationFor = (latch: Deferred<never, void>) => (rsv: readonly [numbe
 
 function sanityCheck(n: number): IO<never, void> {
   if (n < 0) {
-    return io.abort(new Error("Die: semaphore permits must be non negative"));
+    return abort(new Error("Die: semaphore permits must be non negative"));
   }
   if (Math.round(n) !== n) {
-    return io.abort(new Error("Die: semaphore permits may not be fractional"));
+    return abort(new Error("Die: semaphore permits may not be fractional"));
   }
-  return io.unit;
+  return unit;
 }
 
-function alloc(n: number): IO<never, Semaphore> {
+/**
+ * Allocate a semaphore.
+ *
+ * @param n the number of permits
+ * This must be non-negative
+ */
+export function makeSemaphore(n: number): IO<never, Semaphore> {
   return sanityCheck(n)
-    .applySecond(ref.alloc<State>(right(n))
+    .applySecond(allocRef<State>(right(n))
     .map((state) => new SemaphoreImpl(state)));
 }
-
-export const semaphore = {
-  alloc
-} as const;

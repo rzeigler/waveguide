@@ -16,9 +16,10 @@ import * as fc from "fast-check";
 import { array } from "fp-ts/lib/Array";
 import { left, right } from "fp-ts/lib/Either";
 import { compose, Function1, identity } from "fp-ts/lib/function";
-import { ref } from "../concurrent/ref";
-import { Aborted, Failed, Interrupted, Value } from "./exit";
-import { io, IO } from "./io";
+import { Aborted, Failed, Interrupted, Value } from "../src/exit";
+import { abort, async, asyncTotal, completeWith, effect, fail, failC, getInterruptible, interrupted, interruptible,
+   IO, io, never, succeed, succeedC, suspend, uninterruptible } from "../src/io";
+import { alloc as allocRef, makeRef } from "../src/ref";
 import {
   arbConstIO,
   arbEitherIO,
@@ -34,50 +35,50 @@ import {
 describe("io", () => {
   describe("#succeed", () => {
     it("should complete with a completed", () =>
-      expectExit(io.succeed(42), new Value(42))
+      expectExit(succeed(42), new Value(42))
     );
   });
   describe("#fail", () => {
     it("should complete with a failed", () =>
-      expectExit(io.fail("boom"), new Failed("boom"))
+      expectExit(fail("boom"), new Failed("boom"))
     );
   });
   describe("#abort", () => {
     it("should complete with an aborted", () =>
-      expectExit(io.abort("boom"), new Aborted("boom"))
+      expectExit(abort("boom"), new Aborted("boom"))
     );
   });
   describe("#interrupted", () => {
     it("should complete with an interrupted", () =>
-      expectExit(io.interrupted, new Interrupted())
+      expectExit(interrupted, new Interrupted())
     );
   });
   describe("#exitWith", () => {
     it("should complete with a completed when provided", () =>
-      expectExit(io.completeWith(new Value(42)), new Value(42))
+      expectExit(completeWith(new Value(42)), new Value(42))
     );
     it("should complete with a failed when provided", () =>
-      expectExit(io.completeWith(new Failed("boom")), new Failed("boom"))
+      expectExit(completeWith(new Failed("boom")), new Failed("boom"))
     );
     it("should complete with an aborted when provided", () =>
-      expectExit(io.completeWith(new Aborted("boom")), new Aborted("boom"))
+      expectExit(completeWith(new Aborted("boom")), new Aborted("boom"))
     );
     it("should complete with an interrupted when provided", () =>
-      expectExit(io.completeWith(new Interrupted()), new Interrupted())
+      expectExit(completeWith(new Interrupted()), new Interrupted())
     );
   });
   describe("#effect", () => {
     it("should complete at some a success", () =>
-      expectExit(io.effect(() => 42), new Value(42))
+      expectExit(effect(() => 42), new Value(42))
     );
   });
   describe("#suspend", () => {
     it("should complete with synchronous effects", () =>
-      expectExit(io.suspend(() => io.succeed(42)), new Value(42))
+      expectExit(suspend(() => succeed(42)), new Value(42))
     );
     it("should complete with asynchronous effects", () =>
-      expectExit(io.suspend(() =>
-        io.asyncTotal((callback) => {
+      expectExit(suspend(() =>
+        asyncTotal((callback) => {
           const handle = setTimeout(() => callback(42), 0);
           return () => { clearTimeout(handle); };
         })
@@ -86,7 +87,7 @@ describe("io", () => {
   });
   describe("#delay", () => {
     it("should complete with a success eventually", () =>
-      expectExit(io.asyncTotal((callback) => {
+      expectExit(asyncTotal((callback) => {
         const handle = setTimeout(() => callback(42), 0);
         return () => { clearTimeout(handle); };
       }), new Value(42))
@@ -94,13 +95,13 @@ describe("io", () => {
   });
   describe("#async", () => {
     it("should complete with a success eventually", () =>
-      expectExit(io.async((callback) => {
+      expectExit(async((callback) => {
         const handle = setTimeout(() => callback(right(42)), 0);
         return () => { clearTimeout(handle); };
       }), new Value(42))
     );
     it("should complete with a failed eventually", () =>
-      expectExit(io.async((callback) => {
+      expectExit(async((callback) => {
         const handle = setTimeout(() => callback(left("boom")), 0);
         return () => { clearTimeout(handle); };
       }), new Failed("boom"))
@@ -108,18 +109,18 @@ describe("io", () => {
   });
   describe("#interrupted", () => {
     it("should complete with interrupted", () =>
-      expectExit(io.interrupted, new Interrupted())
+      expectExit(interrupted, new Interrupted())
     );
   });
   describe("#run", () => {
     it("should complete with an expected completion", () =>
-      expectExit(io.succeed(42).result(), new Value(new Value(42)))
+      expectExit(succeed(42).result(), new Value(new Value(42)))
     );
     it("should complete with an expected failure", () =>
-      expectExit(io.fail("boom").result(), new Value(new Failed("boom")))
+      expectExit(fail("boom").result(), new Value(new Failed("boom")))
     );
     it("should complete with an expected abort", () =>
-      expectExit(io.abort("boom").result(), new Value(new Aborted("boom")))
+      expectExit(abort("boom").result(), new Value(new Aborted("boom")))
     );
     /**
      * This may be counter-intruitive, but the interrupted io sets the interrupted flag.
@@ -129,54 +130,54 @@ describe("io", () => {
      * above
      */
     it("should complete with an expected interrupt", () =>
-      expectExit(io.uninterruptible(io.interrupted.result()), new Interrupted())
+      expectExit(uninterruptible(interrupted.result()), new Interrupted())
     );
   });
   describe("raceFirstDone", () => {
     it("should resolve with the first success", () =>
-      expectExit(io.succeed(42).delay(10).race(io.never), new Value(42))
+      expectExit(succeed(42).delay(10).race(never), new Value(42))
     );
     it("should resolve with the first success (flipped)", () =>
-      expectExit(io.never.widen<number>().race(io.succeed(42).delay(10)), new Value(42))
+      expectExit(never.widen<number>().race(succeed(42).delay(10)), new Value(42))
     );
     it("should resolve with the first error", () =>
-      expectExit(io.fail("boom").delay(10).race(io.never), new Failed("boom"))
+      expectExit(fail("boom").delay(10).race(never), new Failed("boom"))
     );
     it("should resolve with the first error (flipped)", () =>
-      expectExit(io.never.widenError<string>().race(io.fail("boom").delay(10)), new Failed("boom"))
+      expectExit(never.widenError<string>().race(fail("boom").delay(10)), new Failed("boom"))
     );
   });
   describe("raceFirst", () => {
     it("should resolve wih a success", () =>
-      expectExit(io.succeed(42).delay(10).raceSuccess(io.never)
-                  .zip(io.never.widen<number>().raceSuccess(io.succeed(42).delay(14))), new Value([42, 42]))
+      expectExit(succeed(42).delay(10).raceSuccess(never)
+                  .zip(never.widen<number>().raceSuccess(succeed(42).delay(14))), new Value([42, 42]))
     );
     it("should resolve to a success on a failure", () =>
-      expectExit(io.failC<number>()("boom!").raceSuccess(io.succeed(42).delay(10)), new Value(42))
+      expectExit(failC<number>()("boom!").raceSuccess(succeed(42).delay(10)), new Value(42))
     );
   });
   describe("interruptible state", () => {
     it("should set interrupt status", () =>
       expectExit(
-        io.interruptible(io.getInterruptible),
+        interruptible(getInterruptible),
         new Value(true)
       )
     );
     it("should set nested interrupt status", () =>
       expectExit(
-        io.uninterruptible(io.interruptible(io.getInterruptible)),
+        uninterruptible(interruptible(getInterruptible)),
         new Value(true)
       )
     );
     it("should compose", () =>
       expectExit(
-        io.uninterruptible(io.interruptible(io.uninterruptible(io.getInterruptible))),
+        uninterruptible(interruptible(uninterruptible(getInterruptible))),
         new Value(false)
       )
     );
     it("should allow setting uninterruptible", () =>
       expectExit(
-        io.uninterruptible(io.getInterruptible),
+        uninterruptible(getInterruptible),
         new Value(false)
       )
     );
@@ -207,23 +208,23 @@ describe("io", () => {
     const applicative = {
       identity: <E, A>(ioa: IO<E, A>) =>
         eqvIO(
-          io.succeedC<E>()(identity).ap_(ioa),
+          succeedC<E>()(identity).ap_(ioa),
           ioa
         ),
       homomorphism: <A, B>(fab: Function1<A, B>, a: A) =>
         eqvIO(
-          io.succeed(fab).ap_(io.succeed(a)),
-          io.succeed(fab(a))
+          succeed(fab).ap_(succeed(a)),
+          succeed(fab(a))
         ),
       interchange: <E, A, B>(a: A, iofab: IO<E, Function1<A, B>>) =>
         eqvIO(
-          iofab.ap_(io.succeed(a)),
-          io.succeedC<E>()((ab: Function1<A, B>) => ab(a)).ap_(iofab)
+          iofab.ap_(succeed(a)),
+          succeedC<E>()((ab: Function1<A, B>) => ab(a)).ap_(iofab)
         ),
       derivedMap: <E, A, B>(ab: Function1<A, B>, ioa: IO<E, A>) =>
         eqvIO(
           ioa.map(ab),
-          io.succeedC<E>()(ab).ap_(ioa)
+          succeedC<E>()(ab).ap_(ioa)
         )
     };
 
@@ -243,18 +244,18 @@ describe("io", () => {
     const monad = {
       leftIdentity: <E, A, B>(kab: Function1<A, IO<E, B>>, a: A) =>
         eqvIO(
-          io.succeedC<E>()(a).chain(kab),
+          succeedC<E>()(a).chain(kab),
           kab(a)
         ),
       rightIdentity: <E, A>(ioa: IO<E, A>) =>
         eqvIO(
-          ioa.chain(io.succeed),
+          ioa.chain(succeed),
           ioa
         ),
       derivedMap: <E, A, B>(ab: Function1<A, B>, ioa: IO<E, A>) =>
         eqvIO(
           ioa.map(ab),
-          ioa.chain((a) => io.succeed(ab(a)))
+          ioa.chain((a) => succeed(ab(a)))
         )
     };
 
@@ -278,8 +279,8 @@ describe("io", () => {
         fc.assert(
           fc.asyncProperty(
             arbIO(fc.string()),
-            fc.constant(strlen).map(io.succeed),
-            fc.constant(even).map(io.succeed),
+            fc.constant(strlen).map(succeed),
+            fc.constant(even).map(succeed),
             apply.associativeComposition
           )
         )
@@ -336,7 +337,7 @@ describe("io", () => {
       it(" - derived ap", () =>
         fc.assert(
           fc.asyncProperty(
-            fc.constant(strlen).map(io.succeed),
+            fc.constant(strlen).map(succeed),
             arbIO(fc.string()),
             chain.derivedAp
           )
@@ -376,7 +377,7 @@ describe("io", () => {
         // The host exists to ensure we are testing in async boundaries
         recoveryEquivalence: <E, E2, A>(host: IO<E2, A>, e: E, kea: Function1<E, IO<E2, A>>) =>
           eqvIO(
-           host.chain((_) => io.failC<A>()(e).chainError(kea)),
+           host.chain((_) => failC<A>()(e).chainError(kea)),
            host.chain((_) => kea(e))
           )
       };
@@ -403,7 +404,7 @@ describe("io", () => {
           fc.array(arbIO(fc.integer())),
           (before, err, after) =>
             eqvIO(
-              array.sequence(io.monad)([...before, err, ...after]),
+              array.sequence(io)([...before, err, ...after]),
               err.as([])
             )
         )
@@ -413,21 +414,21 @@ describe("io", () => {
   it("many async ios should be parZipWithAble", () => {
     const ios: Array<IO<never, number>> = [];
     for (let i = 0; i < 10000; i++) {
-      ios.push(io.succeed(1).delay(Math.random() * 100));
+      ios.push(succeed(1).delay(Math.random() * 100));
     }
     return eqvIO(
-      array.reduce(ios, io.succeed(42), (l, r) => l.parApplyFirst(r)),
-      io.succeed(42)
+      array.reduce(ios, succeed(42), (l, r) => l.parApplyFirst(r)),
+      succeed(42)
     );
   });
   it("many sync ios should be parZipWithAble", () => {
     const ios: Array<IO<never, number>> = [];
     for (let i = 0; i < 10000; i++) {
-      ios.push(io.succeed(1));
+      ios.push(succeed(1));
     }
     return eqvIO(
-      array.reduce(ios, io.succeed(42), (l, r) => l.parApplyFirst(r)),
-      io.succeed(42)
+      array.reduce(ios, succeed(42), (l, r) => l.parApplyFirst(r)),
+      succeed(42)
     );
   });
   describe("#bracketExit", function() {
@@ -447,7 +448,7 @@ describe("io", () => {
           arbEitherIO(fc.string(), fc.nat()),
           (acqDelay, useDelay, relDelay, interruptDelay, useResult) =>
             expectExit(
-              ref.alloc(0)
+              makeRef(0)
               .chain((cell) => {
                 const action = (cell.update((n) => n + 1).delay(acqDelay)).widenError<string>()
                   .bracket((_) => cell.update((n) => n - 1).delay(relDelay), (_) => useResult.delay(useDelay));
