@@ -44,7 +44,7 @@ describe("fiber", () => {
         fc.asyncProperty(
           arbEitherIO(fc.string(), fc.integer()),
           (inner) => eqvIO(
-            inner.run(),
+            inner.result(),
             inner.fork().chain((fiber) => fiber.wait)
           )
         ),

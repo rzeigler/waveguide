@@ -64,7 +64,7 @@ class DeferredIO<E, A> implements Deferred<E, A> {
 
   @boundMethod
   public from(source: IO<E, A>): IO<never, void> {
-    return source.run()
+    return source.result()
       .chain((exit) => this.completeWith(io.completeWith(exit)))
       .onInterrupted(this.interrupt);
   }

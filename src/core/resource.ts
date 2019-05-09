@@ -12,10 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export { IO, io } from "./core/io";
-export { Exit } from "./core/exit";
-export { Fiber, fiber } from "./core/fiber";
-export { Deferred, deferred } from "./concurrent/deferred";
-export { Ref, ref } from "./concurrent/ref";
-export { Semaphore, semaphore } from "./concurrent/semaphore";
-export { Mutex, mutex } from "./concurrent/mutex";
+import { Free } from "fp-ts/lib/Free";
+import { compose, Function1, identity } from "fp-ts/lib/function";
+import { Functor3 } from "fp-ts/lib/Functor";
+import { IO, io } from "./io";
+
+export const URI = "Resource";
+export type URI = typeof URI;
+
+export class Resource<E, A> {
+  constructor(public readonly acquire: IO<E, A>,
+              public readonly release: Function1<A, IO<E, void>>) {
+
+  }
+}

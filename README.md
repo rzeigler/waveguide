@@ -1,7 +1,8 @@
 # waveguide
 
 [![npm version](https://badge.fury.io/js/waveguide.svg)](https://badge.fury.io/js/waveguide)
-[![CircleCI](https://circleci.com/gh/rzeigler/waveguide.svg?style=svg)](https://circleci.com/gh/rzeigler/waveguide) [![Join the chat at https://gitter.im/waveguide-core/community](https://badges.gitter.im/waveguide-core/community.svg)](https://gitter.im/waveguide-core/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![CircleCI](https://circleci.com/gh/rzeigler/waveguide.svg?style=svg)](https://circleci.com/gh/rzeigler/waveguide) 
+[![Join the chat at https://gitter.im/waveguide-core/community](https://badges.gitter.im/waveguide-core/community.svg)](https://gitter.im/waveguide-core/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 Waveguide is a set of modules provided datatypes for encoding effects on Javascript platforms inspired by projects like [Cats Effect](https://github.com/typelevel/cats-effect) and [ZIO](https://github.com/scalaz/scalaz-zio). 
 This is the core module which provides the effect type IO as well as a number of concurrency primatives.
@@ -18,46 +19,45 @@ Also, there are a [number](./src/examples) [of](./examples/node) [examples](./ex
 
 ## Getting Started
 ```
-import { IO } from "waveguide"
+import { IO, io } from "waveguide"
 ```
 
 Consider simple examples for [node](./examples/node/src/index.ts) and the [browser](./examples/browser/src/index.tx)
 
 ## Constructing an IO
 There are a number of ways of constructing IOs.
-`IO.of` and `IO.failed` allow creating IOs from know values.
-Additionally, `IO.eval` and `IO.suspend` create IOs from side effecting functions.
-`IO.async` creates an asynchronous IO and `IO.assimilate` creates an IO from a promise factory.
-
+    - `io.succeed` -- create a successful IO
+    - `io.failed` -- create a failed IO
+    - `io.async` -- create an asynchronous effect based on callbacks
+    - `io.suspend` -- create a synchronous efffect
+There are also a number of functions to construct IOs from Promises and fp-ts tasks
 
 ## Using an IO
-`IO<E, A>` is a monad and exposes the relevant functions in a naming scheme similar to [fp-ts](https://github.com/gcanti/fp-ts/) along with a number of typeclass instances for Monoid, Monad, and parallel Applicative.
-Furthermore, there are a several resource acquisition functions such as `bracket` and `ensuring` which guarantee IO actions happen in the fact of errors or interuption.
-These respect the 'critical' method which marks an IO as a critical section and as such should be interruptible.
+`IO<E, A>` is a monad and exposes the relevant functions in a naming scheme similar to [fp-ts](https://github.com/gcanti/fp-ts/) along with typeclass instances for Monad and parallel Applicative.
+Furthermore, there are a several resource acquisition functions such as `bracket` and `onComplete` which guarantee IO actions happen in the fact of errors or interuption.
+These respect interruptible state
 
 ## Resources
 Any IO<E, A> may be safely used as a resource acquisition using the `bracket` or `bracketExit` combinators.
 Once the resource is acquired, the release action will always happen. 
-`bracketExit` is a more powerful form of `bracket` where the `FiberResult` of the resource use action is also available.
+`bracketExit` is a more powerful form of `bracket` where the `Exit` of the resource use action is also available.
 
 ## Fibers
 An `IO<E, A>` may be converted to a fiber using `fork()`.
 The result being an `IO<never, Fiber<E, A>>`.
 The IO action is now running in the background and can be interrupted, waited, or joined.
 `interrupt` sends an interrupt to a fiber causing it to halt once it leaves any critical sections it may be in.
-A fiber will always run its finalizers even in the face of interruption.
 `join` will halt the progress of the current fiber until the result of the target fiber is known.
-`wait` will await the termination of a fiber either by interruption or completion. 
-In particular, if you need to know when a fiber has finished its finalizers after being interrupted, you may use `wait`.
+`wait` will await the termination of a fiber either by interruption or completion and produce the Exit status. 
 
 
 ## Running
 IOs are lazy so they don't actually do anything until they are interpreted.
-`launch` will begin running a fiber and returns a cancellation action.
-`promised` will return a promise of the result of the fiber and will not resolve in the face of interruption.
-`promisedResult` will return a promise of a FiberResult.
+`unsafeRun` will begin running a fiber and returns a cancellation action.
+`unsafeRunToPromise` will return a promise of the result of the fiber, rejecting if a failure is encountered.
+`unsafeRunToPromiseTotal` will return a promise of an `Exit<E, A>` for the result of evaluation. This promis will not reject.
 Once an IO is launched its runloop will execute synchronous effects continuously until an asynchronous boundary is hit.
-If this is undesirable insert `yield_` calls at appropriate points.
+If this is undesirable insert `io.shift` or `io.shiftAsync` calls at appropriate points.
 IO can be used to perform long-running tasks without resorting to service workers on the main thread in this way.
 
 
@@ -73,7 +73,7 @@ Both use a similar encoding of higher kinded types based on the paper [Lightweig
 
 funfix provides several building block effect types like Eval and Future that posses fewer capabilities than the most powerfult type IO.
 waveguide does not provide equivalents; there is only the IO type.
-waveguide does not provide an equivalent to funfix's Scheduler abstraction.
+waveguide does not provide an equivalent to funfix's Scheduler abstraction, although there is a trampolining runtime that underlies waveguides runloop and is configurable.
 Both waveguide and funfix optimistically run synchronous effects until the first asynchronous boundary.
 In funfix can be customized by providing an `ExecutionModel` and one such use is to perform auto-batching to ensure that every n synchronous steps the runloop will suspend to give other fibers a chance to run.
 By contrast, waveguide will never automatically insert a boundary because doing so could result in unexpected behavior

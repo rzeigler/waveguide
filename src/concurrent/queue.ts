@@ -11,11 +11,3 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-export { IO, io } from "./core/io";
-export { Exit } from "./core/exit";
-export { Fiber, fiber } from "./core/fiber";
-export { Deferred, deferred } from "./concurrent/deferred";
-export { Ref, ref } from "./concurrent/ref";
-export { Semaphore, semaphore } from "./concurrent/semaphore";
-export { Mutex, mutex } from "./concurrent/mutex";

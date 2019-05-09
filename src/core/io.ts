@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import { Do } from "fp-ts-contrib/lib/Do";
+import { Applicative2 } from "fp-ts/lib/Applicative";
 import { Either, left, right } from "fp-ts/lib/Either";
 import { compose, constant, Function1, Function2, identity, Lazy } from "fp-ts/lib/function";
 import { IO as SyncIO } from "fp-ts/lib/IO";
@@ -240,7 +241,7 @@ export class IO<E, A> {
    *
    * Any error type may be set for easier integration into other chains
    */
-  public run<EE = never>(): IO<EE, Exit<E, A>> {
+  public result<EE = never>(): IO<EE, Exit<E, A>> {
     // This could probably be a static property hwoever, for now,
     return new IO(new Fold(
       this,
@@ -315,21 +316,33 @@ export class IO<E, A> {
     return shift.widenError<E>().applySecond(this);
   }
 
+  /**
+   * Ensure that finalizer is evaluated whenever this has begun executing
+   * @param finalizer
+   */
   public onCompleted(finalizer: IO<E, unknown>): IO<E, A> {
     return uninterruptibleMask((cutout) =>
       // TODO: Recover in the face of buggy finalizer...
-      cutout(this).run<E>().chain((exit) => finalizer.applySecond(io.completeWith(exit)))
+      cutout(this).result<E>().chain((exit) => finalizer.applySecond(io.completeWith(exit)))
     );
   }
 
+  /**
+   * Ensure that finalizer is evaluated when ever this has been interrupted after it begins execting
+   * @param finalizer
+   */
   public onInterrupted(finalizer: IO<E, unknown>): IO<E, A> {
     return uninterruptibleMask((cutout) =>
-      cutout(this).run<E>().chain((exit) =>
+      cutout(this).result<E>().chain((exit) =>
         exit._tag === "interrupted" ? finalizer.applySecond(io.completeWith(exit)) : io.completeWith(exit)
       )
     );
   }
 
+  /**
+   * Create an IO that proxies the result of this into the target deferred
+   * @param target
+   */
   public into(target: Deferred<E, A>): IO<never, void> {
     return target.from(this);
   }
@@ -348,7 +361,7 @@ export class IO<E, A> {
    * @param f
    */
   public parZipWith<B, C>(other: IO<E, B>, f: Function2<A, B, C>): IO<E, C> {
-    return raceWith(this, other,
+    return raceFold(this, other,
       (thisExit, otherFiber) => io.completeWith(thisExit).zipWith(otherFiber.join, f),
       (otherExit, thisFiber) => io.completeWith(otherExit).zipWith(thisFiber.join, (b, a) => f(a, b))
     );
@@ -401,7 +414,7 @@ export class IO<E, A> {
       // Interrupt the loser first, because if exit is a failure, we don't want to bail out on the interrupt
       return loser.interrupt.widenError<E>().applySecond(io.completeWith(exit));
     }
-    return raceWith(this, other, interruptLoser, interruptLoser);
+    return raceFold(this, other, interruptLoser, interruptLoser);
   }
 
   /**
@@ -415,7 +428,7 @@ export class IO<E, A> {
         succeed(exit.value).applyFirst(loser.interrupt) :
         loser.join;
     }
-    return raceWith(this, other, consumeLoser, consumeLoser);
+    return raceFold(this, other, consumeLoser, consumeLoser);
   }
 
   /**
@@ -619,22 +632,42 @@ function uninterruptible<E, A>(inner: IO<E, A>): IO<E, A> {
   return new IO(new InterruptibleState(inner, false));
 }
 
+/**
+ * Create a version of inner where the interrupt flag is set to state
+ * @param inner
+ * @param state
+ */
 function interruptibleState<E, A>(inner: IO<E, A>, state: boolean): IO<E, A> {
   return new IO(new InterruptibleState(inner, state));
 }
 
+/**
+ * The type of a function that allows setting interruptibility within a masked region
+ */
 export type InterruptMaskCutout<E, A> = Function1<IO<E, A>, IO<E, A>>;
 
 function makeInterruptMaskCutout<E, A>(state: boolean): InterruptMaskCutout<E, A> {
   return (inner) => inner.interruptibleState(state);
 }
 
+/**
+ * Create an IO that is uninterruptible from a factory function.
+ * The factory receives a function that can be used to restore the interruptible state was to the that of the outer
+ * execution i.e. cut out a piece of the mask
+ * @param f
+ */
 function uninterruptibleMask<E, A>(f: Function1<InterruptMaskCutout<E, A>, IO<E, A>>): IO<E, A> {
   return getInterruptible
     .widenError<E>()
     .chain((state) => f(makeInterruptMaskCutout<E, A>(state)).uninterruptible());
 }
 
+/**
+ * Create an IO that is uninterruptible from a factory function.
+ * The factory receives a function that can be used to restore the interruptible state was to the that of the outer
+ * execution i.e. cut out a piece of the mask
+ * @param f
+ */
 function interruptibleMask<E, A>(f: Function1<InterruptMaskCutout<E, A>, IO<E, A>>): IO<E, A> {
   return getInterruptible
     .widenError<E>()
@@ -645,13 +678,18 @@ const bracketExitC = <E, A>(acquire: IO<E, A>) =>
   <B>(release: Function2<A, Exit<E, B>, IO<E, unknown>>, use: Function1<A, IO<E, B>>): IO<E, B> =>
     bracketExit(acquire, release, use);
 
+/**
+ * Consume a resource in a safe manner.
+ * This ensures that if acquire completes successfully then release will be invoked and its result evaluated with
+ * the exit status of the result of use.
+ */
 function bracketExit<E, A, B>(acquire: IO<E, A>,
                               release: Function2<A, Exit<E, B>, IO<E, unknown>>,
                               use: Function1<A, IO<E, B>>): IO<E, B> {
   return uninterruptibleMask<E, B>((cutout) =>
     Do(monad)
       .bind("a", acquire)
-      .bindL("e", ({a}) => cutout(use(a)).run().widenError<E>()
+      .bindL("e", ({a}) => cutout(use(a)).result().widenError<E>()
         // TODO: Recover in the face of buggy finalizer
         .chain((e) => release(a, e).as(e)))
       .bindL("b", ({e}) => io.completeWith(e))
@@ -686,7 +724,16 @@ function after<E = never>(ms: number): IO<E, void> {
     );
 }
 
-function raceWith<E1, E2, A, B, C>(first: IO<E1, A>, second: IO<E1, B>,
+/**
+ * Race two effects and fold the result
+ *
+ *
+ * @param first
+ * @param second
+ * @param onFirstWon
+ * @param onSecondWon
+ */
+function raceFold<E1, E2, A, B, C>(first: IO<E1, A>, second: IO<E1, B>,
                                    onFirstWon: Function2<Exit<E1, A>, Fiber<E1, B>, IO<E2, C>>,
                                    onSecondWon: Function2<Exit<E1, B>, Fiber<E1, A>, IO<E2, C>>): IO<E2, C> {
   // tslint:disable-next-line:no-shadowed-variable
@@ -750,6 +797,10 @@ function fromPromiseL<A>(thunk: Lazy<Promise<A>>): IO<unknown, A> {
   }).uninterruptible();
 }
 
+/**
+ * Create an IO from an already running task
+ * @param task
+ */
 function fromTask<A>(task: Task<A>): IO<never, A> {
   return io.asyncTotal<A>((callback) => {
     task.run().then((v) => callback(v));
@@ -796,7 +847,15 @@ const monad: Monad2<URI> = {
   ap,
   chain,
   of
-};
+} as const;
+
+const parAp = <L, A, B>(fab: IO<L, Function1<A, B>>, fa: IO<L, A>) => fab.parAp_(fa);
+const parallelApplicative: Applicative2<URI> = {
+  URI,
+  of,
+  map,
+  ap: parAp
+} as const;
 
 export const io = {
   succeed,
@@ -832,5 +891,6 @@ export const io = {
   fromTaskEither,
   fromSyncIO,
   fromSyncIOEither,
-  monad
+  monad,
+  parallelApplicative
 } as const;

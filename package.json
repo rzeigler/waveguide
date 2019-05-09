@@ -4,6 +4,7 @@
   "description": "An effect type for typescript/javascript",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
+  "homepage": "https://rzeigler.github.com/waveguide",
   "scripts": {
     "clean": "rimraf lib/",
     "build": "tsc",
@@ -37,6 +38,8 @@
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
     "deep-equal": "^1.0.1",
+    "docs-ts": "github:gcanti/docs-ts",
+    "doctoc": "^1.4.0",
     "esm": "^3.2.5",
     "fast-check": "^1.14.0",
     "fp-ts": "^1.17.0",

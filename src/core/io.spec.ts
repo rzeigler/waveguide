@@ -113,13 +113,13 @@ describe("io", () => {
   });
   describe("#run", () => {
     it("should complete with an expected completion", () =>
-      expectExit(io.succeed(42).run(), new Value(new Value(42)))
+      expectExit(io.succeed(42).result(), new Value(new Value(42)))
     );
     it("should complete with an expected failure", () =>
-      expectExit(io.fail("boom").run(), new Value(new Failed("boom")))
+      expectExit(io.fail("boom").result(), new Value(new Failed("boom")))
     );
     it("should complete with an expected abort", () =>
-      expectExit(io.abort("boom").run(), new Value(new Aborted("boom")))
+      expectExit(io.abort("boom").result(), new Value(new Aborted("boom")))
     );
     /**
      * This may be counter-intruitive, but the interrupted io sets the interrupted flag.
@@ -129,7 +129,7 @@ describe("io", () => {
      * above
      */
     it("should complete with an expected interrupt", () =>
-      expectExit(io.uninterruptible(io.interrupted.run()), new Interrupted())
+      expectExit(io.uninterruptible(io.interrupted.result()), new Interrupted())
     );
   });
   describe("raceFirstDone", () => {
