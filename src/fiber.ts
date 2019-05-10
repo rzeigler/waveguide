@@ -25,7 +25,7 @@ export interface Fiber<E, A> {
   readonly name: Option<string>;
   /**
    * Send an interrupt signal to this fiber.
-   * 
+   *
    * The this will complete execution once the target fiber has halted.
    * Does nothing if the target fiber is already complete
    */

@@ -687,8 +687,8 @@ export function interruptibleMask<E, A>(f: Function1<InterruptMaskCutout<E, A>, 
 
 /**
  * A curried form of bracketExit
- * 
- * @param acquire 
+ *
+ * @param acquire
  */
 export const bracketExitC = <E, A>(acquire: IO<E, A>) =>
   <B>(release: Function2<A, Exit<E, B>, IO<E, unknown>>, use: Function1<A, IO<E, B>>): IO<E, B> =>
@@ -815,7 +815,7 @@ export function fromPromiseL<A>(thunk: Lazy<Promise<A>>): IO<unknown, A> {
 
 /**
  * Create an IO from an fp-ts Task
- * 
+ *
  * The resulting IO is uninterruptible
  * @param task
  */
@@ -829,9 +829,9 @@ export function fromTask<A>(task: Task<A>): IO<never, A> {
 
 /**
  * Create an IO from an fp-ts TaskEither
- * 
+ *
  * THe resulting IO is uninterruptible
- * @param task 
+ * @param task
  */
 export function fromTaskEither<E, A>(task: TaskEither<E, A>): IO<E, A> {
   return async<E, A>((callback) => {
@@ -843,7 +843,7 @@ export function fromTaskEither<E, A>(task: TaskEither<E, A>): IO<E, A> {
 
 /**
  * Create an IO from an fp-ts IO
- * @param fpio 
+ * @param fpio
  */
 export function fromSyncIO<A>(fpio: SyncIO<A>): IO<never, A> {
   return effect(() => fpio.run());
@@ -851,7 +851,7 @@ export function fromSyncIO<A>(fpio: SyncIO<A>): IO<never, A> {
 
 /**
  * Create an IO from an fp-ts IOEither
- * @param ioe 
+ * @param ioe
  */
 export function fromSyncIOEither<E, A>(ioe: IOEither<E, A>): IO<E, A> {
   return suspend(() => ioe.run().fold(

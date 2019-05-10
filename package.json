@@ -10,6 +10,7 @@
     "build": "tsc",
     "test": "tsc -p tsconfig.test.json && mocha --recursive build/**/*.js",
     "lint": "tslint --project .",
+    "lint-fix": "tslint --project . --fix",
     "docs": "docs-ts",
     "prepublishOnly": "npm run clean && npm run lint && npm run build && npm run test"
   },
