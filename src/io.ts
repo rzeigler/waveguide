@@ -494,6 +494,9 @@ export class IO<E, A> {
  */
 export const succeedC = <E = never>() => <A>(a: A): IO<E, A> => new IO(new Succeeded(a));
 
+/**
+ * Create an IO that is successful with the provided value
+ */
 export const succeed = succeedC();
 
 /**
@@ -505,6 +508,9 @@ export const succeed = succeedC();
  */
 export const failC = <A = never>() => <E>(e: E): IO<E, A> => new IO(new Caused(new Failed(e)));
 
+/**
+ * Create an IO that is failed with the provided value
+ */
 export const fail = failC();
 
 /**
@@ -604,7 +610,7 @@ export const shiftAsync: IO<never, void> = getRuntime
  * An IO that never completes with a value.
  *
  * This does however, schedule a setInterval for 60s in the background.
- * This should, therefore, prevent node from exiting cleanly if not interrupted
+ * This should, therefore, prevent node from exiting if not interrupted
  */
 export const never: IO<never, never> = new IO(new Async((_) => {
   // tslint:disable-next-line:no-empty
@@ -614,6 +620,9 @@ export const never: IO<never, never> = new IO(new Async((_) => {
   };
 }));
 
+/**
+ * An IO that yields void (undefined)
+ */
 export const unit: IO<never, void> = succeed(undefined);
 
 /**
@@ -646,14 +655,15 @@ export function interruptibleState<E, A>(inner: IO<E, A>, state: boolean): IO<E,
  */
 export type InterruptMaskCutout<E, A> = Function1<IO<E, A>, IO<E, A>>;
 
-export function makeInterruptMaskCutout<E, A>(state: boolean): InterruptMaskCutout<E, A> {
+function makeInterruptMaskCutout<E, A>(state: boolean): InterruptMaskCutout<E, A> {
   return (inner) => inner.interruptibleState(state);
 }
 
 /**
- * Create an IO that is uninterruptible from a factory function.
- * The factory receives a function that can be used to restore the interruptible state was to the that of the outer
- * execution i.e. cut out a piece of the mask
+ * Create an uninterruptible region of execution.
+ *
+ * f will be invoked with a function that can restore the outer interruptible state within the resulting region,
+ * i.e. cutout a chunk of the mask
  * @param f
  */
 export function uninterruptibleMask<E, A>(f: Function1<InterruptMaskCutout<E, A>, IO<E, A>>): IO<E, A> {
@@ -663,9 +673,10 @@ export function uninterruptibleMask<E, A>(f: Function1<InterruptMaskCutout<E, A>
 }
 
 /**
- * Create an IO that is uninterruptible from a factory function.
- * The factory receives a function that can be used to restore the interruptible state was to the that of the outer
- * execution i.e. cut out a piece of the mask
+ * Create an interruptible region of execution.
+ *
+ * f will be invoked with a function that can restore the outer interruptible state within the resulting region,
+ * i.e. cutout a chunk of the mask
  * @param f
  */
 export function interruptibleMask<E, A>(f: Function1<InterruptMaskCutout<E, A>, IO<E, A>>): IO<E, A> {
@@ -674,6 +685,11 @@ export function interruptibleMask<E, A>(f: Function1<InterruptMaskCutout<E, A>, 
     .chain((state) => f(makeInterruptMaskCutout<E, A>(state)).interruptible());
 }
 
+/**
+ * A curried form of bracketExit
+ * 
+ * @param acquire 
+ */
 export const bracketExitC = <E, A>(acquire: IO<E, A>) =>
   <B>(release: Function2<A, Exit<E, B>, IO<E, unknown>>, use: Function1<A, IO<E, B>>): IO<E, B> =>
     bracketExit(acquire, release, use);
@@ -725,7 +741,7 @@ export function after<E = never>(ms: number): IO<E, void> {
 }
 
 /**
- * Race two effects and fold the result
+ * Race two effects and fold the winning Exit together with the losing Fiber
  *
  *
  * @param first
@@ -798,7 +814,9 @@ export function fromPromiseL<A>(thunk: Lazy<Promise<A>>): IO<unknown, A> {
 }
 
 /**
- * Create an IO from an already running task
+ * Create an IO from an fp-ts Task
+ * 
+ * The resulting IO is uninterruptible
  * @param task
  */
 export function fromTask<A>(task: Task<A>): IO<never, A> {
@@ -809,6 +827,12 @@ export function fromTask<A>(task: Task<A>): IO<never, A> {
   }).uninterruptible();
 }
 
+/**
+ * Create an IO from an fp-ts TaskEither
+ * 
+ * THe resulting IO is uninterruptible
+ * @param task 
+ */
 export function fromTaskEither<E, A>(task: TaskEither<E, A>): IO<E, A> {
   return async<E, A>((callback) => {
     task.run().then(callback);
@@ -817,10 +841,18 @@ export function fromTaskEither<E, A>(task: TaskEither<E, A>): IO<E, A> {
   }).uninterruptible();
 }
 
+/**
+ * Create an IO from an fp-ts IO
+ * @param fpio 
+ */
 export function fromSyncIO<A>(fpio: SyncIO<A>): IO<never, A> {
   return effect(() => fpio.run());
 }
 
+/**
+ * Create an IO from an fp-ts IOEither
+ * @param ioe 
+ */
 export function fromSyncIOEither<E, A>(ioe: IOEither<E, A>): IO<E, A> {
   return suspend(() => ioe.run().fold(
     failC<A>(),
