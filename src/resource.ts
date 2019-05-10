@@ -15,14 +15,85 @@
 import { Free } from "fp-ts/lib/Free";
 import { compose, Function1, identity } from "fp-ts/lib/function";
 import { Functor3 } from "fp-ts/lib/Functor";
-import { IO, io } from "./io";
+import { bracket, IO } from "./io";
 
 export const URI = "Resource";
 export type URI = typeof URI;
 
-export class Resource<E, A> {
-  constructor(public readonly acquire: IO<E, A>,
-              public readonly release: Function1<A, IO<E, void>>) {
+export type Resource<E, A> = Pure<E, A> | Bracket<E, A> | Suspend<E, A> | Chain<E, any, A>;
 
+export class Pure<E, A> {
+  constructor(public readonly a: A) { }
+
+  public map<B>(f: Function1<A, B>): Resource<E, B> {
+    return this.chain((a) => new Pure(f(a)));
   }
+
+  public chain<B>(f: Function1<A, Resource<E, B>>): Resource<E, B> {
+    return new Chain(this, f);
+  }
+
+  public use<B>(f: Function1<A, IO<E, B>>): IO<E, B> {
+    return f(this.a);
+  }
+}
+
+export class Bracket<E, A> {
+  constructor(public readonly acquire: IO<E, A>, public readonly release: Function1<A, IO<E, void>>) { }
+
+  public map<B>(f: Function1<A, B>): Resource<E, B> {
+    return this.chain((a) => new Pure(f(a)));
+  }
+
+  public chain<B>(f: Function1<A, Resource<E, B>>): Resource<E, B> {
+    return new Chain(this, f);
+  }
+
+  public use<B>(f: Function1<A, IO<E, B>>): IO<E, B> {
+    return bracket(this.acquire, this.release, f);
+  }
+}
+
+export class Suspend<E, A> {
+  constructor(public readonly suspended: IO<E, Resource<E, A>>) { }
+
+  public map<B>(f: Function1<A, B>): Resource<E, B> {
+    return this.chain((a) => new Pure(f(a)));
+  }
+
+  public chain<B>(f: Function1<A, Resource<E, B>>): Resource<E, B> {
+    return new Chain(this, f);
+  }
+
+  public use<B>(f: Function1<A, IO<E, B>>): IO<E, B> {
+    return this.suspended.chain((r) => r.use(f));
+  }
+}
+
+export class Chain<E, L, A> {
+  constructor(public readonly left: Resource<E, L>, public readonly f: Function1<L, Resource<E, A>>) { }
+
+  public map<B>(f: Function1<A, B>): Resource<E, B> {
+    return this.chain((a) => new Pure(f(a)));
+  }
+
+  public chain<B>(f: Function1<A, Resource<E, B>>): Resource<E, B> {
+    return new Chain(this, f);
+  }
+
+  public use<B>(f: Function1<A, IO<E, B>>): IO<E, B> {
+    return this.left.use((l) => this.f(l).use(f));
+  }
+}
+
+export function of<E, A>(a: A): Resource<E, A> {
+  return new Pure(a);
+}
+
+export function resource<E, A>(acquire: IO<E, A>, release: Function1<A, IO<E, void>>): Resource<E, A> {
+  return new Bracket(acquire, release);
+}
+
+export function suspend<E, A>(eff: IO<E, Resource<E, A>>): Resource<E, A> {
+  return new Suspend(eff);
 }
