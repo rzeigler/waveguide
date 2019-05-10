@@ -12,14 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Free } from "fp-ts/lib/Free";
-import { compose, Function1, identity } from "fp-ts/lib/function";
-import { Functor3 } from "fp-ts/lib/Functor";
+import { Function1 } from "fp-ts/lib/function";
 import { bracket, IO } from "./io";
 
 export const URI = "Resource";
 export type URI = typeof URI;
 
+/**
+ * A Resource<E, A> is a type that encapsulates the safe acquisition and release of a resource.
+ *
+ * This is a friendly monadic wrapper around bracketExit.
+ */
 export type Resource<E, A> = Pure<E, A> | Bracket<E, A> | Suspend<E, A> | Chain<E, any, A>;
 
 export class Pure<E, A> {

@@ -2,5 +2,5 @@
 /examples/
 /docs/
 /.vscode/
-/lib/**/*.spec.*
-/lib/examples/
+/build/
+/test/
