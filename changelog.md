@@ -1,5 +1,6 @@
 # Waveguide - Changelog
 
+
 ## 0.3.0
 * IO.async interface changes. IO.async now takes a ContextSwitch<E, A> -> void. ContextSwitch<E, A> allows control over when asynchronous values are delivered and whether interruption is possible.
 * Adds Semaphore.tryAcquireN/tryAcquire.

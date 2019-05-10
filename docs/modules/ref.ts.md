@@ -20,11 +20,10 @@ parent: Modules
 
 ```ts
 export interface Ref<A> {
-  readonly get: IO<never, A>
-  set(a: A): IO<never, A>
-  update(f: Function1<A, A>): IO<never, A>
-  modify<B>(f: Function1<A, readonly [B, A]>): IO<never, B>
-}
+  readonly get: IO<never, A>;
+  set(a: A): IO<never, A>;
+  update(f: Function1<A, A>): IO<never, A>;
+  modify<B>(f: Function1<A, readonly [B, A]
 ```
 
 # makeRef (constant)
