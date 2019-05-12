@@ -9,7 +9,9 @@
     "clean": "rimraf lib/",
     "build": "tsc",
     "test": "tsc -p tsconfig.test.json && mocha --recursive build/**/*.js",
-    "lint": "tslint --project .",
+    "test-watch": "nodemon -w src -w test -e .ts -x 'tsc -p tsconfig.test.json && mocha --recursive --reporter min build/**/*.js'",
+    "lint": "tslint --project tsconfig.test.json",
+    "lint-fix": "tslint --project tsconfig.test.json --fix",
     "docs": "docs-ts",
     "prepublishOnly": "npm run clean && npm run lint && npm run build && npm run test"
   },
