@@ -87,6 +87,6 @@ export function empty<A>(): Dequeue<A> {
   return new Dequeue(list.nil, list.nil);
 }
 
-export const dequeue = {
-  empty
-};
+export function of<A>(item: A): Dequeue<A> {
+  return empty<A>().offer(item);
+}

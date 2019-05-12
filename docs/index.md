@@ -9,7 +9,6 @@ nav_order: 1
 import * as w, { IO } from "waveguide/lib/io"
 ```
 
-
 ## Constructing an IO
 There are a number of ways of constructing IOs exported from the /lib/io module
 They include
@@ -29,6 +28,7 @@ These respect interruptible state
 Any IO<E, A> may be safely used as a resource acquisition using the `bracket` or `bracketExit` combinators.
 Once the resource is acquired, the release action will always happen. 
 `bracketExit` is a more powerful form of `bracket` where the `Exit` of the resource use action is also available.
+If all you need is to ensure that an acquired resource is cleaned up, there is also the Resource data type which forms a Monad for nesting resource scopes.
 
 ## Fibers
 An `IO<E, A>` may be converted to a fiber using `fork()`.

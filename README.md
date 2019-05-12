@@ -14,7 +14,7 @@ IO is:
 - Resource safe. Exposes a number of primitives for working with resources and guaranteeing cleanup.
 - Concurrent. Exposes a logical fiber model with support for joins and interrupts. Write your code as a sequence of effects and communicate with other fibers rather than trying to juggle the state of all concurrent processes at once.
 
-For more information see [the docs](./docs/index.md)
+For more information see [the docs](https://rzeigler.github.io/waveguide)
 
 waveguide's API is still very much in flux. 
 If you have questions don't hesitate to ask them in the gitter.
