@@ -17,7 +17,7 @@ import { constant, identity, not } from "fp-ts/lib/function";
 import { Deferred, makeDeferred } from "./deferred";
 import { abort, bracketC, bracketExitC, IO, unit } from "./io";
 import { makeRef as allocRef, Ref } from "./ref";
-import { Dequeue, dequeue } from "./support/dequeue";
+import { Dequeue, empty } from "./support/dequeue";
 import { Ticket, ticketExit, ticketUse } from "./ticket";
 
 export interface Semaphore {
@@ -104,7 +104,7 @@ class SemaphoreImpl implements Semaphore {
                 ] as const :
                 [
                   new Ticket(latch.wait, this.cancelWait(n, latch)),
-                  left(dequeue.empty().offer([n - available, latch] as const)) as State
+                  left(empty().offer([n - available, latch] as const)) as State
                 ] as const
             )
         )
