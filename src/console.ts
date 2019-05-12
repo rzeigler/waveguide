@@ -14,29 +14,35 @@
 
 import { effect, IO } from "./io";
 
-function log(msg: string): IO<never, void> {
+/**
+ * Suspend console.log in an IO
+ * @param msg
+ */
+export function log(msg: string): IO<never, void> {
   return effect(() => {
     // tslint:disable-next-line
     console.log(msg);
   });
 }
 
-function warn(msg: string): IO<never, void> {
+/**
+ * Suspend console.warn in an IO
+ * @param msg
+ */
+export function warn(msg: string): IO<never, void> {
   return effect(() => {
     // tslint:disable-next-line
     console.warn(msg);
   });
 }
 
-function error(msg: string): IO<never, void> {
+/**
+ * Suspend console.error in an IO
+ * @param msg
+ */
+export function error(msg: string): IO<never, void> {
   return effect(() => {
     // tslint:disable-next-line
     console.error(msg);
   });
 }
-
-const console = {
-  log,
-  warn,
-  error
-} as const;
