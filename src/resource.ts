@@ -27,7 +27,7 @@ import { MutableStack } from "./support/mutable-stack";
  */
 type ResourceADT<E, A> = Pure<E, A> | Bracket<E, A> | Suspend<E, A> | Chain<E, any, A>;
 
-class Resource<E, A> {
+export class Resource<E, A> {
   constructor(private readonly step: ResourceADT<E, A>) { }
 
   public map<B>(f: Function1<A, B>): Resource<E, B> {

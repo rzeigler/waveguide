@@ -15,22 +15,22 @@
 import { expect } from "chai";
 import fc, {Arbitrary, Command} from "fast-check";
 import { none, some, Some } from "fp-ts/lib/Option";
-import { dequeue, Dequeue } from "../../src/support/dequeue";
+import { Dequeue, empty } from "../../src/support/dequeue";
 
 describe("Dequeue", () => {
   it("take on empty is none", () => {
-    expect(dequeue.empty().take()).to.deep.equal(none);
+    expect(empty().take()).to.deep.equal(none);
   });
   it("pull on empty is none", () => {
-    expect(dequeue.empty().pull()).to.deep.equal(none);
+    expect(empty().pull()).to.deep.equal(none);
   });
   it("take after offer is a value", () => {
-    const queue = dequeue.empty().offer(42);
+    const queue = empty().offer(42);
     const result = queue.take();
-    expect(result).to.deep.equal(some([42, dequeue.empty()]));
+    expect(result).to.deep.equal(some([42, empty()]));
   });
   it("pull after offer is a value", () => {
-    const queue = dequeue.empty().offer(42);
+    const queue = empty().offer(42);
     const result = queue.pull();
     result.foldL(
       () => { throw new Error("expected some"); },
@@ -38,7 +38,7 @@ describe("Dequeue", () => {
     );
   });
   it("take after multiple offers is the first", () => {
-    const queue = dequeue.empty()
+    const queue = empty()
       .offer(42)
       .offer(43)
       .offer(44);
@@ -52,7 +52,7 @@ describe("Dequeue", () => {
     );
   });
   it("pull after multiple offers is the last", () => {
-    const queue = dequeue.empty()
+    const queue = empty()
       .offer(42)
       .offer(43)
       .offer(44);
@@ -160,7 +160,7 @@ describe("Dequeue", () => {
   it("should never lose elements", () => {
     fc.assert(
       fc.property(commandsArb, (commands) => {
-        fc.modelRun(() => ({model: {fake: []}, real: {actual: dequeue.empty()}}), commands);
+        fc.modelRun(() => ({model: {fake: []}, real: {actual: empty()}}), commands);
       })
     );
   });

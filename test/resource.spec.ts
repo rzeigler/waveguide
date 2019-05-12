@@ -15,13 +15,13 @@
 import { Value } from "../src/exit";
 import { succeed } from "../src/io";
 import { makeRef, Ref } from "../src/ref";
-import { resource, Resource } from "../src/resource";
+import { from, Resource } from "../src/resource";
 import { expectExit } from "./tools.spec";
 
 describe("Resource", () => {
   it("should bracket as expected", () => {
     function makeBracket(ref: Ref<string[]>, s: string): Resource<never, string> {
-      return resource(
+      return from(
         ref.update((ss) => [...ss, s]).as(s),
         (c) => ref.update((ss) => ss.filter((v) => v !== c)).unit()
       );
