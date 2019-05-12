@@ -52,7 +52,8 @@
   },
   "dependencies": {
     "autobind-decorator": "^2.4.0",
-    "fp-ts-contrib": "0.0.3"
+    "fp-ts-contrib": "0.0.3",
+    "monocle-ts": "^1.7.1"
   },
   "peerDependencies": {
     "fp-ts": "^1.17.0"

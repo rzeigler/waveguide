@@ -83,7 +83,7 @@ export class Dequeue<A> {
   }
 }
 
-function empty<A>(): Dequeue<A> {
+export function empty<A>(): Dequeue<A> {
   return new Dequeue(list.nil, list.nil);
 }
 

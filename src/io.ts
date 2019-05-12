@@ -19,6 +19,7 @@ import { compose, constant, Function1, Function2, identity, Lazy } from "fp-ts/l
 import { IO as SyncIO } from "fp-ts/lib/IO";
 import { IOEither } from "fp-ts/lib/IOEither";
 import { Monad2 } from "fp-ts/lib/Monad";
+import { none, Option, some } from "fp-ts/lib/Option";
 import { Task } from "fp-ts/lib/Task";
 import { TaskEither } from "fp-ts/lib/TaskEither";
 import { Deferred, makeDeferred } from "./deferred";
@@ -308,10 +309,18 @@ export class IO<E, A> {
     return getRuntime.chain((runtime) => shift.applySecond(makeFiber(this, runtime, name)));
   }
 
+  /**
+   * Introduce a trampoline boundary immediately before this IO.
+   *
+   * This will
+   */
   public shift(): IO<E, A> {
     return shift.widenError<E>().applySecond(this);
   }
 
+  /**
+   * Introduce an asynchronous boundary immediately before this IO.
+   */
   public shiftAsync(): IO<E, A> {
     return shift.widenError<E>().applySecond(this);
   }
@@ -761,6 +770,43 @@ export function raceFold<E1, E2, A, B, C>(first: IO<E1, A>, second: IO<E1, B>,
         cutout(channel.wait)
           .onInterrupted(firstFiber.interrupt.applySecond(secondFiber.interrupt)))
       .return(({ result }) => result)
+  );
+}
+
+/**
+ * Race an effect against a timeout and fold the result
+ * @param source the effect
+ * @param ms the duration of the timeout
+ * @param onTimeout the action to produce on timeout (receives the still running source fiber)
+ * @param onComplete the action to produce on success (receives the exit of the source fiber).
+ */
+export function timeoutFold<E, E2, A, B>(
+  source: IO<E, A>,
+  ms: number,
+  onTimeout: Function1<Fiber<E, A>, IO<E2, B>>,
+  onComplete: Function1<Exit<E, A>, IO<E2, B>>
+): IO<E2, B> {
+  return raceFold(
+    source,
+    unit.delay(ms),
+    (exit, delayFiber) => delayFiber.interrupt.widenError<E2>().applySecond(onComplete(exit)),
+    (_, actionFiber) => onTimeout(actionFiber)
+  );
+}
+
+/**
+ * Execute an effect with a timeout and produce an Option as to whether or not the effect completed
+ *
+ * If the timeout elapses the source effect will always be interrupted
+ * @param source the effect to run
+ * @param ms the maximum amount of time source is allowed to run
+ */
+export function timeoutOption<E, A>(source: IO<E, A>, ms: number): IO<E, Option<A>> {
+  return timeoutFold(
+    source,
+    ms,
+    (actionFiber) => actionFiber.interrupt.applySecond(succeed(none)),
+    (exit) => completeWith(exit).map(some)
   );
 }
 
