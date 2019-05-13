@@ -1,6 +1,6 @@
 ---
 title: support/dequeue.ts
-nav_order: 14
+nav_order: 15
 parent: Modules
 ---
 
@@ -10,7 +10,16 @@ parent: Modules
 
 - [Dequeue (class)](#dequeue-class)
   - [take (method)](#take-method)
-- [dequeue (constant)](#dequeue-constant)
+  - [offer (method)](#offer-method)
+  - [pull (method)](#pull-method)
+  - [push (method)](#push-method)
+  - [peek (method)](#peek-method)
+  - [isEmpty (method)](#isempty-method)
+  - [size (method)](#size-method)
+  - [find (method)](#find-method)
+  - [filter (method)](#filter-method)
+- [empty (function)](#empty-function)
+- [of (function)](#of-function)
 
 ---
 
@@ -32,13 +41,93 @@ Take an item from the front of this queue
 **Signature**
 
 ```ts
-public take(): Option<readonly [A, Dequeue<A { ... }
+public take(): Option<readonly [A, Dequeue<A>]> { ... }
 ```
 
-# dequeue (constant)
+## offer (method)
+
+Enqueue an item to the back of this queue
 
 **Signature**
 
 ```ts
-export const dequeue = ...
+public offer(a: A): Dequeue<A> { ... }
+```
+
+## pull (method)
+
+Take an item from the back of this queue
+
+**Signature**
+
+```ts
+public pull(): Option<readonly [A, Dequeue<A>]> { ... }
+```
+
+## push (method)
+
+Enqueue an item to the front of this queue
+
+**Signature**
+
+```ts
+public push(a: A): Dequeue<A> { ... }
+```
+
+## peek (method)
+
+Observe the next item that would be removed by take
+
+**Signature**
+
+```ts
+public peek(): Option<A> { ... }
+```
+
+## isEmpty (method)
+
+**Signature**
+
+```ts
+public isEmpty(): boolean { ... }
+```
+
+## size (method)
+
+**Signature**
+
+```ts
+public size(): number { ... }
+```
+
+## find (method)
+
+**Signature**
+
+```ts
+public find(f: Predicate<A>): Option<A> { ... }
+```
+
+## filter (method)
+
+**Signature**
+
+```ts
+public filter(f: Predicate<A>): Dequeue<A> { ... }
+```
+
+# empty (function)
+
+**Signature**
+
+```ts
+export function empty<A>(): Dequeue<A> { ... }
+```
+
+# of (function)
+
+**Signature**
+
+```ts
+export function of<A>(item: A): Dequeue<A> { ... }
 ```

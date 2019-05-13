@@ -99,10 +99,11 @@ parent: Modules
 - [interruptible (function)](#interruptible-function)
 - [interruptibleMask (function)](#interruptiblemask-function)
 - [interruptibleState (function)](#interruptiblestate-function)
-- [makeInterruptMaskCutout (function)](#makeinterruptmaskcutout-function)
 - [raceFold (function)](#racefold-function)
 - [succeedC (function)](#succeedc-function)
 - [suspend (function)](#suspend-function)
+- [timeoutFold (function)](#timeoutfold-function)
+- [timeoutOption (function)](#timeoutoption-function)
 - [uninterruptible (function)](#uninterruptible-function)
 - [uninterruptibleMask (function)](#uninterruptiblemask-function)
 
@@ -494,6 +495,10 @@ public fork(name?: string): IO<never, Fiber<E, A>> { ... }
 
 ## shift (method)
 
+Introduce a trampoline boundary immediately before this IO.
+
+This will
+
 **Signature**
 
 ```ts
@@ -501,6 +506,8 @@ public shift(): IO<E, A> { ... }
 ```
 
 ## shiftAsync (method)
+
+Introduce an asynchronous boundary immediately before this IO.
 
 **Signature**
 
@@ -716,6 +723,8 @@ export const URI = ...
 
 # fail (constant)
 
+Create an IO that is failed with the provided value
+
 **Signature**
 
 ```ts
@@ -765,7 +774,7 @@ export const io: Monad2<URI> = ...
 An IO that never completes with a value.
 
 This does however, schedule a setInterval for 60s in the background.
-This should, therefore, prevent node from exiting cleanly if not interrupted
+This should, therefore, prevent node from exiting if not interrupted
 
 **Signature**
 
@@ -807,6 +816,8 @@ export const shiftAsync: IO<never, void> = ...
 
 # succeed (constant)
 
+Create an IO that is successful with the provided value
+
 **Signature**
 
 ```ts
@@ -814,6 +825,8 @@ export const succeed = ...
 ```
 
 # unit (constant)
+
+An IO that yields void (undefined)
 
 **Signature**
 
@@ -898,6 +911,8 @@ export function bracketExit<E, A, B>(acquire: IO<E, A>,
 
 # bracketExitC (function)
 
+A curried form of bracketExit
+
 **Signature**
 
 ```ts
@@ -973,6 +988,8 @@ export function fromPromiseL<A>(thunk: Lazy<Promise<A>>): IO<unknown, A> { ... }
 
 # fromSyncIO (function)
 
+Create an IO from an fp-ts IO
+
 **Signature**
 
 ```ts
@@ -980,6 +997,8 @@ export function fromSyncIO<A>(fpio: SyncIO<A>): IO<never, A> { ... }
 ```
 
 # fromSyncIOEither (function)
+
+Create an IO from an fp-ts IOEither
 
 **Signature**
 
@@ -989,7 +1008,9 @@ export function fromSyncIOEither<E, A>(ioe: IOEither<E, A>): IO<E, A> { ... }
 
 # fromTask (function)
 
-Create an IO from an already running task
+Create an IO from an fp-ts Task
+
+The resulting IO is uninterruptible
 
 **Signature**
 
@@ -998,6 +1019,10 @@ export function fromTask<A>(task: Task<A>): IO<never, A> { ... }
 ```
 
 # fromTaskEither (function)
+
+Create an IO from an fp-ts TaskEither
+
+THe resulting IO is uninterruptible
 
 **Signature**
 
@@ -1017,9 +1042,10 @@ export function interruptible<E, A>(inner: IO<E, A>): IO<E, A> { ... }
 
 # interruptibleMask (function)
 
-Create an IO that is uninterruptible from a factory function.
-The factory receives a function that can be used to restore the interruptible state was to the that of the outer
-execution i.e. cut out a piece of the mask
+Create an interruptible region of execution.
+
+f will be invoked with a function that can restore the outer interruptible state within the resulting region,
+i.e. cutout a chunk of the mask
 
 **Signature**
 
@@ -1037,17 +1063,9 @@ Create a version of inner where the interrupt flag is set to state
 export function interruptibleState<E, A>(inner: IO<E, A>, state: boolean): IO<E, A> { ... }
 ```
 
-# makeInterruptMaskCutout (function)
-
-**Signature**
-
-```ts
-export function makeInterruptMaskCutout<E, A>(state: boolean): InterruptMaskCutout<E, A> { ... }
-```
-
 # raceFold (function)
 
-Race two effects and fold the result
+Race two effects and fold the winning Exit together with the losing Fiber
 
 **Signature**
 
@@ -1081,6 +1099,33 @@ Create an IO that will execute the function (and its side effects) synchronously
 export function suspend<E, A>(thunk: Lazy<IO<E, A>>): IO<E, A> { ... }
 ```
 
+# timeoutFold (function)
+
+Race an effect against a timeout and fold the result
+
+**Signature**
+
+```ts
+export function timeoutFold<E, E2, A, B>(
+  source: IO<E, A>,
+  ms: number,
+  onTimeout: Function1<Fiber<E, A>, IO<E2, B>>,
+  onComplete: Function1<Exit<E, A>, IO<E2, B>>
+): IO<E2, B> { ... }
+```
+
+# timeoutOption (function)
+
+Execute an effect with a timeout and produce an Option as to whether or not the effect completed
+
+If the timeout elapses the source effect will always be interrupted
+
+**Signature**
+
+```ts
+export function timeoutOption<E, A>(source: IO<E, A>, ms: number): IO<E, Option<A>> { ... }
+```
+
 # uninterruptible (function)
 
 Create an uninterruptible version of inner
@@ -1093,9 +1138,10 @@ export function uninterruptible<E, A>(inner: IO<E, A>): IO<E, A> { ... }
 
 # uninterruptibleMask (function)
 
-Create an IO that is uninterruptible from a factory function.
-The factory receives a function that can be used to restore the interruptible state was to the that of the outer
-execution i.e. cut out a piece of the mask
+Create an uninterruptible region of execution.
+
+f will be invoked with a function that can restore the outer interruptible state within the resulting region,
+i.e. cutout a chunk of the mask
 
 **Signature**
 

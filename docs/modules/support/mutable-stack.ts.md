@@ -1,6 +1,6 @@
 ---
 title: support/mutable-stack.ts
-nav_order: 17
+nav_order: 18
 parent: Modules
 ---
 

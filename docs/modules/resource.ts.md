@@ -8,38 +8,22 @@ parent: Modules
 
 <h2 class="text-delta">Table of contents</h2>
 
-- [Resource (type alias)](#resource-type-alias)
 - [URI (type alias)](#uri-type-alias)
-- [Bracket (class)](#bracket-class)
+- [Resource (class)](#resource-class)
   - [map (method)](#map-method)
+  - [zipWith (method)](#zipwith-method)
+  - [zip (method)](#zip-method)
+  - [ap (method)](#ap-method)
+  - [ap\_ (method)](#ap_-method)
   - [chain (method)](#chain-method)
   - [use (method)](#use-method)
-- [Chain (class)](#chain-class)
-  - [map (method)](#map-method-1)
-  - [chain (method)](#chain-method-1)
-  - [use (method)](#use-method-1)
-- [Pure (class)](#pure-class)
-  - [map (method)](#map-method-2)
-  - [chain (method)](#chain-method-2)
-  - [use (method)](#use-method-2)
-- [Suspend (class)](#suspend-class)
-  - [map (method)](#map-method-3)
-  - [chain (method)](#chain-method-3)
-  - [use (method)](#use-method-3)
 - [URI (constant)](#uri-constant)
+- [resource (constant)](#resource-constant)
+- [from (function)](#from-function)
 - [of (function)](#of-function)
-- [resource (function)](#resource-function)
 - [suspend (function)](#suspend-function)
 
 ---
-
-# Resource (type alias)
-
-**Signature**
-
-```ts
-export type Resource<E, A> = Pure<E, A> | Bracket<E, A> | Suspend<E, A> | Chain<E, any, A>
-```
 
 # URI (type alias)
 
@@ -49,13 +33,13 @@ export type Resource<E, A> = Pure<E, A> | Bracket<E, A> | Suspend<E, A> | Chain<
 export type URI = typeof URI
 ```
 
-# Bracket (class)
+# Resource (class)
 
 **Signature**
 
 ```ts
-export class Bracket<E, A> {
-  constructor(public readonly acquire: IO<E, A>, public readonly release: Function1<A, IO<E, void>>) { ... }
+export class Resource<E, A> {
+  constructor(private readonly step: ResourceADT<E, A>) { ... }
   ...
 }
 ```
@@ -68,109 +52,36 @@ export class Bracket<E, A> {
 public map<B>(f: Function1<A, B>): Resource<E, B> { ... }
 ```
 
-## chain (method)
+## zipWith (method)
 
 **Signature**
 
 ```ts
-public chain<B>(f: Function1<A, Resource<E, B>>): Resource<E, B> { ... }
+public zipWith<B, C>(other: Resource<E, B>, f: Function2<A, B, C>): Resource<E, C> { ... }
 ```
 
-## use (method)
+## zip (method)
 
 **Signature**
 
 ```ts
-public use<B>(f: Function1<A, IO<E, B>>): IO<E, B> { ... }
+public zip<B>(other: Resource<E, B>): Resource<E, readonly [A, B]> { ... }
 ```
 
-# Chain (class)
+## ap (method)
 
 **Signature**
 
 ```ts
-export class Chain<E, L, A> {
-  constructor(public readonly left: Resource<E, L>, public readonly f: Function1<L, Resource<E, A>>) { ... }
-  ...
-}
+public ap<B>(other: Resource<E, Function1<A, B>>): Resource<E, B> { ... }
 ```
 
-## map (method)
+## ap\_ (method)
 
 **Signature**
 
 ```ts
-public map<B>(f: Function1<A, B>): Resource<E, B> { ... }
-```
-
-## chain (method)
-
-**Signature**
-
-```ts
-public chain<B>(f: Function1<A, Resource<E, B>>): Resource<E, B> { ... }
-```
-
-## use (method)
-
-**Signature**
-
-```ts
-public use<B>(f: Function1<A, IO<E, B>>): IO<E, B> { ... }
-```
-
-# Pure (class)
-
-**Signature**
-
-```ts
-export class Pure<E, A> {
-  constructor(public readonly a: A) { ... }
-  ...
-}
-```
-
-## map (method)
-
-**Signature**
-
-```ts
-public map<B>(f: Function1<A, B>): Resource<E, B> { ... }
-```
-
-## chain (method)
-
-**Signature**
-
-```ts
-public chain<B>(f: Function1<A, Resource<E, B>>): Resource<E, B> { ... }
-```
-
-## use (method)
-
-**Signature**
-
-```ts
-public use<B>(f: Function1<A, IO<E, B>>): IO<E, B> { ... }
-```
-
-# Suspend (class)
-
-**Signature**
-
-```ts
-export class Suspend<E, A> {
-  constructor(public readonly suspended: IO<E, Resource<E, A>>) { ... }
-  ...
-}
-```
-
-## map (method)
-
-**Signature**
-
-```ts
-public map<B>(f: Function1<A, B>): Resource<E, B> { ... }
+public ap_<B, C>(this: Resource<E, Function1<B, C>>, other: Resource<E, B>): Resource<E, C> { ... }
 ```
 
 ## chain (method)
@@ -197,20 +108,28 @@ public use<B>(f: Function1<A, IO<E, B>>): IO<E, B> { ... }
 export const URI = ...
 ```
 
+# resource (constant)
+
+**Signature**
+
+```ts
+export const resource: Monad2<URI> = ...
+```
+
+# from (function)
+
+**Signature**
+
+```ts
+export function from<E, A>(acquire: IO<E, A>, release: Function1<A, IO<E, void>>): Resource<E, A> { ... }
+```
+
 # of (function)
 
 **Signature**
 
 ```ts
 export function of<E, A>(a: A): Resource<E, A> { ... }
-```
-
-# resource (function)
-
-**Signature**
-
-```ts
-export function resource<E, A>(acquire: IO<E, A>, release: Function1<A, IO<E, void>>): Resource<E, A> { ... }
 ```
 
 # suspend (function)
