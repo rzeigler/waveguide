@@ -14,7 +14,7 @@
 * async operators no longer take a ContextSwitch<E, A> instead returning to the form of Function1<Function1<Either<E, A>, void>, Lazy<void>>
   See trampoline changes...
 * More granular racing and timeout combinators
-
+* Tests now make extensive use of fast-check and generate test coverage is improved
 
 ## 0.3.0
 * IO.async interface changes. IO.async now takes a ContextSwitch<E, A> -> void. ContextSwitch<E, A> allows control over when asynchronous values are delivered and whether interruption is possible.
