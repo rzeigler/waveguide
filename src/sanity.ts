@@ -14,5 +14,5 @@
 
 import { abort, IO, unit } from "./io";
 
-export const nonNegative = (msg: unknown) => (n: number) =>
-  n < 0 ? abort(msg) : unit;
+export const natNumber = (msg: unknown) => (n: number) =>
+  n < 0 || Math.round(n) !== n ? abort(msg) : unit;

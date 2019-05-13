@@ -13,11 +13,12 @@
 // limitations under the License.
 
 import { Either, left, right } from "fp-ts/lib/Either";
-import { Function2 } from "fp-ts/lib/function";
+import { Function1, Function2, identity } from "fp-ts/lib/function";
 import { Deferred, makeDeferred } from "./deferred";
 import { abort, IO, succeed, unit } from "./io";
 import { makeRef, Ref } from "./ref";
-import { nonNegative } from "./sanity";
+import { natNumber } from "./sanity";
+import { makeSemaphore } from "./semaphore";
 import { Dequeue, empty, of } from "./support/dequeue";
 import { Ticket, ticketExit, ticketUse } from "./ticket";
 
@@ -33,8 +34,15 @@ class ConcurrentQueueImpl<A> implements ConcurrentQueue<A> {
   public readonly take: IO<never, A>;
   constructor(public readonly state: Ref<State<A>>,
               public readonly factory: IO<never, Deferred<never, A>>,
-              public readonly overflowStrategy: Function2<Dequeue<A>, A, Dequeue<A>>) {
-      this.take = factory.chain((latch) =>
+              public readonly overflowStrategy: Function2<Dequeue<A>, A, Dequeue<A>>,
+              // This is effect that precedes offering
+              // in the case of a boudned queue it is responsible for acquiring the semaphore
+              public readonly offerGate: IO<never, void>,
+              // This is the function that wraps the constructed take IO action
+              // In the case of a bounded queue, it is responsible for releasing the semaphore and re-acquiring
+              // it on interrupt
+              public readonly takeGate: Function1<IO<never, A>, IO<never, A>>) {
+      this.take = takeGate(factory.chain((latch) =>
         this.state.modify((current) =>
           current.fold(
             (waiting) => [
@@ -49,17 +57,17 @@ class ConcurrentQueueImpl<A> implements ConcurrentQueue<A> {
               ] as const)
           )
         ).bracketExit(ticketExit, ticketUse)
-      );
+      ));
   }
   public offer(a: A): IO<never, void> {
-    return this.state.modify((current) =>
+    return this.offerGate.applySecond(this.state.modify((current) =>
       current.fold(
         (waiting) => waiting.take()
           .map(([next, q]) => [next.succeed(a), left(q) as State<A>] as const)
           .getOrElseL(() => [unit, right(this.overflowStrategy(empty(), a)) as State<A>] as const),
         (available) => [unit, right(this.overflowStrategy(available, a)) as State<A>] as const
       )
-    ).flatten().uninterruptible();
+    ).flatten().uninterruptible());
   }
 
   private cleanupLatch(latch: Deferred<never, A>): IO<never, void> {
@@ -82,23 +90,36 @@ const droppingOffer = (n: number) => <A>(queue: Dequeue<A>, a: A): Dequeue<A> =>
 
 export function unboundedQueue<A>(): IO<never, ConcurrentQueue<A>> {
   return makeRef(initial<A>())
-    .map((ref) => new ConcurrentQueueImpl(ref, makeDeferred<never, A>(), unboundedOffer));
+    .map((ref) => new ConcurrentQueueImpl(ref, makeDeferred<never, A>(), unboundedOffer, unit, identity));
 }
 
-const nonNegativeCapacity = nonNegative(new Error("Die: negative capacity"));
+const natCapacity = natNumber(new Error("Die: capacity must be a natural number"));
 
 export function slidingQueue<A>(capacity: number): IO<never, ConcurrentQueue<A>> {
-  return nonNegativeCapacity(capacity)
+  return natCapacity(capacity)
     .applySecond(
       makeRef(initial<A>())
-        .map((ref) => new ConcurrentQueueImpl(ref, makeDeferred<never, A>(), slidingOffer(capacity)))
+        .map((ref) => new ConcurrentQueueImpl(ref, makeDeferred<never, A>(), slidingOffer(capacity), unit, identity))
     );
 }
 
 export function droppingQueue<A>(capacity: number): IO<never, ConcurrentQueue<A>> {
-  return nonNegativeCapacity(capacity)
+  return natCapacity(capacity)
     .applySecond(
       makeRef(initial<A>())
-        .map((ref) => new ConcurrentQueueImpl(ref, makeDeferred<never, A>(), droppingOffer(capacity)))
+        .map((ref) => new ConcurrentQueueImpl(ref, makeDeferred<never, A>(), droppingOffer(capacity), unit, identity))
+    );
+}
+
+export function boundedQueue<A>(capacity: number): IO<never, ConcurrentQueue<A>> {
+  return natCapacity(capacity)
+    .applySecond(
+      makeRef(initial<A>()).zip(makeSemaphore(capacity))
+        .map(([ref, sem]) =>
+          new ConcurrentQueueImpl(ref, makeDeferred<never, A>(), unboundedOffer, sem.acquire, (inner) =>
+            // Before take, we must release the semaphore. If we are interrupted we should re-acquire the item
+            sem.release.bracketExit((_, exit) => exit._tag === "interrupted" ? sem.acquire : unit, (_) => inner)
+          )
+        )
     );
 }

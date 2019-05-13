@@ -17,8 +17,9 @@
 import { expect } from "chai";
 import fc, { Arbitrary } from "fast-check";
 import { constant, constTrue, Function1, identity } from "fp-ts/lib/function";
+import { Setoid } from "fp-ts/lib/Setoid";
 import { Exit, Value } from "../src/exit";
-import { asyncTotal, completeWith, fail, IO, io, succeed, suspend } from "../src/io";
+import { abort, asyncTotal, completeWith, fail, IO, io, succeed, suspend, unit } from "../src/io";
 
 /**
  * @deprecated use eqvIO instead
@@ -33,6 +34,9 @@ export function expectExitIn<E, A, B>(ioa: IO<E, A>, f: Function1<Exit<E, A>, B>
       expect(f(result)).to.deep.equal(expected);
     });
 }
+
+export const assertEq = <A>(S: Setoid<A>) => (a1: A) => (a2: A): IO<never, void> =>
+  S.equals(a1, a2) ? unit : abort(`${a1} <> ${a2}`);
 
 export function eqvIO<E, A>(io1: IO<E, A>, io2: IO<E, A>): Promise<boolean> {
   return io1.unsafeRunExitToPromise()
