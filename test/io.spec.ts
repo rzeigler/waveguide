@@ -185,7 +185,7 @@ describe("io", () => {
   // Property test utils
   // base on fp-ts-laws at https://github.com/gcanti/fp-ts-laws but adapter for the fact that we need to run IOs
   describe("laws", function() {
-    this.timeout(5000);
+    this.timeout(60000);
     const strlen: Function1<string, number> = (s: string) => s.length;
     const even: Function1<number, boolean> = (n: number) => n % 2 === 0;
 
