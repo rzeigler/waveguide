@@ -138,6 +138,10 @@ export class IO<E, A> {
     return this.chainError(compose(fail, f));
   }
 
+  public bimap<E2, B>(leftMap: Function1<E, E2>, rightMap: Function1<A, B>): IO<E2, B> {
+    return bimap(this, leftMap, rightMap);
+  }
+
   /**
    * Construct a new IO by applying f to the results of this and iob together
    * @param iob an io to produce the second argument to f
@@ -835,6 +839,9 @@ export function delay<E, A>(inner: IO<E, A>, ms: number): IO<E, A> {
   return after<E>(ms).applySecond(inner);
 }
 
+export function bimap<E1, E2, A, B>(before: IO<E1, A>, leftMap: Function1<E1, E2>, rightMap: Function1<A, B>) {
+  return before.mapError(leftMap).map(rightMap);
+}
 /**
  * Create an IO from an already running promise
  *
