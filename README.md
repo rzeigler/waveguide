@@ -4,8 +4,7 @@
 [![CircleCI](https://circleci.com/gh/rzeigler/waveguide.svg?style=svg)](https://circleci.com/gh/rzeigler/waveguide) 
 [![Join the chat at https://gitter.im/waveguide-core/community](https://badges.gitter.im/waveguide-core/community.svg)](https://gitter.im/waveguide-core/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-Waveguide is a set of modules provided datatypes for encoding effectsin Typescript.
-It is inspired by projects like [Cats Effect](https://github.com/typelevel/cats-effect) and [ZIO](https://github.com/scalaz/scalaz-zio).
+Waveguide is a set of modules provided datatypes for encoding effects in Typescript in the [fp-ts](https://github.com/gcanti/fp-ts) ecosystem inspired by scala projects such as [ZIO](https://github.com/scalaz/scalaz-zio) and [cats-effect](https://github.com/typelevel/cats-effect).
 
 IO is:
 - Lazy. Work is not done until explicitly asked for and interruption can be used to stop work that is no longer needed.
