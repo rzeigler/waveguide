@@ -1,4 +1,5 @@
 {
   
-  "licenser.author": "Ryan Zeigler"
+  "licenser.author": "Ryan Zeigler",
+  "typescript.tsdk": "node_modules/typescript/lib"
 }
