@@ -20,7 +20,7 @@ import { makeRef, Ref } from "./ref";
 import { natNumber } from "./sanity";
 import { makeSemaphore } from "./semaphore";
 import { Dequeue, empty, of } from "./support/dequeue";
-import { Ticket, ticketExit, ticketUse } from "./ticket";
+import { makeTicket, Ticket, ticketExit, ticketUse } from "./ticket";
 
 export interface ConcurrentQueue<A> {
   readonly take: IO<never, A>;
@@ -46,13 +46,13 @@ class ConcurrentQueueImpl<A> implements ConcurrentQueue<A> {
         this.state.modify((current) =>
           current.fold(
             (waiting) => [
-              new Ticket(latch.wait, this.cleanupLatch(latch)),
+              makeTicket(latch.wait, this.cleanupLatch(latch)),
               left(waiting.offer(latch)) as State<A>
             ] as const,
             (ready) => ready.take()
-              .map(([next, q]) => [new Ticket(succeed(next), unit), right(q) as State<A>] as const)
+              .map(([next, q]) => [makeTicket(succeed(next), unit), right(q) as State<A>] as const)
               .getOrElseL(() => [
-                new Ticket(latch.wait, this.cleanupLatch(latch)),
+                makeTicket(latch.wait, this.cleanupLatch(latch)),
                 left(of(latch)) as State<A>
               ] as const)
           )

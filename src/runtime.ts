@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import { Lazy } from "fp-ts/lib/function";
-import { Trampoline } from "./trampoline";
+import { makeTrampoline, Trampoline } from "./trampoline";
 
 /**
  * An interface for the IO system runtime.
@@ -41,7 +41,7 @@ export interface Runtime {
 }
 
 class JsRuntime implements Runtime {
-  private readonly trampoline: Trampoline = new Trampoline();
+  private readonly trampoline: Trampoline = makeTrampoline();
 
   public dispatch(thunk: Lazy<void>): void {
     this.trampoline.dispatch(thunk);

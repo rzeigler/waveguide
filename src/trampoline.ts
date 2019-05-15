@@ -22,10 +22,11 @@ import { MutableQueue } from "./support/mutable-queue";
  * without growing the stack.
  * Otherwise, arbitrary numbers of constructs like deferred will cause unbounded stack growth.
  */
-export class Trampoline {
-  private running: boolean = false;
-  private queue: MutableQueue<Lazy<void>> = new MutableQueue();
-
+export interface Trampoline {
+  /**
+   * Is the trampoline currently running
+   */
+  isRunning(): boolean;
   /**
    * Dispatch a thunk against this trampoline.
    *
@@ -33,27 +34,36 @@ export class Trampoline {
    * If the trampoline is currently active then the thunk will be appended to a queue
    * @param thunk
    */
-  public dispatch(thunk: Lazy<void>): void {
-    this.queue.enqueue(thunk);
-    if (!this.running) {
-      this.run();
-    }
-  }
+  dispatch(thunk: Lazy<void>): void;
+}
 
-  /**
-   * Is the trampoline currently executing?
-   */
-  public isRunning(): boolean {
-    return this.running;
-  }
+/**
+ * Create a new Trampoline
+ */
+export function makeTrampoline(): Trampoline {
+  let running = false;
+  const queue: MutableQueue<Lazy<void>> = new MutableQueue();
 
-  private run(): void {
-    this.running = true;
-    let next = this.queue.dequeue();
+  const isRunning = (): boolean => running;
+
+  const run = (): void => {
+    running = true;
+    let next = queue.dequeue();
     while (next) {
       next();
-      next = this.queue.dequeue();
+      next = queue.dequeue();
     }
-    this.running = false;
-  }
+    running = false;
+  };
+
+  const dispatch = (thunk: Lazy<void>): void => {
+    queue.enqueue(thunk);
+    if (!running) {
+      run();
+    }
+  };
+  return {
+    isRunning,
+    dispatch
+  };
 }

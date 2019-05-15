@@ -18,7 +18,7 @@ import { Deferred, makeDeferred } from "./deferred";
 import { abort, bracketC, bracketExitC, IO, unit } from "./io";
 import { makeRef as allocRef, Ref } from "./ref";
 import { Dequeue, empty } from "./support/dequeue";
-import { Ticket, ticketExit, ticketUse } from "./ticket";
+import { makeTicket, Ticket, ticketExit, ticketUse } from "./ticket";
 
 export interface Semaphore {
   readonly acquire: IO<never, void>;
@@ -94,16 +94,16 @@ class SemaphoreImpl implements Semaphore {
           (current) =>
             current.fold<readonly [Ticket<void>, State]>(
               (waiting) => [
-                new Ticket(latch.wait, this.cancelWait(n, latch)),
+                makeTicket(latch.wait, this.cancelWait(n, latch)),
                 left(waiting.offer([n, latch] as const)) as State
               ] as const,
               (available) => available >= n ?
                 [
-                  new Ticket(unit, this.releaseN(n)),
+                  makeTicket(unit, this.releaseN(n)),
                   right(available - n) as State
                 ] as const :
                 [
-                  new Ticket(latch.wait, this.cancelWait(n, latch)),
+                  makeTicket(latch.wait, this.cancelWait(n, latch)),
                   left(empty().offer([n - available, latch] as const)) as State
                 ] as const
             )

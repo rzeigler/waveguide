@@ -13,18 +13,18 @@
 // limitations under the License.
 
 import { expect } from "chai";
-import { Trampoline } from "../src/trampoline";
+import { makeTrampoline } from "../src/trampoline";
 
 describe("trampoline", () => {
   it("should invoke dispatches immediately", () => {
-    const t = new Trampoline();
+    const t = makeTrampoline();
     let n = 1;
     t.dispatch(() => n++);
     expect(n).to.equal(2);
     expect(t.isRunning()).to.equal(false);
   });
   it("should trampoline dispatches that occur while running", () => {
-    const t = new Trampoline();
+    const t = makeTrampoline();
     let n = 1;
     t.dispatch(() => {
       n++;

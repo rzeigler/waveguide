@@ -15,10 +15,6 @@
 import { Exit } from "./exit";
 import { IO, unit } from "./io";
 
-export class Ticket<A> {
-  constructor(public readonly acquire: IO<never, A>, public readonly cleanup: IO<never, void>) { }
-}
-
 export function ticketExit(ticket: Ticket<unknown>, exit: Exit<never, unknown>): IO<never, void> {
   if (exit._tag === "interrupted") {
     return ticket.cleanup;
@@ -28,4 +24,16 @@ export function ticketExit(ticket: Ticket<unknown>, exit: Exit<never, unknown>):
 
 export function ticketUse<A>(ticket: Ticket<A>): IO<never, A> {
   return ticket.acquire;
+}
+
+export interface Ticket<A> {
+  readonly acquire: IO<never, A>;
+  readonly cleanup: IO<never, void>;
+}
+
+export function makeTicket<A>(acquire: IO<never, A>, cleanup: IO<never, void>): Ticket<A> {
+  return {
+    acquire,
+    cleanup
+  };
 }
