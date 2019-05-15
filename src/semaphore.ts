@@ -34,101 +34,6 @@ export interface Semaphore {
 type Reservation = readonly [number, Deferred<never, void>];
 type State = Either<Dequeue<Reservation>, number>;
 
-class SemaphoreImpl implements Semaphore {
-  public readonly acquire: IO<never, void>;
-  public readonly release: IO<never, void>;
-  public readonly available: IO<never, number>;
-
-  constructor(private readonly cell: Ref<State>) {
-    this.acquire = this.acquireN(1);
-    this.release = this.releaseN(1);
-    this.available = this.cell.get
-      .map((current) => current.fold(
-        (q) => -1 * q.size(),
-        identity
-      ));
-  }
-
-  public acquireN<E = never>(n: number): IO<E, void> {
-    return sanityCheck(n)
-      .applySecond(n === 0 ? unit : bracketExitC(this.ticketN(n))(ticketExit, ticketUse));
-  }
-
-  public releaseN<E = never>(n: number): IO<E, void> {
-    return sanityCheck(n)
-      .applySecond(n === 0 ? unit :
-        this.cell.modify(
-          (current) =>
-            current.fold<readonly [IO<never, void>, State]>(
-              (waiting) => waiting.take()
-                .foldL(
-                  () => [unit, right(n) as State] as const,
-                  ([[needed, latch], q]) => n >= needed ?
-                    [
-                      latch.succeed(undefined).applyFirst(n > needed ? this.releaseN(n - needed) : unit),
-                      left(q) as State
-                    ] as const :
-                    [
-                      unit,
-                      left(q.push([needed - n, latch] as const)) as State
-                    ] as const
-                ),
-              (available) => [unit, right(available + n) as State] as const
-            )
-        ).flatten().uninterruptible());
-  }
-
-  public withPermitsN<E, A>(n: number, inner: IO<E, A>): IO<E, A> {
-    return bracketC(this.acquireN<E>(n).interruptible())
-      (constant(this.releaseN(n)), (_) => inner);
-  }
-
-  public withPermit<E, A>(inner: IO<E, A>): IO<E, A> {
-    return this.withPermitsN(1, inner);
-  }
-
-  private ticketN(n: number): IO<never, Ticket<void>> {
-    return makeDeferred<never, void>()
-      .chain((latch) =>
-        this.cell.modify(
-          (current) =>
-            current.fold<readonly [Ticket<void>, State]>(
-              (waiting) => [
-                makeTicket(latch.wait, this.cancelWait(n, latch)),
-                left(waiting.offer([n, latch] as const)) as State
-              ] as const,
-              (available) => available >= n ?
-                [
-                  makeTicket(unit, this.releaseN(n)),
-                  right(available - n) as State
-                ] as const :
-                [
-                  makeTicket(latch.wait, this.cancelWait(n, latch)),
-                  left(empty().offer([n - available, latch] as const)) as State
-                ] as const
-            )
-        )
-      );
-  }
-
-  private cancelWait(n: number, latch: Deferred<never, void>): IO<never, void> {
-    return this.cell.modify((current) =>
-      current.fold<readonly [IO<never, void>, State]>(
-        (waiting) =>
-          waiting.find(isReservationFor(latch))
-            .foldL(
-              () => [this.releaseN(n), left(waiting) as State] as const,
-              ([pending]) => [
-                this.releaseN(n - pending),
-                left(waiting.filter(not(isReservationFor(latch)))) as State
-              ] as const
-            ),
-          (available) => [unit, right(available + n) as State] as const
-      )
-    ).flatten().uninterruptible();
-  }
-}
-
 const isReservationFor = (latch: Deferred<never, void>) => (rsv: readonly [number, Deferred<never, void>]): boolean =>
   rsv[1] === latch;
 
@@ -142,6 +47,93 @@ function sanityCheck(n: number): IO<never, void> {
   return unit;
 }
 
+function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
+  const cancelWait = (n: number, latch: Deferred<never, void>): IO<never, void> =>
+    ref.modify((current) =>
+      current.fold<readonly [IO<never, void>, State]>(
+        (waiting) =>
+          waiting.find(isReservationFor(latch))
+            .foldL(
+              () => [releaseN(n), left(waiting) as State] as const,
+              ([pending]) => [
+                releaseN(n - pending),
+                left(waiting.filter(not(isReservationFor(latch)))) as State
+              ] as const
+            ),
+        (ready) => [unit, right(ready + n) as State] as const
+      )
+    ).flatten().uninterruptible();
+
+  const ticketN = (n: number): IO<never, Ticket<void>> =>
+    makeDeferred<never, void>()
+      .chain((latch) =>
+        ref.modify(
+          (current) =>
+            current.fold<readonly [Ticket<void>, State]>(
+              (waiting) => [
+                makeTicket(latch.wait, cancelWait(n, latch)),
+                left(waiting.offer([n, latch] as const)) as State
+              ] as const,
+              (ready) => ready >= n ?
+                [
+                  makeTicket(unit, releaseN(n)),
+                  right(ready - n) as State
+                ] as const :
+                [
+                  makeTicket(latch.wait, cancelWait(n, latch)),
+                  left(empty().offer([n - ready, latch] as const)) as State
+                ] as const
+            )
+        )
+      );
+
+  const acquireN = <E = never>(n: number): IO<E, void> =>
+    sanityCheck(n)
+      .applySecond(n === 0 ? unit : bracketExitC(ticketN(n))(ticketExit, ticketUse));
+
+  const releaseN = <E = never>(n: number): IO<E, void> =>
+    sanityCheck(n)
+      .applySecond(n === 0 ? unit :
+        ref.modify(
+          (current) =>
+            current.fold<readonly [IO<never, void>, State]>(
+              (waiting) => waiting.take()
+                .foldL(
+                  () => [unit, right(n) as State] as const,
+                  ([[needed, latch], q]) => n >= needed ?
+                    [
+                      latch.succeed(undefined).applyFirst(n > needed ? releaseN(n - needed) : unit),
+                      left(q) as State
+                    ] as const :
+                    [
+                      unit,
+                      left(q.push([needed - n, latch] as const)) as State
+                    ] as const
+                ),
+              (ready) => [unit, right(ready + n) as State] as const
+            )
+        ).flatten().uninterruptible());
+
+  const withPermitsN = <E, A>(n: number, inner: IO<E, A>): IO<E, A> =>
+    bracketC(acquireN<E>(n).interruptible())(constant(releaseN(n)), (_) => inner);
+
+  const available = ref.get
+    .map((current) => current.fold(
+      (q) => -1 * q.size(),
+      identity
+    ));
+
+  return {
+    acquireN,
+    acquire: acquireN(1),
+    releaseN,
+    release: releaseN(1),
+    withPermitsN,
+    withPermit: (inner) => withPermitsN(1, inner),
+    available
+  };
+}
+
 /**
  * Allocate a semaphore.
  *
@@ -150,6 +142,6 @@ function sanityCheck(n: number): IO<never, void> {
  */
 export function makeSemaphore(n: number): IO<never, Semaphore> {
   return sanityCheck(n)
-    .applySecond(allocRef<State>(right(n))
-    .map((state) => new SemaphoreImpl(state)));
+    .applySecond(allocRef<State>(right(n)))
+    .map(makeSemaphoreImpl);
 }
