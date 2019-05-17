@@ -8,6 +8,7 @@
   "scripts": {
     "clean": "rimraf lib/",
     "build": "tsc",
+    "test-build": "tsc -p tsconfig.test.json",
     "test": "tsc -p tsconfig.test.json && mocha --recursive build/**/*.js",
     "test-watch": "nodemon -w src -w test -e .ts -x 'tsc -p tsconfig.test.json && mocha --recursive --reporter min build/**/*.js'",
     "lint": "tslint --project tsconfig.test.json",
@@ -35,6 +36,7 @@
     "@types/chai-as-promised": "^7.1.0",
     "@types/deep-equal": "^1.0.1",
     "@types/mocha": "^5.2.5",
+    "@types/node": "^12.0.2",
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
     "deep-equal": "^1.0.1",
