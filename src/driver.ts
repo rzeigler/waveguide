@@ -24,28 +24,47 @@ import { MutableStack } from "./support/mutable-stack";
 
 export type FrameType = Frame | FoldFrame | InterruptFrame;
 
-class Frame {
-  public readonly _tag: "frame" = "frame";
-  constructor(public readonly apply: (u: unknown) => IO<unknown, unknown>) { }
+interface Frame {
+  readonly _tag: "frame";
+  apply(u: unknown): IO<unknown, unknown>;
 }
 
-class FoldFrame {
-  public readonly _tag: "fold-frame" = "fold-frame";
-  constructor(public readonly apply: (u: unknown) => IO<unknown, unknown>,
-              public readonly recover: (e: Cause<unknown>) => IO<unknown, unknown>) { }
+const makeFrame = (f: Function1<unknown, IO<unknown, unknown>>): Frame => ({
+  _tag: "frame",
+  apply: f
+});
+
+interface FoldFrame {
+  readonly _tag: "fold-frame";
+  apply(u: unknown): IO<unknown, unknown>;
+  recover(cause: Cause<unknown>): IO<unknown, unknown>;
 }
 
-class InterruptFrame {
-  public readonly _tag: "interrupt-frame" = "interrupt-frame";
-  constructor(private readonly interruptStatus: MutableStack<boolean>) { }
-  public apply(u: unknown): IO<unknown, unknown> {
-    this.exitRegion();
-    return succeed(u);
-  }
-  public exitRegion(): void {
-    this.interruptStatus.pop();
-  }
+const makeFoldFrame = (f: Function1<unknown, IO<unknown, unknown>>,
+                       r: Function1<Cause<unknown>, IO<unknown, unknown>>): FoldFrame => ({
+  _tag: "fold-frame",
+  apply: f,
+  recover: r
+});
+
+interface InterruptFrame {
+  readonly _tag: "interrupt-frame";
+  apply(u: unknown): IO<unknown, unknown>;
+  exitRegion(): void;
 }
+
+const makeInterruptFrame = (interruptStatus: MutableStack<boolean>): InterruptFrame => {
+  return {
+    _tag: "interrupt-frame",
+    apply(u: unknown) {
+      interruptStatus.pop();
+      return succeed(u);
+    },
+    exitRegion() {
+      interruptStatus.pop();
+    }
+  };
+};
 
 /**
  * The driver for executing IO actions.
@@ -125,14 +144,14 @@ export class Driver<E, A> {
           this.contextSwitch(step.op);
           current = undefined;
         } else if (step._tag === "chain") {
-          this.frameStack.push(new Frame(step.bind));
+          this.frameStack.push(makeFrame(step.bind));
           current = step.inner;
         } else if (step._tag === "fold") {
-          this.frameStack.push(new FoldFrame(step.success, step.failure));
+          this.frameStack.push(makeFoldFrame(step.success, step.failure));
           current = step.inner;
         } else if (step._tag === "interruptible-state") {
           this.interruptRegionStack.push(step.state);
-          this.frameStack.push(new InterruptFrame(this.interruptRegionStack));
+          this.frameStack.push(makeInterruptFrame(this.interruptRegionStack));
           current = step.inner;
         } else if (step._tag === "platform-interface") {
           if (step.platform._tag === "get-runtime") {

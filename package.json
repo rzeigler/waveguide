@@ -30,7 +30,7 @@
     "url": "git+https://github.com/rzeigler/waveguide.git"
   },
   "author": "Ryan Zeigler",
-  "license": "APACHE-2.0",
+  "license": "Apache-2.0",
   "devDependencies": {
     "@types/chai": "^4.1.7",
     "@types/chai-as-promised": "^7.1.0",
