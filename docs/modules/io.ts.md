@@ -25,6 +25,7 @@ parent: Modules
   - [as (method)](#as-method)
   - [unit (method)](#unit-method)
   - [mapError (method)](#maperror-method)
+  - [bimap (method)](#bimap-method)
   - [zipWith (method)](#zipwith-method)
   - [zip (method)](#zip-method)
   - [applyFirst (method)](#applyfirst-method)
@@ -80,16 +81,25 @@ parent: Modules
 - [unit (constant)](#unit-constant)
 - [abort (function)](#abort-function)
 - [after (function)](#after-function)
+- [applyFirst (function)](#applyfirst-function)
+- [applySecond (function)](#applysecond-function)
+- [as (function)](#as-function)
 - [async (function)](#async-function)
 - [asyncTotal (function)](#asynctotal-function)
+- [bimap (function)](#bimap-function)
 - [bracket (function)](#bracket-function)
 - [bracketC (function)](#bracketc-function)
 - [bracketExit (function)](#bracketexit-function)
 - [bracketExitC (function)](#bracketexitc-function)
+- [chain (function)](#chain-function)
+- [chainError (function)](#chainerror-function)
 - [completeWith (function)](#completewith-function)
 - [delay (function)](#delay-function)
 - [effect (function)](#effect-function)
 - [failC (function)](#failc-function)
+- [flatten (function)](#flatten-function)
+- [flip (function)](#flip-function)
+- [foldCause (function)](#foldcause-function)
 - [fromPromise (function)](#frompromise-function)
 - [fromPromiseL (function)](#frompromisel-function)
 - [fromSyncIO (function)](#fromsyncio-function)
@@ -99,13 +109,29 @@ parent: Modules
 - [interruptible (function)](#interruptible-function)
 - [interruptibleMask (function)](#interruptiblemask-function)
 - [interruptibleState (function)](#interruptiblestate-function)
+- [map (function)](#map-function)
+- [mapError (function)](#maperror-function)
+- [onComplete (function)](#oncomplete-function)
+- [onInterrupted (function)](#oninterrupted-function)
+- [parApplyFirst (function)](#parapplyfirst-function)
+- [parApplySecond (function)](#parapplysecond-function)
+- [parZip (function)](#parzip-function)
+- [parZipWith (function)](#parzipwith-function)
+- [race (function)](#race-function)
 - [raceFold (function)](#racefold-function)
+- [raceSuccess (function)](#racesuccess-function)
+- [result (function)](#result-function)
 - [succeedC (function)](#succeedc-function)
 - [suspend (function)](#suspend-function)
 - [timeoutFold (function)](#timeoutfold-function)
 - [timeoutOption (function)](#timeoutoption-function)
 - [uninterruptible (function)](#uninterruptible-function)
 - [uninterruptibleMask (function)](#uninterruptiblemask-function)
+- [unsafeRun (function)](#unsaferun-function)
+- [unsafeRunExitToPromise (function)](#unsaferunexittopromise-function)
+- [unsafeRunToPromise (function)](#unsaferuntopromise-function)
+- [zip (function)](#zip-function)
+- [zipWith (function)](#zipwith-function)
 
 ---
 
@@ -287,6 +313,14 @@ Construct a new IO by applying f to the error produced by this
 public mapError<E2>(f: Function1<E, E2>): IO<E2, A> { ... }
 ```
 
+## bimap (method)
+
+**Signature**
+
+```ts
+public bimap<E2, B>(leftMap: Function1<E, E2>, rightMap: Function1<A, B>): IO<E2, B> { ... }
+```
+
 ## zipWith (method)
 
 Construct a new IO by applying f to the results of this and iob together
@@ -304,7 +338,7 @@ Construct a new IO by forming a tuple from the values produced by this and iob
 **Signature**
 
 ```ts
-public zip<B>(iob: IO<E, B>): IO<E, [A, B]> { ... }
+public zip<B>(iob: IO<E, B>): IO<E, readonly [A, B]> { ... }
 ```
 
 ## applyFirst (method)
@@ -642,7 +676,7 @@ Returns a function that can be used to interrupt execution.
 **Signature**
 
 ```ts
-public unsafeRun(onComplete: Function1<Exit<E, A>, void>, runtime: Runtime = defaultRuntime): Lazy<void> { ... }
+public unsafeRun(callback: Function1<Exit<E, A>, void>, runtime: Runtime = defaultRuntime): Lazy<void> { ... }
 ```
 
 ## unsafeRunToPromise (method)
@@ -854,6 +888,36 @@ Create an IO that when executed will complete after a fixed amount of millisenco
 export function after<E = never>(ms: number): IO<E, void> { ... }
 ```
 
+# applyFirst (function)
+
+Evaluate two IOs in sequence taking the result of the first
+
+**Signature**
+
+```ts
+export function applyFirst<E, A, B>(ioa: IO<E, A>, iob: IO<E, B>): IO<E, A> { ... }
+```
+
+# applySecond (function)
+
+Evaluate two IOs in sequence taking the result of the second
+
+**Signature**
+
+```ts
+export function applySecond<E, A, B>(ioa: IO<E, A>, iob: IO<E, B>): IO<E, B> { ... }
+```
+
+# as (function)
+
+Always produce the value b when on succeeds
+
+**Signature**
+
+```ts
+export function as<B>(b: B) { ... }
+```
+
 # async (function)
 
 Create an IO that will execute asynchronously and maybe produce a failure of type E
@@ -872,6 +936,16 @@ Create an IO that will execute asynchronously and not produce a failure
 
 ```ts
 export function asyncTotal<A>(op: Function1<Function1<A, void>, Lazy<void>>): IO<never, A> { ... }
+```
+
+# bimap (function)
+
+Map over both the error and the value potentially produced by an IO.
+
+**Signature**
+
+```ts
+export function bimap<E1, E2, A, B>(leftMap: Function1<E1, E2>, rightMap: Function1<A, B>) { ... }
 ```
 
 # bracket (function)
@@ -920,6 +994,31 @@ export const bracketExitC = <E, A>(acquire: IO<E, A>) =>
   <B>(release: Function2<A, Exit<E, B>, IO<E, unknown>>, use: Function1<A, IO<E, B>>): IO<E, B> => ...
 ```
 
+# chain (function)
+
+Chain an IO.
+
+Constructs a new IO that evaluates an IO for its value and then evalues the result of applying f to that value
+
+**Signature**
+
+```ts
+export function chain<E, A, B>(f: Function1<A, IO<E, B>>) { ... }
+```
+
+# chainError (function)
+
+Chain an IOs error.
+
+Construct an IO that evalutes an IO for its error.
+If the error occurs, recovery is performed by applying f to that error.
+
+**Signature**
+
+```ts
+export function chainError<E, E2, A>(f: Function1<E, IO<E2, A>>) { ... }
+```
+
 # completeWith (function)
 
 Create an IO that has exited with the provided status
@@ -962,6 +1061,36 @@ If you do not need an A paramter other than enver, you may use fail instead
 
 ```ts
 export const failC = <A = never>() => <E>(e: E): IO<E, A> => ...
+```
+
+# flatten (function)
+
+Flatten a nested IO
+
+**Signature**
+
+```ts
+export function flatten<E, A>(ioa: IO<E, IO<E, A>>): IO<E, A> { ... }
+```
+
+# flip (function)
+
+Invert an IOs error and success values
+
+**Signature**
+
+```ts
+export function flip<E, A>(ioa: IO<E, A>): IO<A, E> { ... }
+```
+
+# foldCause (function)
+
+Fold the result of an IO to produced the next IO.
+
+**Signature**
+
+```ts
+export function foldCause<E, A, B>(failed: Function1<Cause<E>, IO<E, B>>, succeeded: Function1<A, IO<E, B>>) { ... }
 ```
 
 # fromPromise (function)
@@ -1063,6 +1192,96 @@ Create a version of inner where the interrupt flag is set to state
 export function interruptibleState<E, A>(inner: IO<E, A>, state: boolean): IO<E, A> { ... }
 ```
 
+# map (function)
+
+Apply f to the value produce by on
+
+**Signature**
+
+```ts
+export function map<A, B>(f: Function1<A, B>) { ... }
+```
+
+# mapError (function)
+
+Map over the error that may be produced by an IO
+
+**Signature**
+
+```ts
+export function mapError<E, E2>(f: Function1<E, E2>) { ... }
+```
+
+# onComplete (function)
+
+Ensure that once ioa begins executing, finalizer will execute no matter what
+
+**Signature**
+
+```ts
+export function onComplete<E, A>(ioa: IO<E, A>, finalizer: IO<E, unknown>): IO<E, A> { ... }
+```
+
+# onInterrupted (function)
+
+Ensure that once ioa begins executing finalizer will execute if the fiber is interrupted
+
+**Signature**
+
+```ts
+export function onInterrupted<E, A>(ioa: IO<E, A>, finalizer: IO<E, unknown>): IO<E, A> { ... }
+```
+
+# parApplyFirst (function)
+
+Evaluate two IOs in parallel and take the result of the first
+
+**Signature**
+
+```ts
+export function parApplyFirst<E, A, B>(ioa: IO<E, A>, iob: IO<E, B>): IO<E, A> { ... }
+```
+
+# parApplySecond (function)
+
+Evaluate two IOs in parallel and take the result of the second
+
+**Signature**
+
+```ts
+export function parApplySecond<E, A, B>(ioa: IO<E, A>, iob: IO<E, B>): IO<E, B> { ... }
+```
+
+# parZip (function)
+
+Evaluate two IOs in parallel and zip their results into a tuple
+
+**Signature**
+
+```ts
+export function parZip<E, A, B>(ioa: IO<E, A>, iob: IO<E, B>): IO<E, readonly [A, B]> { ... }
+```
+
+# parZipWith (function)
+
+Evaluate two IOs in parallel and zip their results with the provided function
+
+**Signature**
+
+```ts
+export function parZipWith<A, B, C>(f: Function2<A, B, C>) { ... }
+```
+
+# race (function)
+
+Race two IOs and take the result of the first to complete (either success or failure)
+
+**Signature**
+
+```ts
+export function race<E, A>(io1: IO<E, A>, io2: IO<E, A>): IO<E, A> { ... }
+```
+
 # raceFold (function)
 
 Race two effects and fold the winning Exit together with the losing Fiber
@@ -1073,6 +1292,27 @@ Race two effects and fold the winning Exit together with the losing Fiber
 export function raceFold<E1, E2, A, B, C>(first: IO<E1, A>, second: IO<E1, B>,
                                           onFirstWon: Function2<Exit<E1, A>, Fiber<E1, B>, IO<E2, C>>,
                                           onSecondWon: Function2<Exit<E1, B>, Fiber<E1, A>, IO<E2, C>>): IO<E2, C> { ... }
+```
+
+# raceSuccess (function)
+
+Race two IOs and take the first success.
+If both fail, then an error is produced
+
+**Signature**
+
+```ts
+export function raceSuccess<E, A>(io1: IO<E, A>, io2: IO<E, A>): IO<E, A> { ... }
+```
+
+# result (function)
+
+Construct an IO that runs ioa for its exit value
+
+**Signature**
+
+```ts
+export function result<E, A, EE = never>(ioa: IO<E, A>): IO<EE, Exit<E, A>> { ... }
 ```
 
 # succeedC (function)
@@ -1109,8 +1349,8 @@ Race an effect against a timeout and fold the result
 export function timeoutFold<E, E2, A, B>(
   source: IO<E, A>,
   ms: number,
-  onTimeout: Function1<Fiber<E, A>, IO<E2, B>>,
-  onComplete: Function1<Exit<E, A>, IO<E2, B>>
+  timedOut: Function1<Fiber<E, A>, IO<E2, B>>,
+  completed: Function1<Exit<E, A>, IO<E2, B>>
 ): IO<E2, B> { ... }
 ```
 
@@ -1147,4 +1387,54 @@ i.e. cutout a chunk of the mask
 
 ```ts
 export function uninterruptibleMask<E, A>(f: Function1<InterruptMaskCutout<E, A>, IO<E, A>>): IO<E, A> { ... }
+```
+
+# unsafeRun (function)
+
+Begin executing this for its side effects and value.
+
+Returns a function that can be used to interrupt execution.
+
+**Signature**
+
+```ts
+export function unsafeRun<E, A>(callback: Function1<Exit<E, A>, void>, runtime: Runtime = defaultRuntime) { ... }
+```
+
+# unsafeRunExitToPromise (function)
+
+**Signature**
+
+```ts
+export function unsafeRunExitToPromise(runtime: Runtime = defaultRuntime) { ... }
+```
+
+# unsafeRunToPromise (function)
+
+**Signature**
+
+```ts
+export function unsafeRunToPromise(runtime: Runtime = defaultRuntime) { ... }
+```
+
+# zip (function)
+
+Zip two IOs together into a tuple
+
+**Signature**
+
+```ts
+export function zip<E, A, B>(ioa: IO<E, A>, iob: IO<E, B>): IO<E, readonly [A, B]> { ... }
+```
+
+# zipWith (function)
+
+Zip the result of two IOs together using the provided function.
+
+This is the semigroupal formulation of applicative
+
+**Signature**
+
+```ts
+export function zipWith<A, B, C>(f: Function2<A, B, C>) { ... }
 ```

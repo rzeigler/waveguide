@@ -8,21 +8,30 @@ parent: Modules
 
 <h2 class="text-delta">Table of contents</h2>
 
-- [Ticket (class)](#ticket-class)
+- [Ticket (interface)](#ticket-interface)
+- [makeTicket (function)](#maketicket-function)
 - [ticketExit (function)](#ticketexit-function)
 - [ticketUse (function)](#ticketuse-function)
 
 ---
 
-# Ticket (class)
+# Ticket (interface)
 
 **Signature**
 
 ```ts
-export class Ticket<A> {
-  constructor(public readonly acquire: IO<never, A>, public readonly cleanup: IO<never, void>) { ... }
-  ...
+export interface Ticket<A> {
+  readonly acquire: IO<never, A>
+  readonly cleanup: IO<never, void>
 }
+```
+
+# makeTicket (function)
+
+**Signature**
+
+```ts
+export function makeTicket<A>(acquire: IO<never, A>, cleanup: IO<never, void>): Ticket<A> { ... }
 ```
 
 # ticketExit (function)

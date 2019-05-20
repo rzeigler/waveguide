@@ -8,14 +8,12 @@ parent: Modules
 
 <h2 class="text-delta">Table of contents</h2>
 
-- [Trampoline (class)](#trampoline-class)
-  - [dispatch (method)](#dispatch-method)
-  - [isRunning (method)](#isrunning-method)
-  - [run (method)](#run-method)
+- [Trampoline (interface)](#trampoline-interface)
+- [makeTrampoline (function)](#maketrampoline-function)
 
 ---
 
-# Trampoline (class)
+# Trampoline (interface)
 
 A trampolined execution environment.
 
@@ -26,36 +24,28 @@ Otherwise, arbitrary numbers of constructs like deferred will cause unbounded st
 **Signature**
 
 ```ts
-export class Trampoline { ... }
+export interface Trampoline {
+  /**
+   * Is the trampoline currently running
+   */
+  isRunning(): boolean
+  /**
+   * Dispatch a thunk against this trampoline.
+   *
+   * If the trampoline is not currently active this immediately begins executing the thunk.
+   * If the trampoline is currently active then the thunk will be appended to a queue
+   * @param thunk
+   */
+  dispatch(thunk: Lazy<void>): void
+}
 ```
 
-## dispatch (method)
+# makeTrampoline (function)
 
-Dispatch a thunk against this trampoline.
-
-If the trampoline is not currently active this immediately begins executing the thunk.
-If the trampoline is currently active then the thunk will be appended to a queue
+Create a new Trampoline
 
 **Signature**
 
 ```ts
-public dispatch(thunk: Lazy<void>): void { ... }
-```
-
-## isRunning (method)
-
-Is the trampoline currently executing?
-
-**Signature**
-
-```ts
-public isRunning(): boolean { ... }
-```
-
-## run (method)
-
-**Signature**
-
-```ts
-private run(): void { ... }
+export function makeTrampoline(): Trampoline { ... }
 ```
