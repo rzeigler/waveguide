@@ -139,7 +139,7 @@ export class IO<E, A> {
   }
 
   public bimap<E2, B>(leftMap: Function1<E, E2>, rightMap: Function1<A, B>): IO<E2, B> {
-    return bimap(this, leftMap, rightMap);
+    return bimap(leftMap, rightMap)(this);
   }
 
   /**
@@ -155,7 +155,7 @@ export class IO<E, A> {
    * Construct a new IO by forming a tuple from the values produced by this and iob
    * @param iob
    */
-  public zip<B>(iob: IO<E, B>): IO<E, [A, B]> {
+  public zip<B>(iob: IO<E, B>): IO<E, readonly [A, B]> {
     return this.zipWith(iob, (a, b) => [a, b]);
   }
 
@@ -449,12 +449,12 @@ export class IO<E, A> {
    *
    * Returns a function that can be used to interrupt execution.
    *
-   * @param onComplete a callback to invoke with the exit status of the execution
+   * @param callback a callback to invoke with the exit status of the execution
    * @param runtime  the runtime to use
    */
-  public unsafeRun(onComplete: Function1<Exit<E, A>, void>, runtime: Runtime = defaultRuntime): Lazy<void> {
+  public unsafeRun(callback: Function1<Exit<E, A>, void>, runtime: Runtime = defaultRuntime): Lazy<void> {
     const driver = new Driver(this, runtime);
-    driver.onExit(onComplete);
+    driver.onExit(callback);
     driver.start();
     return () => {
       driver.interrupt();
@@ -470,11 +470,11 @@ export class IO<E, A> {
   public unsafeRunToPromise(runtime: Runtime = defaultRuntime): Promise<A> {
     return new Promise((resolve, reject) => {
       const driver = new Driver(this, runtime);
-      driver.onExit((result) => {
-        if (result._tag === "value") {
-          resolve(result.value);
+      driver.onExit((exit) => {
+        if (exit._tag === "value") {
+          resolve(exit.value);
         } else {
-          reject(result);
+          reject(exit);
         }
       });
       driver.start();
@@ -490,8 +490,8 @@ export class IO<E, A> {
   public unsafeRunExitToPromise(runtime: Runtime = defaultRuntime): Promise<Exit<E, A>> {
     return new Promise((resolve) => {
       const driver = new Driver(this, runtime);
-      driver.onExit((result) => {
-        resolve(result);
+      driver.onExit((exit) => {
+        resolve(exit);
       });
       driver.start();
     });
@@ -639,6 +639,127 @@ export const never: IO<never, never> = new IO(new Async((_) => {
 export const unit: IO<never, void> = succeed(undefined);
 
 /**
+ * Apply f to the value produce by on
+ * @param f
+ */
+export function map<A, B>(f: Function1<A, B>) {
+  return <E>(on: IO<E, A>): IO<E, B> =>
+    on.map(f);
+}
+
+/**
+ * Always produce the value b when on succeeds
+ * @param b
+ */
+export function as<B>(b: B) {
+  return <E, A>(on: IO<E, A>): IO<E, B> =>
+    map(constant(b))(on);
+}
+
+/**
+ * Map over both the error and the value potentially produced by an IO.
+ * @param leftMap
+ * @param rightMap
+ */
+export function bimap<E1, E2, A, B>(leftMap: Function1<E1, E2>, rightMap: Function1<A, B>) {
+  return (before: IO<E1, A>): IO<E2, B> => mapError<E1, E2>(leftMap)(map(rightMap)(before));
+
+}
+
+/**
+ * Map over the error that may be produced by an IO
+ * @param f
+ */
+export function mapError<E, E2>(f: Function1<E, E2>) {
+  return <A>(on: IO<E, A>): IO<E2, A> =>
+   on.mapError(f);
+}
+
+/**
+ * Zip the result of two IOs together using the provided function.
+ *
+ * This is the semigroupal formulation of applicative
+ * @param f
+ */
+export function zipWith<A, B, C>(f: Function2<A, B, C>) {
+  return <E>(first: IO<E, A>, second: IO<E, B>): IO<E, C> =>
+    first.zipWith(second, f);
+}
+
+/**
+ * Evaluate two IOs in sequence taking the result of the first
+ * @param ioa
+ * @param iob
+ */
+export function applyFirst<E, A, B>(ioa: IO<E, A>, iob: IO<E, B>): IO<E, A> {
+  return ioa.applyFirst(iob);
+}
+
+/**
+ * Evaluate two IOs in sequence taking the result of the second
+ * @param ioa
+ * @param iob
+ */
+export function applySecond<E, A, B>(ioa: IO<E, A>, iob: IO<E, B>): IO<E, B> {
+  return ioa.applySecond(iob);
+}
+
+/**
+ * Chain an IO.
+ *
+ * Constructs a new IO that evaluates an IO for its value and then evalues the result of applying f to that value
+ * @param f
+ */
+export function chain<E, A, B>(f: Function1<A, IO<E, B>>) {
+  return (ioa: IO<E, A>) => new IO(new Chain(ioa, f));
+}
+
+/**
+ * Chain an IOs error.
+ *
+ * Construct an IO that evalutes an IO for its error.
+ * If the error occurs, recovery is performed by applying f to that error.
+ * @param f
+ */
+export function chainError<E, E2, A>(f: Function1<E, IO<E2, A>>) {
+  return (ioa: IO<E, A>) => ioa.chainError(f);
+}
+
+/**
+ * Fold the result of an IO to produced the next IO.
+ * @param failed
+ * @param succeeded
+ */
+export function foldCause<E, A, B>(failed: Function1<Cause<E>, IO<E, B>>, succeeded: Function1<A, IO<E, B>>) {
+  return (ioa: IO<E, A>) => ioa.foldCause(failed, succeeded);
+}
+
+/**
+ * Invert an IOs error and success values
+ * @param ioa
+ */
+export function flip<E, A>(ioa: IO<E, A>): IO<A, E> {
+  return ioa.flip();
+}
+
+/**
+ * Construct an IO that runs ioa for its exit value
+ * @param ioa
+ */
+export function result<E, A, EE = never>(ioa: IO<E, A>): IO<EE, Exit<E, A>> {
+  return ioa.result();
+}
+
+/**
+ * Zip two IOs together into a tuple
+ * @param ioa
+ * @param iob
+ */
+export function zip<E, A, B>(ioa: IO<E, A>, iob: IO<E, B>): IO<E, readonly [A, B]> {
+  return zipWith((a: A, b: B) => [a, b] as const)(ioa, iob);
+}
+
+/**
  * Create an interruptible version of inner
  * @param inner
  */
@@ -754,6 +875,84 @@ export function after<E = never>(ms: number): IO<E, void> {
 }
 
 /**
+ * Ensure that once ioa begins executing, finalizer will execute no matter what
+ * @param ioa
+ * @param finalizer
+ */
+export function onComplete<E, A>(ioa: IO<E, A>, finalizer: IO<E, unknown>): IO<E, A> {
+  return ioa.onCompleted(finalizer);
+}
+
+/**
+ * Ensure that once ioa begins executing finalizer will execute if the fiber is interrupted
+ * @param ioa
+ * @param finalizer
+ */
+export function onInterrupted<E, A>(ioa: IO<E, A>, finalizer: IO<E, unknown>): IO<E, A> {
+  return ioa.onInterrupted(finalizer);
+}
+
+/**
+ * Flatten a nested IO
+ * @param ioa
+ */
+export function flatten<E, A>(ioa: IO<E, IO<E, A>>): IO<E, A> {
+  return chain<E, IO<E, A>, A>(identity)(ioa);
+}
+
+/**
+ * Evaluate two IOs in parallel and zip their results with the provided function
+ * @param f
+ */
+export function parZipWith<A, B, C>(f: Function2<A, B, C>) {
+  return <E>(ioa: IO<E, A>, iob: IO<E, B>): IO<E, C> => ioa.parZipWith(iob, f);
+}
+
+/**
+ * Evaluate two IOs in parallel and zip their results into a tuple
+ * @param ioa
+ * @param iob
+ */
+export function parZip<E, A, B>(ioa: IO<E, A>, iob: IO<E, B>): IO<E, readonly [A, B]> {
+  return parZipWith((a: A, b: B) => [a, b] as const)(ioa, iob);
+}
+
+/**
+ * Evaluate two IOs in parallel and take the result of the second
+ * @param ioa
+ * @param iob
+ */
+export function parApplySecond<E, A, B>(ioa: IO<E, A>, iob: IO<E, B>): IO<E, B> {
+  return ioa.parApplySecond(iob);
+}
+
+/**
+ * Race two IOs and take the result of the first to complete (either success or failure)
+ */
+export function race<E, A>(io1: IO<E, A>, io2: IO<E, A>): IO<E, A> {
+  return io1.race(io2);
+}
+
+/**
+ * Race two IOs and take the first success.
+ * If both fail, then an error is produced
+ * @param io1
+ * @param io2
+ */
+export function raceSuccess<E, A>(io1: IO<E, A>, io2: IO<E, A>): IO<E, A> {
+  return io1.raceSuccess(io2);
+}
+
+/**
+ * Evaluate two IOs in parallel and take the result of the first
+ * @param ioa
+ * @param iob
+ */
+export function parApplyFirst<E, A, B>(ioa: IO<E, A>, iob: IO<E, B>): IO<E, A> {
+  return ioa.parApplyFirst(iob);
+}
+
+/**
  * Race two effects and fold the winning Exit together with the losing Fiber
  *
  *
@@ -786,10 +985,10 @@ export function raceFold<E1, E2, A, B, C>(first: IO<E1, A>, second: IO<E1, B>,
         firstFiber.wait.chain(completeLatched(latch, channel, onFirstWon, secondFiber)).fork("first"))
       .doL(({ latch, channel, firstFiber, secondFiber }) =>
         secondFiber.wait.chain(completeLatched(latch, channel, onSecondWon, firstFiber)).fork("second"))
-      .bindL("result", ({ channel, firstFiber, secondFiber }) =>
+      .bindL("exit", ({ channel, firstFiber, secondFiber }) =>
         cutout(channel.wait)
           .onInterrupted(firstFiber.interrupt.applySecond(secondFiber.interrupt)))
-      .return(({ result }) => result)
+      .return(({ exit }) => exit)
   );
 }
 
@@ -797,20 +996,20 @@ export function raceFold<E1, E2, A, B, C>(first: IO<E1, A>, second: IO<E1, B>,
  * Race an effect against a timeout and fold the result
  * @param source the effect
  * @param ms the duration of the timeout
- * @param onTimeout the action to produce on timeout (receives the still running source fiber)
- * @param onComplete the action to produce on success (receives the exit of the source fiber).
+ * @param timedOut the action to produce on timeout (receives the still running source fiber)
+ * @param completed the action to produce on success (receives the exit of the source fiber).
  */
 export function timeoutFold<E, E2, A, B>(
   source: IO<E, A>,
   ms: number,
-  onTimeout: Function1<Fiber<E, A>, IO<E2, B>>,
-  onComplete: Function1<Exit<E, A>, IO<E2, B>>
+  timedOut: Function1<Fiber<E, A>, IO<E2, B>>,
+  completed: Function1<Exit<E, A>, IO<E2, B>>
 ): IO<E2, B> {
   return raceFold(
     source,
     unit.delay(ms),
-    (exit, delayFiber) => delayFiber.interrupt.widenError<E2>().applySecond(onComplete(exit)),
-    (_, actionFiber) => onTimeout(actionFiber)
+    (exit, delayFiber) => delayFiber.interrupt.widenError<E2>().applySecond(completed(exit)),
+    (_, actionFiber) => timedOut(actionFiber)
   );
 }
 
@@ -839,9 +1038,6 @@ export function delay<E, A>(inner: IO<E, A>, ms: number): IO<E, A> {
   return after<E>(ms).applySecond(inner);
 }
 
-export function bimap<E1, E2, A, B>(before: IO<E1, A>, leftMap: Function1<E1, E2>, rightMap: Function1<A, B>) {
-  return before.mapError(leftMap).map(rightMap);
-}
 /**
  * Create an IO from an already running promise
  *
@@ -922,22 +1118,69 @@ declare module "fp-ts/lib/HKT" {
 export const URI = "IO";
 export type URI = typeof URI;
 
-const of = <L, A>(a: A) => succeed(a);
-const map = <L, A, B>(fa: IO<L, A>, f: (a: A) => B): IO<L, B> => fa.map(f);
-const ap = <L, A, B>(fab: IO<L, Function1<A, B>>, fa: IO<L, A>) => fab.ap_(fa);
-const chain = <L, A, B>(fa: IO<L, A>, f: Function1<A, IO<L, B>>) => fa.chain(f);
+const instanceOf = <L, A>(a: A) => succeed(a);
+const instanceMap = <L, A, B>(fa: IO<L, A>, f: (a: A) => B): IO<L, B> => fa.map(f);
+const instanceAp = <L, A, B>(fab: IO<L, Function1<A, B>>, fa: IO<L, A>) => fab.ap_(fa);
+const instanceChain = <L, A, B>(fa: IO<L, A>, f: Function1<A, IO<L, B>>) => fa.chain(f);
 export const io: Monad2<URI> = {
   URI,
-  map,
-  ap,
-  chain,
-  of
+  map: instanceMap,
+  ap: instanceAp,
+  chain: instanceChain,
+  of: instanceOf
 } as const;
 
-const parAp = <L, A, B>(fab: IO<L, Function1<A, B>>, fa: IO<L, A>) => fab.parAp_(fa);
+const instanceParAp = <L, A, B>(fab: IO<L, Function1<A, B>>, fa: IO<L, A>) => fab.parAp_(fa);
 export const par: Applicative2<URI> = {
   URI,
-  of,
-  map,
-  ap: parAp
+  of: instanceOf,
+  map: instanceMap,
+  ap: instanceParAp
 } as const;
+
+/**
+ * Begin executing this for its side effects and value.
+ *
+ * Returns a function that can be used to interrupt execution.
+ *
+ * @param onComplete a callback to invoke with the exit status of the execution
+ * @param runtime  the runtime to use
+ */
+export function unsafeRun<E, A>(callback: Function1<Exit<E, A>, void>, runtime: Runtime = defaultRuntime) {
+  return (ioa: IO<E, A>): Lazy<void> => {
+    const driver = new Driver(ioa, runtime);
+    driver.onExit(callback);
+    driver.start();
+    return () => {
+      driver.interrupt();
+    };
+  };
+}
+
+export function unsafeRunToPromise(runtime: Runtime = defaultRuntime) {
+  return <E, A>(ioa: IO<E, A>): Promise<A> => {
+    return new Promise((resolve, reject) => {
+      const driver = new Driver(ioa, runtime);
+      driver.onExit((exit) => {
+        if (exit._tag === "value") {
+          resolve(exit.value);
+        } else {
+          reject(exit);
+        }
+      });
+      driver.start();
+    });
+  };
+}
+
+export function unsafeRunExitToPromise(runtime: Runtime = defaultRuntime) {
+  return <E, A>(ioa: IO<E, A>): Promise<Exit<E, A>> => {
+    return new Promise((resolve) => {
+      const driver = new Driver(ioa, runtime);
+      driver.onExit((exit) => {
+        resolve(exit);
+      });
+      driver.start();
+    });
+  };
+}
