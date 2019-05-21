@@ -1,3 +1,7 @@
+<h1 align=center>
+<img src="logo/logotype.svg" width=50%>
+</h1>
+
 # waveguide
 
 [![npm version](https://badge.fury.io/js/waveguide.svg)](https://badge.fury.io/js/waveguide)
