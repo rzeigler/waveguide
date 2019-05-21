@@ -13,14 +13,14 @@
 // limitations under the License.
 
 import { boundMethod } from "autobind-decorator";
-import { Either } from "fp-ts/lib/Either";
-import { Function1, Lazy } from "fp-ts/lib/function";
+import { Either, fold as foldEither } from "fp-ts/lib/Either";
 import { Option } from "fp-ts/lib/Option";
 import { Cause, Exit, Failed, Interrupted, Value } from "./exit";
 import { abort, IO, succeed } from "./io";
 import { defaultRuntime, Runtime } from "./runtime";
 import { Completable } from "./support/completable";
 import { MutableStack } from "./support/mutable-stack";
+import { Fn0, Fn1 } from "./support/types";
 
 export type FrameType = Frame | FoldFrame | InterruptFrame;
 
@@ -29,7 +29,7 @@ interface Frame {
   apply(u: unknown): IO<unknown, unknown>;
 }
 
-const makeFrame = (f: Function1<unknown, IO<unknown, unknown>>): Frame => ({
+const makeFrame = (f: Fn1<unknown, IO<unknown, unknown>>): Frame => ({
   _tag: "frame",
   apply: f
 });
@@ -40,8 +40,8 @@ interface FoldFrame {
   recover(cause: Cause<unknown>): IO<unknown, unknown>;
 }
 
-const makeFoldFrame = (f: Function1<unknown, IO<unknown, unknown>>,
-                       r: Function1<Cause<unknown>, IO<unknown, unknown>>): FoldFrame => ({
+const makeFoldFrame = (f: Fn1<unknown, IO<unknown, unknown>>,
+                       r: Fn1<Cause<unknown>, IO<unknown, unknown>>): FoldFrame => ({
   _tag: "fold-frame",
   apply: f,
   recover: r
@@ -77,7 +77,7 @@ export class Driver<E, A> {
   private readonly result: Completable<Exit<E, A>> = new Completable();
   private readonly frameStack: MutableStack<FrameType> = new MutableStack();
   private readonly interruptRegionStack: MutableStack<boolean> = new MutableStack();
-  private cancelAsync: Lazy<void> | undefined;
+  private cancelAsync: Fn0<void> | undefined;
 
   constructor(private readonly init: IO<E, A>, private readonly runtime: Runtime = defaultRuntime) {  }
 
@@ -111,7 +111,7 @@ export class Driver<E, A> {
   }
 
   @boundMethod
-  public onExit(f: Function1<Exit<E, A>, void>): Lazy<void> {
+  public onExit(f: Fn1<Exit<E, A>, void>): Fn0<void> {
     return this.result.listen(f);
   }
 
@@ -238,7 +238,7 @@ export class Driver<E, A> {
     this.result.complete(exit);
   }
 
-  private contextSwitch(op: Function1<Function1<Either<unknown, unknown>, void>, Lazy<void>>): void {
+  private contextSwitch(op: Fn1<Fn1<Either<unknown, unknown>, void>, Fn0<void>>): void {
     let complete = false;
     const cancelAsync = op((result) => {
       if (complete) {
@@ -256,20 +256,20 @@ export class Driver<E, A> {
   private resume(result: Either<unknown, unknown>): void {
     this.cancelAsync = undefined;
     this.runtime.dispatch(() => {
-      result.fold(
-        (cause) => {
+      foldEither(
+        (cause: unknown) => {
           const next = this.handle(new Failed(cause));
           if (next) {
             this.loop(next);
           }
         },
-        (value) => {
+        (value: unknown) => {
           const next = this.next(value);
           if (next) {
             this.loop(next);
           }
         }
-      );
+      )(result);
     });
   }
 }

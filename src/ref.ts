@@ -13,14 +13,14 @@
 // limitations under the License.
 
 import { boundMethod } from "autobind-decorator";
-import { Function1 } from "fp-ts/lib/function";
 import { effect, IO } from "./io";
+import { Fn1 } from "./support/types";
 
 export interface Ref<A> {
   readonly get: IO<never, A>;
   set(a: A): IO<never, A>;
-  update(f: Function1<A, A>): IO<never, A>;
-  modify<B>(f: Function1<A, readonly [B, A]>): IO<never, B>;
+  update(f: Fn1<A, A>): IO<never, A>;
+  modify<B>(f: Fn1<A, readonly [B, A]>): IO<never, B>;
 }
 
 class RefIO<A> implements Ref<A> {
@@ -38,7 +38,7 @@ class RefIO<A> implements Ref<A> {
   }
 
   @boundMethod
-  public update(f: Function1<A, A>): IO<never, A> {
+  public update(f: Fn1<A, A>): IO<never, A> {
     return effect(() => {
       this.value = f(this.value);
       return this.value;
@@ -46,7 +46,7 @@ class RefIO<A> implements Ref<A> {
   }
 
   @boundMethod
-  public modify<B>(f: Function1<A, readonly [B, A]>): IO<never, B> {
+  public modify<B>(f: Fn1<A, readonly [B, A]>): IO<never, B> {
     return effect(() => {
       const [b, a] = f(this.value);
       this.value = a;

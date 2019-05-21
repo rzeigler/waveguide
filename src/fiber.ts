@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { fromNullable, none, Option, some } from "fp-ts/lib/Option";
+import { fold as foldOption, fromNullable, isSome, none, Option, some } from "fp-ts/lib/Option";
 import { Driver } from "./driver";
 import { Exit } from "./exit";
 import { asyncTotal, completeWith, effect, IO, succeed } from "./io";
@@ -68,8 +68,8 @@ export class FiberContext<E, A> implements Fiber<E, A> {
     this.result = effect(() => this.driver.exit())
       .widenError<E>()
       // TODO: When Exit is a functor this gets easier
-      .chain((opt) => opt.fold(succeed(none), (exit) => completeWith(exit).map(some)));
-    this.isComplete = effect(() => this.driver.exit().isSome());
+      .chain((opt) => foldOption(() => succeed(none), (exit: Exit<E, A>) => completeWith(exit).map(some))(opt));
+    this.isComplete = effect(() => isSome(this.driver.exit()));
    }
 
    public start() {

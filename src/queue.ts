@@ -12,14 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Either, left, right } from "fp-ts/lib/Either";
-import { Function1, Function2, identity } from "fp-ts/lib/function";
+import { Either, left, right, fold } from "fp-ts/lib/Either";
+import { option, getOrElse } from "fp-ts/lib/Option";
+import { identity, pipe } from "fp-ts/lib/function";
+import { pipeable } from "fp-ts/lib/pipeable";
 import { Deferred, makeDeferred } from "./deferred";
 import { abort, IO, succeed, unit } from "./io";
 import { makeRef, Ref } from "./ref";
 import { natNumber } from "./sanity";
 import { makeSemaphore } from "./semaphore";
 import { Dequeue, empty, of } from "./support/dequeue";
+import { Fn1, Fn2 } from "./support/types";
 import { makeTicket, Ticket, ticketExit, ticketUse } from "./ticket";
 
 export interface ConcurrentQueue<A> {
@@ -27,35 +30,38 @@ export interface ConcurrentQueue<A> {
   offer(a: A): IO<never, void>;
 }
 
-type State<A> = Either<Dequeue<Deferred<void, A>>, Dequeue<A>>;
+type State<A> = Either<Dequeue<Deferred<never, A>>, Dequeue<A>>;
 const initial = <A>(): State<A> => right(empty());
 
 class ConcurrentQueueImpl<A> implements ConcurrentQueue<A> {
   public readonly take: IO<never, A>;
   constructor(public readonly state: Ref<State<A>>,
               public readonly factory: IO<never, Deferred<never, A>>,
-              public readonly overflowStrategy: Function2<Dequeue<A>, A, Dequeue<A>>,
+              public readonly overflowStrategy: Fn2<Dequeue<A>, A, Dequeue<A>>,
               // This is effect that precedes offering
               // in the case of a boudned queue it is responsible for acquiring the semaphore
               public readonly offerGate: IO<never, void>,
               // This is the function that wraps the constructed take IO action
               // In the case of a bounded queue, it is responsible for releasing the semaphore and re-acquiring
               // it on interrupt
-              public readonly takeGate: Function1<IO<never, A>, IO<never, A>>) {
+              public readonly takeGate: Fn1<IO<never, A>, IO<never, A>>) {
       this.take = takeGate(factory.chain((latch) =>
         this.state.modify((current) =>
-          current.fold(
-            (waiting) => [
+          fold(
+            (waiting: Dequeue<Deferred<never, A>>) => [
               makeTicket(latch.wait, this.cleanupLatch(latch)),
               left(waiting.offer(latch)) as State<A>
             ] as const,
-            (ready) => ready.take()
-              .map(([next, q]) => [makeTicket(succeed(next), unit), right(q) as State<A>] as const)
-              .getOrElseL(() => [
-                makeTicket(latch.wait, this.cleanupLatch(latch)),
-                left(of(latch)) as State<A>
-              ] as const)
-          )
+            (ready: Dequeue<A>) =>
+              pipe(
+                pipeable(option).map(([next, q]: readonly [A, Dequeue<A>]) => 
+                  [makeTicket(succeed(next), unit), right(q) as State<A>] as const),
+                getOrElse(() => [
+                  makeTicket(latch.wait, this.cleanupLatch(latch)),
+                  left(of(latch)) as State<A>
+                ] as const)
+              )(ready.take())
+          )(current)
         ).bracketExit(ticketExit, ticketUse)
       ));
   }
