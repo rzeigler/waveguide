@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Creator: CorelDRAW X7 -->
+<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" width="21.6746mm" height="16.4252mm" version="1.1" style="shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd"
+viewBox="0 0 2167 1643"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+ <defs>
+  <style type="text/css">
+   <![CDATA[
+    .fil0 {fill:url(#id0)}
+   ]]>
+  </style>
+  <linearGradient id="id0" gradientUnits="userSpaceOnUse" x1="450.9" y1="69.81" x2="1716.58" y2="1572.72">
+   <stop offset="0" style="stop-opacity:1; stop-color:#3159A5"/>
+   <stop offset="1" style="stop-opacity:1; stop-color:#A62185"/>
+  </linearGradient>
+ </defs>
+ <g id="Layer_x0020_1">
+  <metadata id="CorelCorpID_0Corel-Layer"/>
+  <path class="fil0" d="M1591 1309l0 0c133,-131 215,-313 215,-514 0,-399 -323,-722 -722,-722 -399,0 -722,323 -722,722 0,201 82,383 214,514 17,16 27,39 27,64 0,50 -40,91 -90,91 -25,0 -48,-10 -64,-27l0 0c-166,-163 -268,-391 -268,-642 0,-251 102,-478 268,-642l0 0c17,-17 27,-39 27,-64 0,-50 -40,-91 -90,-91 -25,0 -48,10 -64,26l0 0c-199,197 -322,470 -322,771 0,302 123,575 322,771l0 0c49,48 116,78 191,78 149,0 271,-121 271,-271 0,-75 -31,-144 -81,-193l0 0c-99,-98 -161,-234 -161,-385 0,-299 243,-541 542,-541 299,0 541,242 541,541 0,151 -61,287 -161,385l0 0c-49,50 -80,118 -80,193 0,150 121,271 271,271 74,0 141,-30 190,-78 199,-196 322,-469 322,-771 0,-301 -123,-574 -321,-770l-1 -1c-16,-16 -38,-26 -63,-26 -50,0 -90,41 -90,91 0,25 10,47 26,64l0 0c166,164 269,391 269,642 0,251 -103,479 -269,642l0 0c-16,17 -38,27 -63,27 -50,0 -91,-41 -91,-91 0,-25 11,-48 27,-64l0 0zm-507 -782c-149,0 -270,121 -270,270 0,149 121,269 270,269 123,0 228,-83 259,-196l-53 0 -206 0 180 -146 26 0 53 0 155 0c4,24 6,48 6,73 0,232 -188,420 -420,420 -233,0 -421,-188 -421,-420 0,-233 188,-421 421,-421 152,0 285,81 359,202l-201 0c-44,-32 -99,-51 -158,-51z"/>
+ </g>
+</svg>

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Creator: CorelDRAW X7 -->
+<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" width="43.3492mm" height="32.9352mm" version="1.1" style="shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd"
+viewBox="0 0 4335 3294"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+ <defs>
+  <style type="text/css">
+   <![CDATA[
+    .fil0 {fill:url(#id0)}
+   ]]>
+  </style>
+  <linearGradient id="id0" gradientUnits="userSpaceOnUse" x1="901.27" y1="143.24" x2="3433.68" y2="3150.31">
+   <stop offset="0" style="stop-opacity:1; stop-color:#3159A5"/>
+   <stop offset="1" style="stop-opacity:1; stop-color:#A62185"/>
+  </linearGradient>
+ </defs>
+ <g id="Layer_x0020_1">
+  <metadata id="CorelCorpID_0Corel-Layer"/>
+  <path class="fil0" d="M3183 2622l0 0c265,-262 429,-625 429,-1027 0,-798 -647,-1445 -1445,-1445 -798,0 -1444,647 -1444,1445 0,402 164,765 429,1027 33,33 54,79 54,129 0,100 -81,181 -181,181 -50,0 -95,-20 -127,-52l0 0c-332,-328 -537,-783 -537,-1285 0,-503 205,-958 537,-1286l0 0c33,-32 53,-78 53,-128 0,-100 -80,-181 -180,-181 -50,0 -95,20 -127,52l0 0c-398,393 -645,939 -645,1543 0,603 247,1149 645,1542l0 0c98,97 232,156 381,156 299,0 542,-242 542,-542 0,-151 -61,-287 -161,-386l0 0c-199,-196 -322,-469 -322,-770 0,-599 485,-1084 1083,-1084 599,0 1084,485 1084,1084 0,301 -123,574 -322,770l0 0c-100,99 -161,235 -161,386 0,300 243,543 542,543 149,0 283,-60 381,-157 398,-393 645,-939 645,-1542 0,-604 -246,-1149 -644,-1542l-1 -1c-32,-32 -77,-52 -127,-52 -100,0 -180,81 -180,181 0,50 20,96 53,128l0 0c332,328 537,783 537,1286 0,502 -205,957 -537,1285l0 0c-32,32 -77,52 -127,52 -100,0 -181,-81 -181,-181 0,-50 21,-96 54,-129l0 0zm-1016 -1564c-298,0 -539,242 -539,540 0,298 241,539 539,539 248,0 457,-166 520,-394l-107 0 -413 0 360 -291 53 0 107 0 309 0c9,47 13,96 13,146 0,464 -377,841 -842,841 -464,0 -841,-377 -841,-841 0,-465 377,-842 841,-842 305,0 572,162 720,405l-403 0c-89,-65 -198,-103 -317,-103z"/>
+ </g>
+</svg>
