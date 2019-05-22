@@ -15,7 +15,7 @@
 import { fold as foldOption, fromNullable, isSome, none, Option, some } from "fp-ts/lib/Option";
 import { Driver } from "./driver";
 import { Exit } from "./exit";
-import { asyncTotal, completeWith, effect, IO, succeed } from "./io";
+import { asyncTotal, completeWith, effect, IO, succeed, unit } from "./io";
 import { Runtime } from "./runtime";
 
 export interface Fiber<E, A> {
@@ -49,47 +49,33 @@ export interface Fiber<E, A> {
   readonly isComplete: IO<never, boolean>;
 }
 
-export class FiberContext<E, A> implements Fiber<E, A> {
-  public readonly name: Option<string>;
-  public readonly interrupt: IO<never, void>;
-  public readonly wait: IO<never, Exit<E, A>>;
-  public readonly join: IO<E, A>;
-  public readonly result: IO<E, Option<A>>;
-  public readonly isComplete: IO<never, boolean>;
-
-  constructor(private readonly driver: Driver<E, A>, name?: string) {
-    this.name = fromNullable(name);
-    const sendInterrupt = effect(() => {
-      this.driver.interrupt();
-    });
-    this.wait = asyncTotal(this.driver.onExit);
-    this.interrupt = sendInterrupt.applySecond(this.wait.unit());
-    this.join = this.wait.widenError<E>().chain((exit) => completeWith(exit));
-    this.result = effect(() => this.driver.exit())
-      .widenError<E>()
-      // TODO: When Exit is a functor this gets easier
-      .chain((opt) => foldOption(() => succeed(none), (exit: Exit<E, A>) => completeWith(exit).map(some))(opt));
-    this.isComplete = effect(() => isSome(this.driver.exit()));
-   }
-
-   public start() {
-    this.driver.start();
-   }
+function createFiber<E, A>(driver: Driver<E, A>, n?: string): Fiber<E, A> {
+  const name = fromNullable(n);
+  const sendInterrupt = effect(() => {
+    driver.interrupt();
+  });
+  const wait = asyncTotal(driver.onExit);
+  const interrupt = sendInterrupt.applySecond(wait).applySecond(unit);
+  const join = wait.widenError<E>().chain((exit) => completeWith(exit));
+  const result = effect(() => driver.exit())
+    .widenError<E>()
+    .chain((opt) => foldOption(() => succeed(none), (exit: Exit<E, A>) => completeWith(exit).map(some))(opt));
+  const isComplete = effect(() => isSome(driver.exit()));
+  return {
+    name,
+    wait,
+    interrupt,
+    join,
+    result,
+    isComplete
+  };
 }
 
 export function makeFiber<E, A>(init: IO<E, A>, runtime: Runtime, name?: string): IO<never, Fiber<E, A>> {
   return effect(() => {
     const driver = new Driver(init, runtime);
-    const ctx = new FiberContext(driver, name);
-    ctx.start();
-    return ctx;
+    const fiber = createFiber(driver, name);
+    driver.start();
+    return fiber;
   });
-}
-
-export function wrapFiber<E, A>(driver: Driver<E, A>): Fiber<E, A> {
-  return new FiberContext(driver);
-}
-
-export function joinFiber<E, A>(fib: Fiber<E, A>): IO<E, A> {
-  return fib.join;
 }
