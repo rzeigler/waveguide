@@ -448,7 +448,7 @@ describe("io", () => {
           arbEitherIO(fc.string(), fc.nat()),
           (acqDelay, useDelay, relDelay, interruptDelay, useResult) =>
             expectExit(
-              makeRef(0)
+              makeRef()(0)
               .chain((cell) => {
                 const action = (cell.update((n) => n + 1).delay(acqDelay)).widenError<string>()
                   .bracket((_) => cell.update((n) => n - 1).delay(relDelay), (_) => useResult.delay(useDelay));

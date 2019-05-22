@@ -26,7 +26,7 @@ import { Deferred, makeDeferred } from "./deferred";
 import { Driver } from "./driver";
 import { Aborted, Cause, Exit, Failed, Interrupted, Value } from "./exit";
 import { Fiber, makeFiber } from "./fiber";
-import { makeRefC, Ref } from "./ref";
+import { makeRef, Ref } from "./ref";
 import { defaultRuntime, Runtime } from "./runtime";
 import { Fn1, Fn2 } from "./support/types";
 
@@ -978,7 +978,7 @@ export function raceFold<E1, E2, A, B, C>(first: IO<E1, A>, second: IO<E1, B>,
   }
   return uninterruptibleMask((cutout) =>
     Do(io)
-      .bind("latch", makeRefC<E2>()(false))
+      .bind("latch", makeRef<E2>()(false))
       .bind("channel", makeDeferred<E2, C>())
       .bind("firstFiber", first.fork())
       .bind("secondFiber", second.fork())

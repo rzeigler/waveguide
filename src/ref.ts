@@ -12,52 +12,50 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { boundMethod } from "autobind-decorator";
+import { FunctionN } from "fp-ts/lib/function";
 import { effect, IO } from "./io";
-import { Fn1 } from "./support/types";
 
 export interface Ref<A> {
   readonly get: IO<never, A>;
   set(a: A): IO<never, A>;
-  update(f: Fn1<A, A>): IO<never, A>;
-  modify<B>(f: Fn1<A, readonly [B, A]>): IO<never, B>;
-}
-
-class RefIO<A> implements Ref<A> {
-  public readonly get: IO<never, A> = effect(() => this.value);
-
-  constructor(private value: A) { }
-
-  @boundMethod
-  public set(a: A): IO<never, A> {
-    return effect(() => {
-      const prev = this.value;
-      this.value = a;
-      return prev;
-    });
-  }
-
-  @boundMethod
-  public update(f: Fn1<A, A>): IO<never, A> {
-    return effect(() => {
-      this.value = f(this.value);
-      return this.value;
-    });
-  }
-
-  @boundMethod
-  public modify<B>(f: Fn1<A, readonly [B, A]>): IO<never, B> {
-    return effect(() => {
-      const [b, a] = f(this.value);
-      this.value = a;
-      return b;
-    });
-  }
+  update(f: FunctionN<[A], A>): IO<never, A>;
+  modify<B>(f: FunctionN<[A], readonly [B, A]>): IO<never, B>;
 }
 
 /**
  * Creates an IO that will allocate a Ref.
- *
+ * Curried form of makeRef_ to allow for inference on the initial type
  */
-export const makeRefC = <E = never>() => <A>(a: A): IO<E, Ref<A>> => effect(() => new RefIO(a));
-export const makeRef = makeRefC();
+export const makeRef = <E = never>() => <A>(initial: A): IO<E, Ref<A>> =>
+  effect(() => {
+      let value = initial;
+
+      const get = effect(() => value);
+
+      const set = (a: A) => effect(() => {
+        const prev = value;
+        value = a;
+        return prev;
+      });
+
+      const update = (f: FunctionN<[A], A>) => effect(() => {
+        return value = f(value);
+      });
+
+      const modify = <B>(f: FunctionN<[A], readonly [B, A]>) => effect(() => {
+        const [b, a] = f(value);
+        value = a;
+        return b;
+      });
+
+      return {
+        get,
+        set,
+        update,
+        modify
+      };
+    });
+
+export function makeRef_<E, A>(initial: A): IO<E, Ref<A>> {
+  return makeRef<E>()(initial);
+}

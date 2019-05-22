@@ -22,7 +22,7 @@ describe("Ref", function() {
   this.timeout(5000);
   it("should be initialized with a value", () =>
     eqvIO(
-      makeRef(42).chain((r) => r.get),
+      makeRef()(42).chain((r) => r.get),
       succeed(42)
     )
   );
@@ -34,9 +34,9 @@ describe("Ref", function() {
           fc.array(fc.nat(), 1, 10),
           (initial, sets) =>
             eqvIO(
-              makeRef(initial)
+              makeRef()(initial)
                 .chain((r) => array.traverse(io)(sets, (v) => r.set(v)).applySecond(r.get)),
-              makeRef(initial)
+              makeRef()(initial)
                 .chain((r) => r.set(sets[sets.length - 1]).applySecond(r.get))
             )
         )
@@ -57,9 +57,9 @@ describe("Ref", function() {
           fc.nat(1000),
           (initial, value, count) =>
             eqvIO(
-              makeRef(initial)
+              makeRef()(initial)
                 .chain((cell) => cell.set(value).applySecond(cell.get)),
-              makeRef(initial)
+              makeRef()(initial)
                 .chain((cell) =>
                    array.traverse(io)(repeat(value, count + 1), (v) => cell.set(v)).applySecond(cell.get))
             )
@@ -73,9 +73,9 @@ describe("Ref", function() {
           fc.nat(),
           (before, after) =>
             eqvIO(
-              makeRef(before)
+              makeRef()(before)
                 .chain((cell) => cell.set(after)),
-              makeRef(before)
+              makeRef()(before)
                 .chain((cell) => cell.get)
             )
         )

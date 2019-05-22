@@ -26,7 +26,7 @@ describe("Resource", () => {
         (c) => ref.update((ss) => ss.filter((v) => v !== c)).unit()
       );
     }
-    const eff = makeRef<string[]>([])
+    const eff = makeRef()<string[]>([])
       .chain((ref) => {
         const resources = ["a", "b", "c", "d"].map((r) => makeBracket(ref, r))
           .reduce((l, r) => l.chain((_) => r));

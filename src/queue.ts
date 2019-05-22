@@ -48,7 +48,7 @@ const droppingOffer = (n: number) => <A>(queue: Dequeue<A>, a: A): Dequeue<A> =>
   queue.size() >= n ? queue : queue.offer(a);
 
 export function unboundedQueue<A>(): IO<never, ConcurrentQueue<A>> {
-  return makeRef(initial<A>())
+  return makeRef()(initial<A>())
     .map((ref) => makeConcurrentQueueImpl(ref, makeDeferred<never, A>(), unboundedOffer, unit, identity));
 }
 
@@ -57,7 +57,7 @@ const natCapacity = natNumber(new Error("Die: capacity must be a natural number"
 export function slidingQueue<A>(capacity: number): IO<never, ConcurrentQueue<A>> {
   return natCapacity(capacity)
     .applySecond(
-      makeRef(initial<A>())
+      makeRef()(initial<A>())
         .map((ref) => makeConcurrentQueueImpl(ref, makeDeferred<never, A>(), slidingOffer(capacity), unit, identity))
     );
 }
@@ -65,7 +65,7 @@ export function slidingQueue<A>(capacity: number): IO<never, ConcurrentQueue<A>>
 export function droppingQueue<A>(capacity: number): IO<never, ConcurrentQueue<A>> {
   return natCapacity(capacity)
     .applySecond(
-      makeRef(initial<A>())
+      makeRef()(initial<A>())
         .map((ref) => makeConcurrentQueueImpl(ref, makeDeferred<never, A>(), droppingOffer(capacity), unit, identity))
     );
 }
@@ -73,7 +73,7 @@ export function droppingQueue<A>(capacity: number): IO<never, ConcurrentQueue<A>
 export function boundedQueue<A>(capacity: number): IO<never, ConcurrentQueue<A>> {
   return natCapacity(capacity)
     .applySecond(
-      makeRef(initial<A>()).zip(makeSemaphore(capacity))
+      makeRef()(initial<A>()).zip(makeSemaphore(capacity))
         .map(([ref, sem]) =>
           makeConcurrentQueueImpl(ref, makeDeferred<never, A>(), unboundedOffer, sem.acquire, (inner) =>
             // Before take, we must release the semaphore. If we are interrupted we should re-acquire the item

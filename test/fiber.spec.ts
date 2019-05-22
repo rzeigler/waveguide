@@ -60,7 +60,7 @@ describe("fiber", () => {
             expectExit(
               Do(io)
                 .bind("latch", makeDeferred<never, void>())
-                .bind("cell", makeRef(false))
+                .bind("cell", makeRef()(false))
                 .bindL("child", ({latch, cell}) =>
                   latch.wait.applySecond(cell.set(true)).uninterruptible().fork()
                 )

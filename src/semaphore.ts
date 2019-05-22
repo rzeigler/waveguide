@@ -18,7 +18,7 @@ import { constant, identity, not, pipeOp } from "fp-ts/lib/function";
 import * as o from "fp-ts/lib/Option";
 import { Deferred, makeDeferred } from "./deferred";
 import { abort, bracketC, bracketExitC, IO, unit } from "./io";
-import { makeRef as allocRef, Ref } from "./ref";
+import { makeRef, Ref } from "./ref";
 import { Dequeue, empty } from "./support/dequeue";
 import { makeTicket, Ticket, ticketExit, ticketUse } from "./ticket";
 
@@ -156,6 +156,6 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
  */
 export function makeSemaphore(n: number): IO<never, Semaphore> {
   return sanityCheck(n)
-    .applySecond(allocRef<State>(right(n)))
+    .applySecond(makeRef()<State>(right(n)))
     .map(makeSemaphoreImpl);
 }
