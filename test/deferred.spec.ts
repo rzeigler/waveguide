@@ -24,7 +24,7 @@ describe("Deferred", () => {
     eqvIO(
       makeDeferred<never, number>()
         .chain((def) =>
-          def.succeed(42).applySecond(def.wait)
+          def.done(42).applySecond(def.wait)
         ),
       succeed(42)
     )
@@ -33,7 +33,7 @@ describe("Deferred", () => {
       expectExitIn(
         makeDeferred<never, number>()
           .chain((def) => {
-            const c42 = def.succeed(42);
+            const c42 = def.done(42);
             return c42.applySecond(c42);
           }),
         (exit) => exit._tag === "aborted" ? (exit.error as Error).message : undefined,
@@ -50,7 +50,7 @@ describe("Deferred", () => {
             expectExit(
               makeDeferred<never, number>()
                 .chain((def) =>
-                  def.succeed(42).delay(delay).fork()
+                  def.done(42).delay(delay).fork()
                     .applySecond(def.wait)
                 ),
               new Value(42)

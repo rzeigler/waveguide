@@ -12,68 +12,44 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { boundMethod } from "autobind-decorator";
+import { Exit } from "./exit";
 import { asyncTotal, completeWith, effect, fail, interrupted, IO, succeed } from "./io";
 import { Completable } from "./support/completable";
 
 export interface Deferred<E, A> {
   readonly wait: IO<E, A>;
   interrupt: IO<never, void>;
-  succeed(a: A): IO<never, void>;
-  fail(e: E): IO<never, void>;
+  done(a: A): IO<never, void>;
+  error(e: E): IO<never, void>;
   from(source: IO<E, A>): IO<never, void>;
 }
 
-class DeferredIO<E, A> implements Deferred<E, A> {
-  public readonly wait: IO<E, A>;
-  public readonly interrupt: IO<never, void>;
-
-  private completable: Completable<IO<E, A>> = new Completable();
-  constructor() {
-    this.wait = asyncTotal<IO<E, A>>((callback) =>
-      this.completable.listen(callback)
+export function makeDeferred<E, A, E2 = never>(): IO<E2, Deferred<E, A>> {
+  return effect(() => {
+    const completable: Completable<IO<E, A>> = new Completable();
+    const wait = asyncTotal<IO<E, A>>((callback) =>
+      completable.listen(callback)
     ).flatten();
-
-    this.interrupt = effect(() => {
-      this.completable.complete(interrupted);
+    const interrupt = effect(() => {
+      completable.complete(interrupted);
     });
-  }
-
-  @boundMethod
-  public succeed(a: A): IO<never, void> {
-    return effect(() => {
-      this.completable.complete(succeed(a));
+    const done = (a: A): IO<never, void> => effect(() => {
+      completable.complete(succeed(a));
     });
-  }
-
-  @boundMethod
-  public fail(e: E): IO<never, void> {
-    return effect(() => {
-      this.completable.complete(fail(e));
+    const error = (e: E): IO<never, void> => effect(() => {
+      completable.complete(fail(e));
     });
-  }
-
-  @boundMethod
-  public completeWith(result: IO<E, A>): IO<never, void> {
-    return effect(() => {
-      this.completable.complete(result);
+    const complete = (exit: Exit<E, A>): IO<never, void> => effect(() => {
+      completable.complete(completeWith(exit));
     });
-  }
-
-  @boundMethod
-  public from(source: IO<E, A>): IO<never, void> {
-    return source.result()
-      .chain((exit) => this.completeWith(completeWith(exit)))
-      .onInterrupted(this.interrupt);
-  }
+    const from = (source: IO<E, A>): IO<never, void> =>
+      source.result().chain(complete).onInterrupted(interrupt);
+    return {
+      wait,
+      interrupt,
+      done,
+      error,
+      from
+    };
+  });
 }
-
-/**
- * Creates an IO that will allocate a Deferred.
- *
- */
-export function makeDeferred<E, A>(): IO<never, Deferred<E, A>> {
-  return effect(() => new DeferredIO());
-}
-
-export const makeDeferredC = <E = never>() => <A>() => makeDeferred<E, A>();

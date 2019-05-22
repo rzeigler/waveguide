@@ -117,7 +117,7 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
                       () => [unit, right(n) as State] as const,
                       ([[needed, latch], q]) => n >= needed ?
                         [
-                          latch.succeed(undefined).applyFirst(n > needed ? releaseN(n - needed) : unit),
+                          latch.done(undefined).applyFirst(n > needed ? releaseN(n - needed) : unit),
                           left(q) as State
                         ] as const :
                         [

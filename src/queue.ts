@@ -136,7 +136,7 @@ function makeConcurrentQueueImpl<A>(state: Ref<State<A>>,
         (waiting) =>
           pipe(
             waiting.take(),
-            poption.map(([next, q]) => [next.succeed(a), left(q) as State<A>] as const),
+            poption.map(([next, q]) => [next.done(a), left(q) as State<A>] as const),
             getOrElse(() => [unit, right(overflowStrategy(empty(), a)) as State<A>] as const)
           ),
         (available) => [unit, right(overflowStrategy(available, a)) as State<A>] as const
