@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Function1, Function2 } from "fp-ts/lib/function";
+import { FunctionN } from "fp-ts/lib/function";
 import { Monad2 } from "fp-ts/lib/Monad";
 import { bracket, IO } from "./io";
 import { MutableStack } from "./support/mutable-stack";
@@ -30,11 +30,11 @@ type ResourceADT<E, A> = Pure<E, A> | Bracket<E, A> | Suspend<E, A> | Chain<E, a
 export class Resource<E, A> {
   constructor(private readonly step: ResourceADT<E, A>) { }
 
-  public map<B>(f: Function1<A, B>): Resource<E, B> {
+  public map<B>(f: FunctionN<[A], B>): Resource<E, B> {
     return this.chain((a) => new Resource(new Pure(f(a))));
   }
 
-  public zipWith<B, C>(other: Resource<E, B>, f: Function2<A, B, C>): Resource<E, C> {
+  public zipWith<B, C>(other: Resource<E, B>, f: FunctionN<[A, B], C>): Resource<E, C> {
     return this.chain((a) => other.map((b) => f(a, b)));
   }
 
@@ -42,19 +42,19 @@ export class Resource<E, A> {
     return this.zipWith(other, (a, b) => [a, b] as const);
   }
 
-  public ap<B>(other: Resource<E, Function1<A, B>>): Resource<E, B> {
+  public ap<B>(other: Resource<E, FunctionN<[A], B>>): Resource<E, B> {
     return this.zipWith(other, (a, f) => f(a));
   }
 
-  public ap_<B, C>(this: Resource<E, Function1<B, C>>, other: Resource<E, B>): Resource<E, C> {
+  public ap_<B, C>(this: Resource<E, FunctionN<[B], C>>, other: Resource<E, B>): Resource<E, C> {
     return this.zipWith(other, (f, b) => f(b));
   }
 
-  public chain<B>(f: Function1<A, Resource<E, B>>): Resource<E, B> {
+  public chain<B>(f: FunctionN<[A], Resource<E, B>>): Resource<E, B> {
     return new Resource(new Chain(this, f));
   }
 
-  public use<B>(f: Function1<A, IO<E, B>>): IO<E, B> {
+  public use<B>(f: FunctionN<[A], IO<E, B>>): IO<E, B> {
     if (this.step._tag === "pure") {
       return f(this.step.a);
     } else if (this.step._tag === "bracket") {
@@ -75,7 +75,7 @@ class Pure<E, A> {
 
 class Bracket<E, A> {
   public readonly _tag: "bracket" = "bracket";
-  constructor(public readonly acquire: IO<E, A>, public readonly release: Function1<A, IO<E, void>>) { }
+  constructor(public readonly acquire: IO<E, A>, public readonly release: FunctionN<[A], IO<E, void>>) { }
 }
 
 class Suspend<E, A> {
@@ -85,14 +85,14 @@ class Suspend<E, A> {
 
 class Chain<E, L, A> {
   public readonly _tag: "chain" = "chain";
-  constructor(public readonly left: Resource<E, L>, public readonly bind: Function1<L, Resource<E, A>>) { }
+  constructor(public readonly left: Resource<E, L>, public readonly bind: FunctionN<[L], Resource<E, A>>) { }
 }
 
 export function of<E, A>(a: A): Resource<E, A> {
   return new Resource(new Pure(a));
 }
 
-export function from<E, A>(acquire: IO<E, A>, release: Function1<A, IO<E, void>>): Resource<E, A> {
+export function from<E, A>(acquire: IO<E, A>, release: FunctionN<[A], IO<E, void>>): Resource<E, A> {
   return new Resource(new Bracket(acquire, release));
 }
 
@@ -109,9 +109,9 @@ declare module "fp-ts/lib/HKT" {
   }
 }
 
-const map = <L, A, B>(fa: Resource<L, A>, f: Function1<A, B>) => fa.map(f);
-const ap = <L, A, B>(ff: Resource<L, Function1<A, B>>, fa: Resource<L, A>) => ff.ap_(fa);
-const chain = <L, A, B>(fa: Resource<L, A>, f: Function1<A, Resource<L, B>>) => fa.chain(f);
+const map = <L, A, B>(fa: Resource<L, A>, f: FunctionN<[A], B>) => fa.map(f);
+const ap = <L, A, B>(ff: Resource<L, FunctionN<[A], B>>, fa: Resource<L, A>) => ff.ap_(fa);
+const chain = <L, A, B>(fa: Resource<L, A>, f: FunctionN<[A], Resource<L, B>>) => fa.chain(f);
 
 export const resource: Monad2<URI> = {
   URI,

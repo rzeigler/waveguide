@@ -13,8 +13,10 @@
 // limitations under the License.
 
 import { expect } from "chai";
-import fc, {Arbitrary, Command} from "fast-check";
-import { none, some, Some } from "fp-ts/lib/Option";
+import fc, { Arbitrary, Command } from "fast-check";
+import * as fn from "fp-ts/lib/function";
+import * as O from "fp-ts/lib/Option";
+import { none, some } from "fp-ts/lib/Option";
 import { Dequeue, empty } from "../../src/support/dequeue";
 
 describe("Dequeue", () => {
@@ -30,11 +32,14 @@ describe("Dequeue", () => {
     expect(result).to.deep.equal(some([42, empty()]));
   });
   it("pull after offer is a value", () => {
-    const queue = empty().offer(42);
+    const queue = empty<number>().offer(42);
     const result = queue.pull();
-    result.foldL(
-      () => { throw new Error("expected some"); },
-      (tuple) => expect(tuple[0]).to.equal(42)
+    fn.pipeOp(
+      result,
+      O.fold(
+        () => { throw new Error("expected some"); },
+        (tuple) => expect(tuple[0]).to.equal(42)
+      )
     );
   });
   it("take after multiple offers is the first", () => {
@@ -43,12 +48,15 @@ describe("Dequeue", () => {
       .offer(43)
       .offer(44);
     const result = queue.take();
-    result.foldL(
-      () => { throw new Error("expected some"); },
-      (tuple) => {
-        expect(tuple[0]).to.equal(42);
-        expect(tuple[1].size()).to.equal(2);
-      }
+    fn.pipeOp(
+      result,
+      O.fold(
+        () => { throw new Error("expected some"); },
+        (tuple) => {
+          expect(tuple[0]).to.equal(42);
+          expect(tuple[1].size()).to.equal(2);
+        }
+      )
     );
   });
   it("pull after multiple offers is the last", () => {
@@ -57,12 +65,15 @@ describe("Dequeue", () => {
       .offer(43)
       .offer(44);
     const result = queue.pull();
-    result.foldL(
-      () => { throw new Error("expected some"); },
-      (tuple) => {
-        expect(tuple[0]).to.equal(44);
-        expect(tuple[1].size()).to.equal(2);
-      }
+    fn.pipeOp(
+      result,
+      O.fold(
+        () => { throw new Error("expected some"); },
+        (tuple) => {
+          expect(tuple[0]).to.equal(44);
+          expect(tuple[1].size()).to.equal(2);
+        }
+      )
     );
   });
 
@@ -97,8 +108,9 @@ describe("Dequeue", () => {
     },
     run(m: Model, r: Real): void {
       const expected = m.fake.shift();
-      r.actual.pull()
-        .foldL(
+      fn.pipeOp(
+        r.actual.pull(),
+        O.fold(
           () => {
             if (expected) {
               throw new Error("expected there to be something");
@@ -108,7 +120,8 @@ describe("Dequeue", () => {
             expect(n).to.equal(expected);
             r.actual = q;
           }
-        );
+        )
+      );
     },
     toString() {
       return "pull";
@@ -137,8 +150,9 @@ describe("Dequeue", () => {
     },
     run(m: Model, r: Real): void {
       const expected = m.fake.pop();
-      r.actual.take()
-        .foldL(
+      fn.pipeOp(
+        r.actual.take(),
+        O.fold(
           () => {
             if (expected) {
               throw new Error("expected there to be something");
@@ -148,7 +162,8 @@ describe("Dequeue", () => {
             expect(n).to.equal(expected);
             r.actual = q;
           }
-        );
+        )
+      );
     },
     toString() {
       return "take";

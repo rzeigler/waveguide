@@ -12,11 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-import { Fn1, Fn2 } from "./support/types";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { Applicative2 } from "fp-ts/lib/Applicative";
-import { Either, left, right } from "fp-ts/lib/Either";
+import { Either, fold, left, right } from "fp-ts/lib/Either";
 import { constant, identity, Lazy, pipe } from "fp-ts/lib/function";
 import { IO as SyncIO } from "fp-ts/lib/IO";
 import { IOEither } from "fp-ts/lib/IOEither";
@@ -24,13 +22,13 @@ import { Monad2 } from "fp-ts/lib/Monad";
 import { none, Option, some } from "fp-ts/lib/Option";
 import { Task } from "fp-ts/lib/Task";
 import { TaskEither } from "fp-ts/lib/TaskEither";
-import { fold } from "fp-ts/lib/Either";
 import { Deferred, makeDeferred } from "./deferred";
 import { Driver } from "./driver";
 import { Aborted, Cause, Exit, Failed, Interrupted, Value } from "./exit";
 import { Fiber, makeFiber } from "./fiber";
 import { makeRefC, Ref } from "./ref";
 import { defaultRuntime, Runtime } from "./runtime";
+import { Fn1, Fn2 } from "./support/types";
 
 export type Step<E, A> =
   Succeeded<E, A> |
@@ -970,11 +968,11 @@ export function raceFold<E1, E2, A, B, C>(first: IO<E1, A>, second: IO<E1, B>,
   // tslint:disable-next-line:no-shadowed-variable
   function completeLatched<E1, E2, A, B, C>(latch: Ref<boolean>,
                                             channel: Deferred<E2, C>,
-                                            fold: Fn2<Exit<E1, A>, Fiber<E1, B>, IO<E2, C>>,
+                                            combine: Fn2<Exit<E1, A>, Fiber<E1, B>, IO<E2, C>>,
                                             other: Fiber<E1, B>): Fn1<Exit<E1, A>, IO<never, void>> {
     return (exit) =>
       latch.modify<IO<never, void>>((flag: boolean) =>
-        flag ? [unit, flag] : [channel.from(fold(exit, other)), true]
+        flag ? [unit, flag] : [channel.from(combine(exit, other)), true]
       ).flatten();
 
   }

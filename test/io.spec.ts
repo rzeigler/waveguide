@@ -15,7 +15,7 @@
 import * as fc from "fast-check";
 import { array } from "fp-ts/lib/Array";
 import { left, right } from "fp-ts/lib/Either";
-import { compose, Function1, identity } from "fp-ts/lib/function";
+import { FunctionN, identity, pipe } from "fp-ts/lib/function";
 import { Aborted, Failed, Interrupted, Value } from "../src/exit";
 import { abort, async, asyncTotal, completeWith, effect, fail, failC, getInterruptible, interrupted, interruptible,
    IO, io, never, succeed, succeedC, suspend, uninterruptible } from "../src/io";
@@ -186,21 +186,21 @@ describe("io", () => {
   // base on fp-ts-laws at https://github.com/gcanti/fp-ts-laws but adapter for the fact that we need to run IOs
   describe("laws", function() {
     this.timeout(60000);
-    const strlen: Function1<string, number> = (s: string) => s.length;
-    const even: Function1<number, boolean> = (n: number) => n % 2 === 0;
+    const strlen: FunctionN<[string], number> = (s: string) => s.length;
+    const even: FunctionN<[number], boolean> = (n: number) => n % 2 === 0;
 
     const functor = {
       identity: <E, A>(ioa: IO<E, A>) => eqvIO(ioa.map(identity), ioa),
-      composition: <E, A, B, C>(ioa: IO<E, A>, fab: Function1<A, B>, fbc: Function1<B, C>) =>
-        eqvIO(ioa.map(fab).map(fbc), ioa.map(compose(fbc, fab)))
+      composition: <E, A, B, C>(ioa: IO<E, A>, fab: FunctionN<[A], B>, fbc: FunctionN<[B], C>) =>
+        eqvIO(ioa.map(fab).map(fbc), ioa.map(pipe(fab, fbc)))
     };
 
     const apply = {
       associativeComposition: <E, A, B, C>(ioa: IO<E, A>,
-                                           iofab: IO<E, Function1<A, B>>,
-                                           iofbc: IO<E, Function1<B, C>>) =>
+                                           iofab: IO<E, FunctionN<[A], B>>,
+                                           iofbc: IO<E, FunctionN<[B], C>>) =>
         eqvIO(
-          iofbc.map((bc) => (ab: Function1<A, B>) => (a: A) => bc(ab(a))).ap_(iofab).ap_(ioa),
+          iofbc.map((bc) => (ab: FunctionN<[A], B>) => (a: A) => bc(ab(a))).ap_(iofab).ap_(ioa),
           iofbc.ap_(iofab.ap_(ioa))
         )
     };
@@ -211,17 +211,17 @@ describe("io", () => {
           succeedC<E>()(identity).ap_(ioa),
           ioa
         ),
-      homomorphism: <A, B>(fab: Function1<A, B>, a: A) =>
+      homomorphism: <A, B>(fab: FunctionN<[A], B>, a: A) =>
         eqvIO(
           succeed(fab).ap_(succeed(a)),
           succeed(fab(a))
         ),
-      interchange: <E, A, B>(a: A, iofab: IO<E, Function1<A, B>>) =>
+      interchange: <E, A, B>(a: A, iofab: IO<E, FunctionN<[A], B>>) =>
         eqvIO(
           iofab.ap_(succeed(a)),
-          succeedC<E>()((ab: Function1<A, B>) => ab(a)).ap_(iofab)
+          succeedC<E>()((ab: FunctionN<[A], B>) => ab(a)).ap_(iofab)
         ),
-      derivedMap: <E, A, B>(ab: Function1<A, B>, ioa: IO<E, A>) =>
+      derivedMap: <E, A, B>(ab: FunctionN<[A], B>, ioa: IO<E, A>) =>
         eqvIO(
           ioa.map(ab),
           succeedC<E>()(ab).ap_(ioa)
@@ -229,12 +229,12 @@ describe("io", () => {
     };
 
     const chain = {
-      associativivity: <E, A, B, C>(ioa: IO<E, A>, kab: Function1<A, IO<E, B>>, kbc: Function1<B, IO<E, C>>) =>
+      associativivity: <E, A, B, C>(ioa: IO<E, A>, kab: FunctionN<[A], IO<E, B>>, kbc: FunctionN<[B], IO<E, C>>) =>
         eqvIO(
           ioa.chain(kab).chain(kbc),
           ioa.chain((a) => kab(a).chain(kbc))
         ),
-      derivedAp: <E, A, B>(iofab: IO<E, Function1<A, B>>, ioa: IO<E, A>) =>
+      derivedAp: <E, A, B>(iofab: IO<E, FunctionN<[A], B>>, ioa: IO<E, A>) =>
         eqvIO(
           ioa.ap(iofab),
           iofab.chain((f) => ioa.map(f))
@@ -242,7 +242,7 @@ describe("io", () => {
     };
 
     const monad = {
-      leftIdentity: <E, A, B>(kab: Function1<A, IO<E, B>>, a: A) =>
+      leftIdentity: <E, A, B>(kab: FunctionN<[A], IO<E, B>>, a: A) =>
         eqvIO(
           succeedC<E>()(a).chain(kab),
           kab(a)
@@ -252,7 +252,7 @@ describe("io", () => {
           ioa.chain(succeed),
           ioa
         ),
-      derivedMap: <E, A, B>(ab: Function1<A, B>, ioa: IO<E, A>) =>
+      derivedMap: <E, A, B>(ab: FunctionN<[A], B>, ioa: IO<E, A>) =>
         eqvIO(
           ioa.map(ab),
           ioa.chain((a) => succeed(ab(a)))
@@ -375,7 +375,7 @@ describe("io", () => {
     describe("MonadError", () => {
       const monadError = {
         // The host exists to ensure we are testing in async boundaries
-        recoveryEquivalence: <E, E2, A>(host: IO<E2, A>, e: E, kea: Function1<E, IO<E2, A>>) =>
+        recoveryEquivalence: <E, E2, A>(host: IO<E2, A>, e: E, kea: FunctionN<[E], IO<E2, A>>) =>
           eqvIO(
            host.chain((_) => failC<A>()(e).chainError(kea)),
            host.chain((_) => kea(e))

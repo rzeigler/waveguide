@@ -15,12 +15,12 @@
 import * as fc from "fast-check";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { array } from "fp-ts/lib/Array";
-import {setoidString} from "fp-ts/lib/Setoid";
+import { eqString } from "fp-ts/lib/Eq";
 import { io } from "../src/io";
 import { boundedQueue, unboundedQueue } from "../src/queue";
 import { assertEq } from "./tools.spec";
 
-const assertStringEq = assertEq(setoidString);
+const assertStringEq = assertEq(eqString);
 
 describe("ConcurrentQueue", function() {
   this.timeout(60000);

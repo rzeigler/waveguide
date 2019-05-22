@@ -12,18 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Either, left, right, fold } from "fp-ts/lib/Either";
-import { option, getOrElse } from "fp-ts/lib/Option";
-import { identity, pipe } from "fp-ts/lib/function";
+import { Either, fold, left, right } from "fp-ts/lib/Either";
+import { identity, pipeOp } from "fp-ts/lib/function";
+import { getOrElse, option } from "fp-ts/lib/Option";
 import { pipeable } from "fp-ts/lib/pipeable";
 import { Deferred, makeDeferred } from "./deferred";
-import { abort, IO, succeed, unit } from "./io";
+import { IO, succeed, unit } from "./io";
 import { makeRef, Ref } from "./ref";
 import { natNumber } from "./sanity";
 import { makeSemaphore } from "./semaphore";
 import { Dequeue, empty, of } from "./support/dequeue";
 import { Fn1, Fn2 } from "./support/types";
-import { makeTicket, Ticket, ticketExit, ticketUse } from "./ticket";
+import { makeTicket, ticketExit, ticketUse } from "./ticket";
 
 export interface ConcurrentQueue<A> {
   readonly take: IO<never, A>;
@@ -32,6 +32,8 @@ export interface ConcurrentQueue<A> {
 
 type State<A> = Either<Dequeue<Deferred<never, A>>, Dequeue<A>>;
 const initial = <A>(): State<A> => right(empty());
+
+const pipeableOpt = pipeable(option);
 
 class ConcurrentQueueImpl<A> implements ConcurrentQueue<A> {
   public readonly take: IO<never, A>;
@@ -47,40 +49,53 @@ class ConcurrentQueueImpl<A> implements ConcurrentQueue<A> {
               public readonly takeGate: Fn1<IO<never, A>, IO<never, A>>) {
       this.take = takeGate(factory.chain((latch) =>
         this.state.modify((current) =>
-          fold(
-            (waiting: Dequeue<Deferred<never, A>>) => [
-              makeTicket(latch.wait, this.cleanupLatch(latch)),
-              left(waiting.offer(latch)) as State<A>
-            ] as const,
-            (ready: Dequeue<A>) =>
-              pipe(
-                pipeable(option).map(([next, q]: readonly [A, Dequeue<A>]) => 
-                  [makeTicket(succeed(next), unit), right(q) as State<A>] as const),
-                getOrElse(() => [
-                  makeTicket(latch.wait, this.cleanupLatch(latch)),
-                  left(of(latch)) as State<A>
-                ] as const)
-              )(ready.take())
-          )(current)
+          pipeOp(
+            current,
+            fold(
+              (waiting) => [
+                makeTicket(latch.wait, this.cleanupLatch(latch)),
+                left(waiting.offer(latch)) as State<A>
+              ] as const,
+              (ready) =>
+                pipeOp(
+                  ready.take(),
+                  pipeableOpt.map(([next, q]) =>
+                    [makeTicket(succeed(next), unit), right(q) as State<A>] as const),
+                  getOrElse(() => [
+                    makeTicket(latch.wait, this.cleanupLatch(latch)),
+                    left(of(latch)) as State<A>
+                  ] as const)
+                )
+            )
+          )
         ).bracketExit(ticketExit, ticketUse)
       ));
   }
   public offer(a: A): IO<never, void> {
     return this.offerGate.applySecond(this.state.modify((current) =>
-      current.fold(
-        (waiting) => waiting.take()
-          .map(([next, q]) => [next.succeed(a), left(q) as State<A>] as const)
-          .getOrElseL(() => [unit, right(this.overflowStrategy(empty(), a)) as State<A>] as const),
-        (available) => [unit, right(this.overflowStrategy(available, a)) as State<A>] as const
+      pipeOp(
+        current,
+        fold(
+          (waiting) =>
+            pipeOp(
+              waiting.take(),
+              pipeableOpt.map(([next, q]) => [next.succeed(a), left(q) as State<A>] as const),
+              getOrElse(() => [unit, right(this.overflowStrategy(empty(), a)) as State<A>] as const)
+            ),
+          (available) => [unit, right(this.overflowStrategy(available, a)) as State<A>] as const
+        )
       )
     ).flatten().uninterruptible());
   }
 
   private cleanupLatch(latch: Deferred<never, A>): IO<never, void> {
     return this.state.update((current) =>
-      current.fold(
-        (waiting) => left(waiting.filter((item) => item !== latch)),
-        (available) => right(available)
+      pipeOp(
+        current,
+        fold(
+          (waiting) => left(waiting.filter((item) => item !== latch)),
+          (available) => right(available) as State<A>
+        )
       )
     ).unit();
   }
@@ -89,7 +104,12 @@ class ConcurrentQueueImpl<A> implements ConcurrentQueue<A> {
 const unboundedOffer = <A>(queue: Dequeue<A>, a: A): Dequeue<A> => queue.offer(a);
 
 const slidingOffer = (n: number) => <A>(queue: Dequeue<A>, a: A): Dequeue<A> =>
-  queue.size() >= n ? queue.take().map((t) => t[1]).getOrElse(queue).offer(a) : queue.offer(a);
+  queue.size() >= n ?
+    pipeOp(queue.take(),
+      pipeableOpt.map((t) => t[1]),
+      getOrElse(() => queue))
+    .offer(a) :
+    queue.offer(a);
 
 const droppingOffer = (n: number) => <A>(queue: Dequeue<A>, a: A): Dequeue<A> =>
   queue.size() >= n ? queue : queue.offer(a);

@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import * as e from "fp-ts/lib/Either";
 import { Either, left, right } from "fp-ts/lib/Either";
-import { constant, identity, not } from "fp-ts/lib/function";
+import { constant, identity, not, pipeOp } from "fp-ts/lib/function";
+import * as o from "fp-ts/lib/Option";
 import { Deferred, makeDeferred } from "./deferred";
 import { abort, bracketC, bracketExitC, IO, unit } from "./io";
 import { makeRef as allocRef, Ref } from "./ref";
@@ -49,19 +51,25 @@ function sanityCheck(n: number): IO<never, void> {
 
 function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
   const cancelWait = (n: number, latch: Deferred<never, void>): IO<never, void> =>
-    ref.modify((current) =>
-      current.fold<readonly [IO<never, void>, State]>(
-        (waiting) =>
-          waiting.find(isReservationFor(latch))
-            .foldL(
-              () => [releaseN(n), left(waiting) as State] as const,
-              ([pending]) => [
-                releaseN(n - pending),
-                left(waiting.filter(not(isReservationFor(latch)))) as State
-              ] as const
-            ),
-        (ready) => [unit, right(ready + n) as State] as const
-      )
+    ref.modify(
+      (current) =>
+        pipeOp(
+          current,
+          e.fold(
+            (waiting) =>
+              pipeOp(
+                waiting.find(isReservationFor(latch)),
+                o.fold(
+                  () => [releaseN(n), left(waiting) as State] as const,
+                  ([pending]) => [
+                    releaseN(n - pending),
+                    left(waiting.filter(not(isReservationFor(latch)))) as State
+                  ] as const
+                )
+              ),
+            (ready) => [unit, right(ready + n) as State] as const
+          )
+        )
     ).flatten().uninterruptible();
 
   const ticketN = (n: number): IO<never, Ticket<void>> =>
@@ -69,20 +77,23 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
       .chain((latch) =>
         ref.modify(
           (current) =>
-            current.fold<readonly [Ticket<void>, State]>(
-              (waiting) => [
-                makeTicket(latch.wait, cancelWait(n, latch)),
-                left(waiting.offer([n, latch] as const)) as State
-              ] as const,
-              (ready) => ready >= n ?
-                [
-                  makeTicket(unit, releaseN(n)),
-                  right(ready - n) as State
-                ] as const :
-                [
+            pipeOp(
+              current,
+              e.fold(
+                (waiting) => [
                   makeTicket(latch.wait, cancelWait(n, latch)),
-                  left(empty().offer([n - ready, latch] as const)) as State
-                ] as const
+                  left(waiting.offer([n, latch] as const)) as State
+                ] as const,
+                (ready) => ready >= n ?
+                  [
+                    makeTicket(unit, releaseN(n)),
+                    right(ready - n) as State
+                  ] as const :
+                  [
+                    makeTicket(latch.wait, cancelWait(n, latch)),
+                    left(empty().offer([n - ready, latch] as const)) as State
+                  ] as const
+              )
             )
         )
       );
@@ -96,21 +107,27 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
       .applySecond(n === 0 ? unit :
         ref.modify(
           (current) =>
-            current.fold<readonly [IO<never, void>, State]>(
-              (waiting) => waiting.take()
-                .foldL(
-                  () => [unit, right(n) as State] as const,
-                  ([[needed, latch], q]) => n >= needed ?
-                    [
-                      latch.succeed(undefined).applyFirst(n > needed ? releaseN(n - needed) : unit),
-                      left(q) as State
-                    ] as const :
-                    [
-                      unit,
-                      left(q.push([needed - n, latch] as const)) as State
-                    ] as const
-                ),
-              (ready) => [unit, right(ready + n) as State] as const
+            pipeOp(
+              current,
+              e.fold(
+                (waiting) =>
+                  pipeOp(
+                    waiting.take(),
+                    o.fold(
+                      () => [unit, right(n) as State] as const,
+                      ([[needed, latch], q]) => n >= needed ?
+                        [
+                          latch.succeed(undefined).applyFirst(n > needed ? releaseN(n - needed) : unit),
+                          left(q) as State
+                        ] as const :
+                        [
+                          unit,
+                          left(q.push([needed - n, latch] as const)) as State
+                        ] as const
+                    )
+                  ),
+                (ready) => [unit, right(ready + n) as State] as const
+              )
             )
         ).flatten().uninterruptible());
 
@@ -118,10 +135,7 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
     bracketC(acquireN<E>(n).interruptible())(constant(releaseN(n)), (_) => inner);
 
   const available = ref.get
-    .map((current) => current.fold(
-      (q) => -1 * q.size(),
-      identity
-    ));
+    .map(e.fold((q) => -1 * q.size(), identity));
 
   return {
     acquireN,

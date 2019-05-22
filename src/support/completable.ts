@@ -13,8 +13,9 @@
 // limitations under the License.
 
 import { boundMethod } from "autobind-decorator";
-import { Function1, Lazy } from "fp-ts/lib/function";
+import { FunctionN, Lazy } from "fp-ts/lib/function";
 import { none, Option, some } from "fp-ts/lib/Option";
+import * as o from "fp-ts/lib/Option";
 
 /**
  * An initial empty receptacle for a value that may be set at most once
@@ -35,7 +36,7 @@ export class Completable<A> {
    * Is this completed filled
    */
   public isComplete(): boolean {
-    return this.completed.isSome();
+    return o.isSome(this.completed);
   }
 
   /**
@@ -46,7 +47,7 @@ export class Completable<A> {
    */
   @boundMethod
   public complete(a: A): void {
-    if (this.completed.isSome()) {
+    if (o.isSome(this.completed)) {
       throw new Error("Die: Completable is already completed");
     }
     this.set(a);
@@ -60,7 +61,7 @@ export class Completable<A> {
    */
   @boundMethod
   public tryComplete(a: A): boolean {
-    if (this.completed.isSome()) {
+    if (o.isSome(this.completed)) {
       return false;
     }
     this.completed = some(a);
@@ -75,8 +76,8 @@ export class Completable<A> {
    * @param f the callback
    */
   @boundMethod
-  public listen(f: Function1<A, void>): Lazy<void> {
-    if (this.completed.isSome()) {
+  public listen(f: FunctionN<[A], void>): Lazy<void> {
+    if (o.isSome(this.completed)) {
       f(this.completed.value);
     }
     this.listeners.push(f);

@@ -16,6 +16,7 @@ import { List, list } from "./list";
 
 import { Predicate } from "fp-ts/lib/function";
 import { none, Option, some } from "fp-ts/lib/Option";
+import * as o from "fp-ts/lib/Option";
 
 export class Dequeue<A> {
   constructor(public readonly front: List<A>, public readonly back: List<A>) {
@@ -63,7 +64,10 @@ export class Dequeue<A> {
    * Observe the next item that would be removed by take
    */
   public peek(): Option<A> {
-    return this.front.head().orElse(() => this.back.last());
+    return o.getFirstMonoid<A>().concat(
+      this.front.head(),
+      this.back.last()
+    );
   }
 
   public isEmpty(): boolean {
@@ -75,7 +79,10 @@ export class Dequeue<A> {
   }
 
   public find(f: Predicate<A>): Option<A> {
-    return this.front.find(f).orElse(() => this.back.find(f));
+    return o.getFirstMonoid<A>().concat(
+      this.front.find(f),
+      this.back.find(f)
+    );
   }
 
   public filter(f: Predicate<A>): Dequeue<A> {

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import { array } from "fp-ts/lib/Array";
-import { Function2, Lazy, Predicate } from "fp-ts/lib/function";
+import { FunctionN, Lazy, Predicate } from "fp-ts/lib/function";
 import { none, Option, some } from "fp-ts/lib/Option";
 
 export type List<A> = Cons<A> | Nil<A>;
@@ -26,11 +26,11 @@ export class Cons<A> {
     return new Cons(a, this);
   }
 
-  public cata<B>(ifNil: B, ifCons: Function2<A, List<A>, B>): B {
+  public cata<B>(ifNil: B, ifCons: FunctionN<[A, List<A>], B>): B {
     return ifCons(this.a, this.rest);
   }
 
-  public cataL<B>(ifNil: Lazy<B>, ifCons: Function2<A, List<A>, B>): B {
+  public cataL<B>(ifNil: Lazy<B>, ifCons: FunctionN<[A, List<A>], B>): B {
     return ifCons(this.a, this.rest);
   }
 
@@ -42,7 +42,7 @@ export class Cons<A> {
     return some(this.rest);
   }
 
-  public foldl<B>(b: B, f: Function2<B, A, B>): B {
+  public foldl<B>(b: B, f: FunctionN<[B, A], B>): B {
     let current: List<A> = this;
     while (current._tag === "cons") {
       b = f(b, current.a);
@@ -116,11 +116,11 @@ export class Nil<A> {
     return new Cons(a, this);
   }
 
-  public cata<B>(ifNil: B, ifCons: Function2<A, List<A>, B>): B {
+  public cata<B>(ifNil: B, ifCons: FunctionN<[A, List<A>], B>): B {
     return ifNil;
   }
 
-  public cataL<B>(ifNil: Lazy<B>, ifCons: Function2<A, List<A>, B>): B {
+  public cataL<B>(ifNil: Lazy<B>, ifCons: FunctionN<[A, List<A>], B>): B {
     return ifNil();
   }
 
@@ -132,7 +132,7 @@ export class Nil<A> {
     return none;
   }
 
-  public foldl<B>(b: B, f: Function2<B, A, B>): B {
+  public foldl<B>(b: B, f: FunctionN<[B, A], B>): B {
     return b;
   }
 
@@ -176,7 +176,7 @@ function prepend<A>(a: A, rest: List<A>): List<A> {
 }
 
 function fromArray<A>(as: A[]): List<A> {
-  return array.foldr(as, nil as List<A>, prepend);
+  return array.reduce(as, nil as List<A>, (l, a) => new Cons(a, l));
 }
 
 export const list = {

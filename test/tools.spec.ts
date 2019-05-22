@@ -16,10 +16,11 @@
 
 import { expect } from "chai";
 import fc, { Arbitrary } from "fast-check";
-import { constant, constTrue, Function1, identity } from "fp-ts/lib/function";
-import { Setoid } from "fp-ts/lib/Setoid";
+import { Eq } from "fp-ts/lib/Eq";
+import { constTrue, identity } from "fp-ts/lib/function";
 import { Exit, Value } from "../src/exit";
 import { abort, asyncTotal, completeWith, fail, IO, io, succeed, suspend, unit } from "../src/io";
+import { Fn1 } from "../src/support/types";
 
 /**
  * @deprecated use eqvIO instead
@@ -28,14 +29,14 @@ export function expectExit<E, A>(ioa: IO<E, A>, expected: Exit<E, A>): Promise<v
   return expectExitIn(ioa, identity, expected);
 }
 
-export function expectExitIn<E, A, B>(ioa: IO<E, A>, f: Function1<Exit<E, A>, B>, expected: B): Promise<void> {
+export function expectExitIn<E, A, B>(ioa: IO<E, A>, f: Fn1<Exit<E, A>, B>, expected: B): Promise<void> {
   return ioa.unsafeRunExitToPromise()
     .then((result) => {
       expect(f(result)).to.deep.equal(expected);
     });
 }
 
-export const assertEq = <A>(S: Setoid<A>) => (a1: A) => (a2: A): IO<never, void> =>
+export const assertEq = <A>(S: Eq<A>) => (a1: A) => (a2: A): IO<never, void> =>
   S.equals(a1, a2) ? unit : abort(`${a1} <> ${a2}`);
 
 export function eqvIO<E, A>(io1: IO<E, A>, io2: IO<E, A>): Promise<boolean> {
@@ -93,7 +94,7 @@ export function arbConstIO<E, A>(a: A): Arbitrary<IO<E, A>> {
  * Used for testing Chain/Monad laws while ensuring we exercise asynchronous machinery
  * @param arb
  */
-export function arbKleisliIO<E, A, B>(arbAB: Arbitrary<Function1<A, B>>): Arbitrary<Function1<A, IO<E, B>>> {
+export function arbKleisliIO<E, A, B>(arbAB: Arbitrary<Fn1<A, B>>): Arbitrary<Fn1<A, IO<E, B>>> {
   return arbAB.chain((fab) =>
     arbIO<E, undefined>(fc.constant(undefined)) // construct an IO of arbitrary type we can push a result into
       .map((slot) =>
@@ -102,7 +103,7 @@ export function arbKleisliIO<E, A, B>(arbAB: Arbitrary<Function1<A, B>>): Arbitr
   );
 }
 
-export function arbErrorKleisliIO<E, E2, A>(arbEE: Arbitrary<Function1<E, E2>>): Arbitrary<Function1<E, IO<E2, A>>> {
+export function arbErrorKleisliIO<E, E2, A>(arbEE: Arbitrary<Fn1<E, E2>>): Arbitrary<Fn1<E, IO<E2, A>>> {
   return arbKleisliIO<A, E, E2>(arbEE)
     .map((f) => (e: E) => f(e).flip());
 }
