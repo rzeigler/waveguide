@@ -14,7 +14,7 @@
 
 import { Exit } from "./exit";
 import { asyncTotal, completeWith, effect, fail, interrupted, IO, succeed } from "./io";
-import { Completable } from "./support/completable";
+import { Completable, completable} from "./support/completable";
 
 export interface Deferred<E, A> {
   readonly wait: IO<E, A>;
@@ -26,21 +26,21 @@ export interface Deferred<E, A> {
 
 export function makeDeferred<E, A, E2 = never>(): IO<E2, Deferred<E, A>> {
   return effect(() => {
-    const completable: Completable<IO<E, A>> = new Completable();
+    const c: Completable<IO<E, A>> = completable();
     const wait = asyncTotal<IO<E, A>>((callback) =>
-      completable.listen(callback)
+      c.listen(callback)
     ).flatten();
     const interrupt = effect(() => {
-      completable.complete(interrupted);
+      c.complete(interrupted);
     });
     const done = (a: A): IO<never, void> => effect(() => {
-      completable.complete(succeed(a));
+      c.complete(succeed(a));
     });
     const error = (e: E): IO<never, void> => effect(() => {
-      completable.complete(fail(e));
+      c.complete(fail(e));
     });
     const complete = (exit: Exit<E, A>): IO<never, void> => effect(() => {
-      completable.complete(completeWith(exit));
+      c.complete(completeWith(exit));
     });
     const from = (source: IO<E, A>): IO<never, void> =>
       source.result().chain(complete).onInterrupted(interrupt);

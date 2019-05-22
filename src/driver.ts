@@ -18,7 +18,7 @@ import { Option } from "fp-ts/lib/Option";
 import { Cause, Exit, Failed, Interrupted, Value } from "./exit";
 import { abort, IO, succeed } from "./io";
 import { defaultRuntime, Runtime } from "./runtime";
-import { Completable } from "./support/completable";
+import { Completable, completable } from "./support/completable";
 import { MutableStack } from "./support/mutable-stack";
 import { Fn0, Fn1 } from "./support/types";
 
@@ -74,7 +74,7 @@ const makeInterruptFrame = (interruptStatus: MutableStack<boolean>): InterruptFr
 export class Driver<E, A> {
   private started: boolean = false;
   private interrupted: boolean = false;
-  private readonly result: Completable<Exit<E, A>> = new Completable();
+  private readonly result: Completable<Exit<E, A>> = completable();
   private readonly frameStack: MutableStack<FrameType> = new MutableStack();
   private readonly interruptRegionStack: MutableStack<boolean> = new MutableStack();
   private cancelAsync: Fn0<void> | undefined;

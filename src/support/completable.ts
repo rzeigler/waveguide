@@ -12,83 +12,54 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { boundMethod } from "autobind-decorator";
 import { FunctionN, Lazy } from "fp-ts/lib/function";
 import { none, Option, some } from "fp-ts/lib/Option";
 import * as o from "fp-ts/lib/Option";
 
-/**
- * An initial empty receptacle for a value that may be set at most once
- */
-export class Completable<A> {
-  // Use option so that Completable<void> is possible
-  private completed: Option<A> = none;
-  private listeners: Array<(a: A) => void> = [];
+export interface Completable<A> {
+  value(): Option<A>;
+  isComplete(): boolean;
+  complete(a: A): void;
+  tryComplete(a: A): boolean;
+  listen(f: FunctionN<[A], void>): Lazy<void>;
+}
 
-  /**
-   * Get the value that has been set
-   */
-  public value(): Option<A> {
-    return this.completed;
-  }
-
-  /**
-   * Is this completed filled
-   */
-  public isComplete(): boolean {
-    return o.isSome(this.completed);
-  }
-
-  /**
-   * Complete this with the value a
-   *
-   * Thrwos an exception if this is already complete
-   * @param a
-   */
-  @boundMethod
-  public complete(a: A): void {
-    if (o.isSome(this.completed)) {
+export function completable<A>(): Completable<A> {
+  let completed: Option<A> = none;
+  let listeners: Array<FunctionN<[A], void>> = [];
+  const set = (a: A) => {
+    completed = some(a);
+    listeners.forEach((f) => f(a));
+  };
+  const value = () => completed;
+  const isComplete = () => o.isSome(completed);
+  const complete = (a: A) => {
+    if (o.isSome(completed)) {
       throw new Error("Die: Completable is already completed");
     }
-    this.set(a);
-  }
-
-  /**
-   * Attempt to complete this with value a
-   *
-   * Returns true if this wasn't already set and false otherwise
-   * @param a
-   */
-  @boundMethod
-  public tryComplete(a: A): boolean {
-    if (o.isSome(this.completed)) {
+    set(a);
+  };
+  const tryComplete = (a: A) => {
+    if (o.isSome(completed)) {
       return false;
     }
-    this.completed = some(a);
-    this.listeners.forEach((f) => f(a));
+    set(a);
     return true;
-  }
-
-  /**
-   * Register a listener for the completion of this with a value
-   *
-   * Returns an action that can be used to cancel the listening
-   * @param f the callback
-   */
-  @boundMethod
-  public listen(f: FunctionN<[A], void>): Lazy<void> {
-    if (o.isSome(this.completed)) {
-      f(this.completed.value);
+  };
+  const listen = (f: FunctionN<[A], void>) => {
+    if (o.isSome(completed)) {
+      f(completed.value);
     }
-    this.listeners.push(f);
+    listeners.push(f);
     return () => {
-      this.listeners = this.listeners.filter((cb) => cb !== f);
+      listeners = listeners.filter((cb) => cb !== f);
     };
-  }
-
-  @boundMethod
-  private set(a: A): void {
-    this.completed = some(a);
-    this.listeners.forEach((f) => f(a));
-  }
+  };
+  return {
+    value,
+    isComplete,
+    complete,
+    tryComplete,
+    listen
+  };
 }
