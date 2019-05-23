@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import { Exit } from "./exit";
-import { asyncTotal, completeWith, effect, fail, interrupted, IO, succeed } from "./io";
+import { asyncTotal, completeWith, effect, interrupted, IO, raiseError, succeedWith } from "./io";
 import { Completable, completable} from "./support/completable";
 
 export interface Deferred<E, A> {
@@ -34,10 +34,10 @@ export function makeDeferred<E, A, E2 = never>(): IO<E2, Deferred<E, A>> {
       c.complete(interrupted);
     });
     const done = (a: A): IO<never, void> => effect(() => {
-      c.complete(succeed(a));
+      c.complete(succeedWith(a));
     });
     const error = (e: E): IO<never, void> => effect(() => {
-      c.complete(fail(e));
+      c.complete(raiseError(e));
     });
     const complete = (exit: Exit<E, A>): IO<never, void> => effect(() => {
       c.complete(completeWith(exit));

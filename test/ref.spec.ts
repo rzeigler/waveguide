@@ -14,7 +14,7 @@
 
 import fc from "fast-check";
 import { array } from "fp-ts/lib/Array";
-import { io, succeed } from "../src/io";
+import { io, succeedWith } from "../src/io";
 import { makeRef } from "../src/ref";
 import { eqvIO } from "./tools.spec";
 
@@ -23,7 +23,7 @@ describe("Ref", function() {
   it("should be initialized with a value", () =>
     eqvIO(
       makeRef()(42).chain((r) => r.get),
-      succeed(42)
+      succeedWith(42)
     )
   );
   describe("properties", () => {

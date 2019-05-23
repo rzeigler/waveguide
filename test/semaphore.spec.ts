@@ -15,7 +15,7 @@
 import fc, {Arbitrary} from "fast-check";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { array } from "fp-ts/lib/Array";
-import { Interrupted, Value } from "../src/exit";
+import { done, interrupt} from "../src/exit";
 import { interrupted, io, shift, shiftAsync, unit } from "../src/io";
 import { makeRef } from "../src/ref";
 import { makeSemaphore } from "../src/semaphore";
@@ -29,7 +29,7 @@ describe("semaphore", () => {
       .do(shift)
       .bindL("avail", ({sem}) => sem.available)
       .return(({avail}) => avail);
-    return expectExit(eff, new Value(1));
+    return expectExit(eff, done(1));
   });
   it("release is observable", () => {
     const eff = Do(io)
@@ -38,7 +38,7 @@ describe("semaphore", () => {
       .do(shift)
       .bindL("avail", ({sem}) => sem.available)
       .return(({avail}) => avail);
-    return expectExit(eff, new Value(7));
+    return expectExit(eff, done(7));
   });
   it("should block acquisition", () => {
     const eff = Do(io)
@@ -50,7 +50,7 @@ describe("semaphore", () => {
       .do(shift) // let the forked fiber advance
       .bindL("after", ({gate, sem}) => gate.get.zip(sem.available))
       .return(({before, after}) => [before, ...after]);
-    return expectExit(eff, new Value([false, true, 1]));
+    return expectExit(eff, done([false, true, 1]));
   });
   it("should allow acquire to be interruptible", () => {
     const eff = Do(io)
@@ -60,7 +60,7 @@ describe("semaphore", () => {
       .bindL("exit", ({child}) => child.interrupt.applySecond(child.wait))
       .bindL("state", ({sem, gate}) => sem.available.zip(gate.get))
       .return(({exit, state}) => [exit, ...state]);
-    return expectExit(eff, new Value([new Interrupted(), 1, false]));
+    return expectExit(eff, done([interrupt, 1, false]));
   });
   it("interrupts should release acquired permits for subsequent acquires to advance", () => {
     const eff = Do(io)
@@ -74,7 +74,7 @@ describe("semaphore", () => {
       .bindL("c2exit", ({child2}) => child2.wait)
       .bindL("after", ({turnstyle}) => turnstyle.get)
       .return(({c2exit, moved, after}) => ({c2exit: c2exit._tag, moved, after}));
-    return expectExit(eff, new Value({c2exit: "value", moved: 0, after: 2}));
+    return expectExit(eff, done({c2exit: "value", moved: 0, after: 2}));
   });
   it("withPermitsN is interruptible", () => {
     const eff = Do(io)
@@ -85,7 +85,7 @@ describe("semaphore", () => {
       .doL(({child}) => child.interrupt)
       .bindL("after", ({sem}) => sem.available)
       .return(({before, after}) => ({before, after}));
-    return expectExit(eff, new Value({before: -1, after: 1}));
+    return expectExit(eff, done({before: -1, after: 1}));
   });
   describe("properties", function() {
     this.timeout(20000);
@@ -102,7 +102,7 @@ describe("semaphore", () => {
                   array.traverse(io)(fibers, (f) => f.wait)
                 ).applySecond(sem.available)
               );
-            return expectExit(eff, new Value(100));
+            return expectExit(eff, done(100));
         })
       )
     );

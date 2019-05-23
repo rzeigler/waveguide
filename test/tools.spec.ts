@@ -18,8 +18,8 @@ import { expect } from "chai";
 import fc, { Arbitrary } from "fast-check";
 import { Eq } from "fp-ts/lib/Eq";
 import { constTrue, identity } from "fp-ts/lib/function";
-import { Exit, Value } from "../src/exit";
-import { abort, asyncTotal, completeWith, fail, IO, io, succeed, suspend, unit } from "../src/io";
+import { done, Exit } from "../src/exit";
+import { abortWith, asyncTotal, completeWith, IO, io, raiseError, succeedWith, suspend, unit } from "../src/io";
 import { Fn1 } from "../src/support/types";
 
 /**
@@ -37,7 +37,7 @@ export function expectExitIn<E, A, B>(ioa: IO<E, A>, f: Fn1<Exit<E, A>, B>, expe
 }
 
 export const assertEq = <A>(S: Eq<A>) => (a1: A) => (a2: A): IO<never, void> =>
-  S.equals(a1, a2) ? unit : abort(`${a1} <> ${a2}`);
+  S.equals(a1, a2) ? unit : abortWith(`${a1} <> ${a2}`);
 
 export function eqvIO<E, A>(io1: IO<E, A>, io2: IO<E, A>): Promise<boolean> {
   return io1.unsafeRunExitToPromise()
@@ -63,9 +63,9 @@ export function arbIO<E, A>(arb: Arbitrary<A>): Arbitrary<IO<E, A>> {
   return arbVariant
     .chain((ioStep) => {
       if (ioStep === "succeed") {
-        return arb.map((a) => succeed(a));
+        return arb.map((a) => succeedWith(a));
       } else if (ioStep === "complete") {
-        return arb.map((a) => completeWith(new Value(a)));
+        return arb.map((a) => completeWith(done(a)));
       } else if (ioStep === "suspend") {
         // We now need to do recursion... wooo
         return arbIO<E, A>(arb)
@@ -117,7 +117,7 @@ export function arbErrorIO<E, A>(arbE: Arbitrary<E>): Arbitrary<IO<E, A>> {
     .chain((err) =>
       arbConstIO<E, undefined>(undefined)
         .map((iou) =>
-          iou.chain((_) => fail(err))
+          iou.chain((_) => raiseError(err))
         )
     );
 }

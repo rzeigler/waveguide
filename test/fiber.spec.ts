@@ -15,17 +15,17 @@
 import fc from "fast-check";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { makeDeferred } from "../src/deferred";
-import { Interrupted, Value } from "../src/exit";
-import { io, never, succeed } from "../src/io";
+import { done, interrupt } from "../src/exit";
+import { io, never, succeedWith } from "../src/io";
 import { makeRef } from "../src/ref";
 import { arbEitherIO, eqvIO, expectExit } from "./tools.spec";
 
 describe("fiber", () => {
   it("fibers are joinable", () =>
     expectExit(
-      succeed(42).delay(10)
+      succeedWith(42).delay(10)
         .fork().chain((fiber) => fiber.join),
-      new Value(42)
+      done(42)
     )
   );
   it("fibers are interruptible", () =>
@@ -34,7 +34,7 @@ describe("fiber", () => {
         .chain((fiber) =>
           fiber.interrupt.delay(10)
             .applySecond(fiber.wait)),
-      new Value(new Interrupted())
+      done(interrupt)
     )
   );
   describe("properties", function() {
@@ -74,7 +74,7 @@ describe("fiber", () => {
                   // Then ensure child ran to completion
                   .applySecond(cell.get))
                 .return(({result}) => result),
-              new Value(true)
+              done(true)
             )
         ),
         {verbose: true}
@@ -96,7 +96,7 @@ describe("fiber", () => {
                         .applySecond(child.wait)
                     )
                 ),
-              new Value(new Interrupted())
+              done(interrupt)
             )
         )
       )

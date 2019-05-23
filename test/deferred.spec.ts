@@ -13,10 +13,9 @@
 // limitations under the License.
 
 import fc from "fast-check";
-import { none } from "fp-ts/lib/Option";
 import { makeDeferred  } from "../src/deferred";
-import { Value } from "../src/exit";
-import { succeed } from "../src/io";
+import { done } from "../src/exit";
+import { succeedWith } from "../src/io";
 import { eqvIO, expectExit, expectExitIn } from "./tools.spec";
 
 describe("Deferred", () => {
@@ -26,7 +25,7 @@ describe("Deferred", () => {
         .chain((def) =>
           def.done(42).applySecond(def.wait)
         ),
-      succeed(42)
+      succeedWith(42)
     )
   );
   it("multiple sets fail", () =>
@@ -36,7 +35,7 @@ describe("Deferred", () => {
             const c42 = def.done(42);
             return c42.applySecond(c42);
           }),
-        (exit) => exit._tag === "aborted" ? (exit.error as Error).message : undefined,
+        (exit) => exit._tag === "aborted" ? (exit.abortedWith as Error).message : undefined,
         "Die: Completable is already completed"
       )
   );
@@ -53,7 +52,7 @@ describe("Deferred", () => {
                   def.done(42).delay(delay).fork()
                     .applySecond(def.wait)
                 ),
-              new Value(42)
+              done(42)
             )
 
         )

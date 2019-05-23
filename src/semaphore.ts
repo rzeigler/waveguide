@@ -17,7 +17,7 @@ import { Either, left, right } from "fp-ts/lib/Either";
 import { constant, identity, not, pipeOp } from "fp-ts/lib/function";
 import * as o from "fp-ts/lib/Option";
 import { Deferred, makeDeferred } from "./deferred";
-import { abort, bracketC, bracketExitC, IO, unit } from "./io";
+import { abortWith, bracketC, bracketExitC, IO, unit } from "./io";
 import { makeRef, Ref } from "./ref";
 import { Dequeue, empty } from "./support/dequeue";
 import { makeTicket, Ticket, ticketExit, ticketUse } from "./ticket";
@@ -41,10 +41,10 @@ const isReservationFor = (latch: Deferred<never, void>) => (rsv: readonly [numbe
 
 function sanityCheck(n: number): IO<never, void> {
   if (n < 0) {
-    return abort(new Error("Die: semaphore permits must be non negative"));
+    return abortWith(new Error("Die: semaphore permits must be non negative"));
   }
   if (Math.round(n) !== n) {
-    return abort(new Error("Die: semaphore permits may not be fractional"));
+    return abortWith(new Error("Die: semaphore permits may not be fractional"));
   }
   return unit;
 }

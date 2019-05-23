@@ -24,15 +24,15 @@ import { Task } from "fp-ts/lib/Task";
 import { TaskEither } from "fp-ts/lib/TaskEither";
 import { Deferred, makeDeferred } from "./deferred";
 import { Driver } from "./driver";
-import { Aborted, Cause, Exit, Failed, Interrupted, Value } from "./exit";
+import { abort, done, Error, Exit, interrupt, raise } from "./exit";
 import { Fiber, makeFiber } from "./fiber";
 import { makeRef, Ref } from "./ref";
 import { defaultRuntime, Runtime } from "./runtime";
 import { Fn1, Fn2 } from "./support/types";
 
 export type Step<E, A> =
-  Succeeded<E, A> |
-  Caused<E, A> |
+  Succeeded<A> |
+  Caused<E> |
   Complete<E, A> |
   Suspend<E, A> |
   Async<E, A> |
@@ -41,14 +41,14 @@ export type Step<E, A> =
   InterruptibleState<E, A> |
   PlatformInterface<E, A>;
 
-export class Succeeded<E, A> {
+export class Succeeded<A> {
   public readonly _tag: "succeed" = "succeed";
   constructor(public readonly value: A) { }
 }
 
-export class Caused<E, A> {
+export class Caused<E> {
   public readonly _tag: "caused" = "caused";
-  constructor(public readonly cause: Cause<E>) { }
+  constructor(public readonly cause: Error<E>) { }
 }
 
 export class Complete<E, A> {
@@ -75,7 +75,7 @@ export class Chain<E, Z, A> {
 export class Fold<E1, E2, A1, A2> {
   public readonly _tag: "fold" = "fold";
   constructor(public readonly inner: IO<E1, A1>,
-              public readonly failure: Fn1<Cause<E1>, IO<E2, A2>>,
+              public readonly failure: Fn1<Error<E1>, IO<E2, A2>>,
               public readonly success: Fn1<A1, IO<E2, A2>>) { }
 }
 
@@ -113,7 +113,7 @@ export class IO<E, A> {
    * @param f the function to apply
    */
   public map<B>(f: Fn1<A, B>): IO<E, B> {
-    return this.chain(pipe(f, succeed));
+    return this.chain(pipe(f, succeedWith));
   }
 
   /**
@@ -136,7 +136,7 @@ export class IO<E, A> {
    * @param f the function to apply
    */
   public mapError<E2>(f: Fn1<E, E2>): IO<E2, A> {
-    return this.chainError(pipe(f, fail));
+    return this.chainError(pipe(f, raiseError));
   }
 
   public bimap<E2, B>(leftMap: Fn1<E, E2>, rightMap: Fn1<A, B>): IO<E2, B> {
@@ -211,7 +211,7 @@ export class IO<E, A> {
     return new IO(new Fold(
       this,
       (cause) => cause._tag === "failed" ? f(cause.error) : completeWith(cause),
-      succeed
+      succeedWith
     ));
   }
 
@@ -223,7 +223,7 @@ export class IO<E, A> {
     ));
   }
 
-  public foldCause<B>(failed: Fn1<Cause<E>, IO<E, B>>, succeeded: Fn1<A, IO<E, B>>): IO<E, B> {
+  public foldCause<B>(failed: Fn1<Error<E>, IO<E, B>>, succeeded: Fn1<A, IO<E, B>>): IO<E, B> {
     return new IO(new Fold(
       this,
       failed,
@@ -237,8 +237,8 @@ export class IO<E, A> {
   public flip(): IO<A, E> {
     return new IO(new Fold(
       this,
-      (e) => e._tag === "failed" ? succeed(e.error) : completeWith(e),
-      (a) => fail(a)
+      (e) => e._tag === "failed" ? succeedWith(e.error) : completeWith(e),
+      raiseError
     ));
   }
 
@@ -251,8 +251,8 @@ export class IO<E, A> {
     // This could probably be a static property hwoever, for now,
     return new IO(new Fold(
       this,
-      (cause) => succeed(cause),
-      (a) => succeed(new Value(a) as Exit<E, A>)
+      (cause) => succeedWith(cause),
+      (a) => succeedWith(done(a) as Exit<E, A>)
     ));
   }
 
@@ -439,7 +439,7 @@ export class IO<E, A> {
   public raceSuccess(other: IO<E, A>): IO<E, A> {
     function consumeLoser(exit: Exit<E, A>, loser: Fiber<E, A>): IO<E, A> {
       return exit._tag === "value" ?
-        succeed(exit.value).applyFirst(loser.interrupt) :
+        succeedWith(exit.value).applyFirst(loser.interrupt) :
         loser.join;
     }
     return raceFold(this, other, consumeLoser, consumeLoser);
@@ -502,38 +502,23 @@ export class IO<E, A> {
 /**
  * A curried factory function for successful IOs
  *
- * Usage: succeedC<number>()(5) : IO<string, number>
- *
- * If you do not need an E parameter other than never, you may use succeed instead.
  */
-export const succeedC = <E = never>() => <A>(a: A): IO<E, A> => new IO(new Succeeded(a));
+export const succeedWithC = <E = never>() => <A>(a: A): IO<E, A> => new IO(new Succeeded(a));
+export const succeedWith = succeedWithC();
 
 /**
- * Create an IO that is successful with the provided value
+ * A curried factory function for IOs that raise errors of type E
  */
-export const succeed = succeedC();
-
-/**
- * A curried factory function for failed IOs
- *
- * Usage: failC<number>()("boom"): IO<string, number>
- *
- * If you do not need an A paramter other than enver, you may use fail instead
- */
-export const failC = <A = never>() => <E>(e: E): IO<E, A> => new IO(new Caused(new Failed(e)));
-
-/**
- * Create an IO that is failed with the provided value
- */
-export const fail = failC();
+export const raiseErrorC = <A = never>() => <E>(e: E): IO<E, A> => new IO(new Caused(raise(e)));
+export const raiseError = raiseErrorC();
 
 /**
  * Create an IO that has aborted with the provided error
  *
  * @param e
  */
-export function abort(e: unknown): IO<never, never> {
-  return new IO(new Caused(new Aborted(e)));
+export function abortWith(e: unknown): IO<never, never> {
+  return new IO(new Caused(abort(e)));
 }
 
 /**
@@ -549,7 +534,7 @@ export function completeWith<E, A>(status: Exit<E, A>): IO<E, A> {
  * @param thunk
  */
 export function effect<A>(thunk: Lazy<A>): IO<never, A> {
-  return new IO(new Suspend(() => succeed(thunk())));
+  return new IO(new Suspend(() => succeedWith(thunk())));
 }
 
 /**
@@ -595,7 +580,7 @@ export const getInterruptible: IO<never, boolean> = new IO(new PlatformInterface
 /**
  * An IO that has been interrupted
  */
-export const interrupted: IO<never, never> = new IO(new Caused(new Interrupted()));
+export const interrupted: IO<never, never> = new IO(new Caused(interrupt));
 
 /**
  * An IO that uses the runtime to introduce a trampoline boundary
@@ -637,7 +622,7 @@ export const never: IO<never, never> = new IO(new Async((_) => {
 /**
  * An IO that yields void (undefined)
  */
-export const unit: IO<never, void> = succeed(undefined);
+export const unit: IO<never, void> = succeedWith(undefined);
 
 /**
  * Apply f to the value produce by on
@@ -731,7 +716,7 @@ export function chainError<E, E2, A>(f: Fn1<E, IO<E2, A>>) {
  * @param failed
  * @param succeeded
  */
-export function foldCause<E, A, B>(failed: Fn1<Cause<E>, IO<E, B>>, succeeded: Fn1<A, IO<E, B>>) {
+export function foldCause<E, A, B>(failed: Fn1<Error<E>, IO<E, B>>, succeeded: Fn1<A, IO<E, B>>) {
   return (ioa: IO<E, A>) => ioa.foldCause(failed, succeeded);
 }
 
@@ -1025,7 +1010,7 @@ export function timeoutOption<E, A>(source: IO<E, A>, ms: number): IO<E, Option<
   return timeoutFold(
     source,
     ms,
-    (actionFiber) => actionFiber.interrupt.applySecond(succeed(none)),
+    (actionFiber) => actionFiber.interrupt.applySecond(succeedWith(none)),
     (exit) => completeWith(exit).map(some)
   );
 }
@@ -1105,8 +1090,8 @@ export function fromSyncIO<A>(fpio: SyncIO<A>): IO<never, A> {
  */
 export function fromSyncIOEither<E, A>(ioe: IOEither<E, A>): IO<E, A> {
   return suspend(() => fold<E, A, IO<E, A>>(
-    failC<A>(),
-    succeedC<E>()
+    raiseErrorC<A>(),
+    succeedWithC<E>()
   )(ioe()));
 }
 
@@ -1119,7 +1104,7 @@ declare module "fp-ts/lib/HKT" {
 export const URI = "IO";
 export type URI = typeof URI;
 
-const instanceOf = <L, A>(a: A) => succeed(a);
+const instanceOf = <L, A>(a: A) => succeedWith(a);
 const instanceMap = <L, A, B>(fa: IO<L, A>, f: (a: A) => B): IO<L, B> => fa.map(f);
 const instanceAp = <L, A, B>(fab: IO<L, Fn1<A, B>>, fa: IO<L, A>) => fab.ap_(fa);
 const instanceChain = <L, A, B>(fa: IO<L, A>, f: Fn1<A, IO<L, B>>) => fa.chain(f);

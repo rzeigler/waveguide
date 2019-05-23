@@ -15,8 +15,8 @@
 import { boundMethod } from "autobind-decorator";
 import { Either, fold as foldEither } from "fp-ts/lib/Either";
 import { Option } from "fp-ts/lib/Option";
-import { Cause, Exit, Failed, Interrupted, Value } from "./exit";
-import { abort, IO, succeed } from "./io";
+import { Done, done, Error, Exit, interrupt, raise } from "./exit";
+import { abortWith, IO, succeedWith } from "./io";
 import { defaultRuntime, Runtime } from "./runtime";
 import { Completable, completable } from "./support/completable";
 import { MutableStack } from "./support/mutable-stack";
@@ -37,11 +37,11 @@ const makeFrame = (f: Fn1<unknown, IO<unknown, unknown>>): Frame => ({
 interface FoldFrame {
   readonly _tag: "fold-frame";
   apply(u: unknown): IO<unknown, unknown>;
-  recover(cause: Cause<unknown>): IO<unknown, unknown>;
+  recover(cause: Error<unknown>): IO<unknown, unknown>;
 }
 
 const makeFoldFrame = (f: Fn1<unknown, IO<unknown, unknown>>,
-                       r: Fn1<Cause<unknown>, IO<unknown, unknown>>): FoldFrame => ({
+                       r: Fn1<Error<unknown>, IO<unknown, unknown>>): FoldFrame => ({
   _tag: "fold-frame",
   apply: f,
   recover: r
@@ -58,7 +58,7 @@ const makeInterruptFrame = (interruptStatus: MutableStack<boolean>): InterruptFr
     _tag: "interrupt-frame",
     apply(u: unknown) {
       interruptStatus.pop();
-      return succeed(u);
+      return succeedWith(u);
     },
     exitRegion() {
       interruptStatus.pop();
@@ -155,9 +155,9 @@ export class Driver<E, A> {
           current = step.inner;
         } else if (step._tag === "platform-interface") {
           if (step.platform._tag === "get-runtime") {
-            current = succeed(this.runtime);
+            current = succeedWith(this.runtime);
           } else if (step.platform._tag === "get-interruptible") {
-            current = succeed(this.isInterruptible());
+            current = succeedWith(this.isInterruptible());
           } else {
             throw new Error(`Die: Unrecognized platform-interface tag ${step.platform}`);
           }
@@ -167,7 +167,7 @@ export class Driver<E, A> {
           throw new Error(`Die: Unrecognized step type ${step}`);
         }
       } catch (e) {
-        current = abort(e);
+        current = abortWith(e);
       }
     }
     // If !current then the interrupt came to late and we completed everything
@@ -181,7 +181,7 @@ export class Driver<E, A> {
    */
   private resumeInterrupt(): void {
     this.runtime.dispatch(() => {
-      const next = this.handle(new Interrupted());
+      const next = this.handle(interrupt);
       if (next) {
         this.loop(next);
       }
@@ -200,7 +200,7 @@ export class Driver<E, A> {
    * Recovering from a failure is allowed when that failure is not interrupted or we are in an uninterruptible region
    * @param cause
    */
-  private canRecover(cause: Cause<unknown>): boolean {
+  private canRecover(cause: Error<unknown>): boolean {
     // it is always possible to recovery from fiber internal interrupts
     if (cause._tag === "interrupted") {
       return !this.isInterruptible();
@@ -213,11 +213,11 @@ export class Driver<E, A> {
     if (frame) {
       return frame.apply(value);
     }
-    this.done(new Value(value) as Value<A>);
+    this.done(done(value) as Done<A>);
     return;
   }
 
-  private handle(e: Cause<unknown>): IO<unknown, unknown> | undefined {
+  private handle(e: Error<unknown>): IO<unknown, unknown> | undefined {
     let frame = this.frameStack.pop();
     while (frame) {
       if (frame._tag === "fold-frame" && this.canRecover(e)) {
@@ -230,7 +230,7 @@ export class Driver<E, A> {
       frame = this.frameStack.pop();
     }
     // At the end... so we have failed
-    this.done(e as Cause<E>);
+    this.done(e as Error<E>);
     return;
   }
 
@@ -258,7 +258,7 @@ export class Driver<E, A> {
     this.runtime.dispatch(() => {
       foldEither(
         (cause: unknown) => {
-          const next = this.handle(new Failed(cause));
+          const next = this.handle(raise(cause));
           if (next) {
             this.loop(next);
           }

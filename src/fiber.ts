@@ -15,7 +15,7 @@
 import { fold as foldOption, fromNullable, isSome, none, Option, some } from "fp-ts/lib/Option";
 import { Driver } from "./driver";
 import { Exit } from "./exit";
-import { asyncTotal, completeWith, effect, IO, succeed, unit } from "./io";
+import { asyncTotal, completeWith, effect, IO, succeedWith, unit } from "./io";
 import { Runtime } from "./runtime";
 
 export interface Fiber<E, A> {
@@ -59,7 +59,7 @@ function createFiber<E, A>(driver: Driver<E, A>, n?: string): Fiber<E, A> {
   const join = wait.widenError<E>().chain((exit) => completeWith(exit));
   const result = effect(() => driver.exit())
     .widenError<E>()
-    .chain((opt) => foldOption(() => succeed(none), (exit: Exit<E, A>) => completeWith(exit).map(some))(opt));
+    .chain((opt) => foldOption(() => succeedWith(none), (exit: Exit<E, A>) => completeWith(exit).map(some))(opt));
   const isComplete = effect(() => isSome(driver.exit()));
   return {
     name,

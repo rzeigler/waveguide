@@ -17,7 +17,7 @@ import { FunctionN, identity } from "fp-ts/lib/function";
 import { getOrElse, option } from "fp-ts/lib/Option";
 import { pipe, pipeable } from "fp-ts/lib/pipeable";
 import { Deferred, makeDeferred } from "./deferred";
-import { IO, succeed, unit } from "./io";
+import { IO, succeedWith, unit } from "./io";
 import { makeRef, Ref } from "./ref";
 import { natNumber } from "./sanity";
 import { makeSemaphore } from "./semaphore";
@@ -118,7 +118,7 @@ function makeConcurrentQueueImpl<A>(state: Ref<State<A>>,
             pipe(
               ready.take(),
               poption.map(([next, q]) =>
-                [makeTicket(succeed(next), unit), right(q) as State<A>] as const),
+                [makeTicket(succeedWith(next), unit), right(q) as State<A>] as const),
               getOrElse(() => [
                 makeTicket(latch.wait, cleanupLatch(latch)),
                 left(of(latch)) as State<A>

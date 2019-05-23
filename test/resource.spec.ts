@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Value } from "../src/exit";
-import { succeed } from "../src/io";
+import { done } from "../src/exit";
+import { succeedWith } from "../src/io";
 import { makeRef, Ref } from "../src/ref";
 import { from, Resource } from "../src/resource";
 import { expectExit } from "./tools.spec";
@@ -31,9 +31,9 @@ describe("Resource", () => {
         const resources = ["a", "b", "c", "d"].map((r) => makeBracket(ref, r))
           .reduce((l, r) => l.chain((_) => r));
         return resources.use((v) =>
-          ref.get.zip(succeed(v))
+          ref.get.zip(succeedWith(v))
         ).zip(ref.get);
       });
-    return expectExit(eff, new Value([[["a", "b", "c", "d"], "d"], []]));
+    return expectExit(eff, done([[["a", "b", "c", "d"], "d"], []]));
   });
 });
