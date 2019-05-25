@@ -14,6 +14,7 @@
 
 import { effect, IO } from "./io";
 
+
 /**
  * Suspend console.log in an IO
  * @param msg
