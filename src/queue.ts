@@ -36,6 +36,8 @@ const poption = pipeable(option);
 
 const unboundedOffer = <A>(queue: Dequeue<A>, a: A): Dequeue<A> => queue.offer(a);
 
+// TODO: Need a better way of checking for this
+// Possibly predicates that allow testing if the queue is at least of some size
 const slidingOffer = (n: number) => <A>(queue: Dequeue<A>, a: A): Dequeue<A> =>
   queue.size() >= n ?
     pipe(queue.take(),

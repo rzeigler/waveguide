@@ -1,5 +1,3 @@
-import { List, list } from "./list";
-
 // Copyright 2019 Ryan Zeigler
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,8 +13,9 @@ import { List, list } from "./list";
 // limitations under the License.
 
 import { Predicate } from "fp-ts/lib/function";
-import { none, Option, some } from "fp-ts/lib/Option";
-import * as o from "fp-ts/lib/Option";
+import { none, Option, option, some } from "fp-ts/lib/Option";
+import { pipe } from "fp-ts/lib/pipeable";
+import { cata, cata_, cons, filter_, find_, head, isEmpty, last, List, nil, of as listOf, reverse, size } from "./list";
 
 export class Dequeue<A> {
   constructor(public readonly front: List<A>, public readonly back: List<A>) {
@@ -26,10 +25,17 @@ export class Dequeue<A> {
    * Take an item from the front of this queue
    */
   public take(): Option<readonly [A, Dequeue<A>]> {
-    return this.front.cataL(
-      () => this.back.reverse()
-        .cata(none, (head, rest) => some([head, new Dequeue(rest, list.nil)] as const)),
-      (head, rest) => some([head, new Dequeue(rest, this.back)] as const)
+    return cata_(
+      this.front,
+      (h, t) => some([h, new Dequeue(t, this.back)] as const),
+      () => pipe(
+        this.back,
+        reverse,
+        cata(
+          (h, t) => some([h, new Dequeue(t, nil)] as const),
+          () => none
+        )
+      )
     );
   }
 
@@ -38,17 +44,24 @@ export class Dequeue<A> {
    * @param a
    */
   public offer(a: A): Dequeue<A> {
-    return new Dequeue(this.front, this.back.prepend(a));
+    return new Dequeue(this.front, cons(a, this.back));
   }
 
   /**
    * Take an item from the back of this queue
    */
   public pull(): Option<readonly [A, Dequeue<A>]> {
-    return this.back.cataL(
-      () => this.front.reverse()
-        .cata(none, (head, rest) => some([head, new Dequeue(list.nil, rest)] as const)),
-      (head, rest) => some([head, new Dequeue(this.front, rest)] as const)
+    return cata_(
+      this.back,
+      (h, t) => some([h, new Dequeue(this.front, t)] as const),
+      () => pipe(
+        this.front,
+        reverse,
+        cata(
+          (h, t) => some([h, new Dequeue(nil, t)] as const),
+          () => none
+        )
+      )
     );
   }
 
@@ -57,43 +70,43 @@ export class Dequeue<A> {
    * @param a
    */
   public push(a: A): Dequeue<A> {
-    return new Dequeue(this.front.prepend(a), this.back);
+    return new Dequeue(cons(a, this.front), this.back);
   }
 
   /**
    * Observe the next item that would be removed by take
    */
   public peek(): Option<A> {
-    return o.getFirstMonoid<A>().concat(
-      this.front.head(),
-      this.back.last()
+    return option.alt(
+      head(this.front),
+      () => last(this.back)
     );
   }
 
   public isEmpty(): boolean {
-    return this.front.isEmpty() && this.back.isEmpty();
-  }
-
-  public size(): number {
-    return this.front.size() + this.back.size();
+    return isEmpty(this.front) && isEmpty(this.back);
   }
 
   public find(f: Predicate<A>): Option<A> {
-    return o.getFirstMonoid<A>().concat(
-      this.front.find(f),
-      this.back.find(f)
+    return option.alt(
+      find_(this.front, f),
+      () => find_(this.back, f)
     );
   }
 
   public filter(f: Predicate<A>): Dequeue<A> {
-    return new Dequeue(this.front.filter(f), this.back.filter(f));
+    return new Dequeue(filter_(this.front, f), filter_(this.back, f));
+  }
+
+  public size(): number {
+    return size(this.front) + size(this.back);
   }
 }
 
 export function empty<A>(): Dequeue<A> {
-  return new Dequeue(list.nil, list.nil);
+  return new Dequeue(nil, nil);
 }
 
 export function of<A>(item: A): Dequeue<A> {
-  return empty<A>().offer(item);
+  return new Dequeue(listOf(item), nil);
 }
