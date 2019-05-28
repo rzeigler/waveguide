@@ -17,11 +17,9 @@
 import { expect } from "chai";
 import fc, { Arbitrary } from "fast-check";
 import { Eq } from "fp-ts/lib/Eq";
-import { constTrue, identity } from "fp-ts/lib/function";
+import { constTrue, FunctionN, identity } from "fp-ts/lib/function";
 import { done, Exit } from "../src/exit";
-import { abortWith, asyncTotal, completeWith, IO, io, raiseError, succeedWith, suspend, unit } from "../src/io";
-import { Fn1 } from "../src/support/types";
-
+import { abortWith, asyncTotal, completeWith, IO, raiseError, succeedWith, suspend, unit } from "../src/io";
 /**
  * @deprecated use eqvIO instead
  */
@@ -29,7 +27,7 @@ export function expectExit<E, A>(ioa: IO<E, A>, expected: Exit<E, A>): Promise<v
   return expectExitIn(ioa, identity, expected);
 }
 
-export function expectExitIn<E, A, B>(ioa: IO<E, A>, f: Fn1<Exit<E, A>, B>, expected: B): Promise<void> {
+export function expectExitIn<E, A, B>(ioa: IO<E, A>, f: FunctionN<[Exit<E, A>], B>, expected: B): Promise<void> {
   return ioa.unsafeRunExitToPromise()
     .then((result) => {
       expect(f(result)).to.deep.equal(expected);
@@ -94,7 +92,7 @@ export function arbConstIO<E, A>(a: A): Arbitrary<IO<E, A>> {
  * Used for testing Chain/Monad laws while ensuring we exercise asynchronous machinery
  * @param arb
  */
-export function arbKleisliIO<E, A, B>(arbAB: Arbitrary<Fn1<A, B>>): Arbitrary<Fn1<A, IO<E, B>>> {
+export function arbKleisliIO<E, A, B>(arbAB: Arbitrary<FunctionN<[A], B>>): Arbitrary<FunctionN<[A], IO<E, B>>> {
   return arbAB.chain((fab) =>
     arbIO<E, undefined>(fc.constant(undefined)) // construct an IO of arbitrary type we can push a result into
       .map((slot) =>
@@ -103,7 +101,8 @@ export function arbKleisliIO<E, A, B>(arbAB: Arbitrary<Fn1<A, B>>): Arbitrary<Fn
   );
 }
 
-export function arbErrorKleisliIO<E, E2, A>(arbEE: Arbitrary<Fn1<E, E2>>): Arbitrary<Fn1<E, IO<E2, A>>> {
+export function arbErrorKleisliIO<E, E2, A>(arbEE: Arbitrary<FunctionN<[E], E2>>):
+Arbitrary<FunctionN<[E], IO<E2, A>>> {
   return arbKleisliIO<A, E, E2>(arbEE)
     .map((f) => (e: E) => f(e).flip());
 }

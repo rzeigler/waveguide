@@ -58,7 +58,7 @@ export class Resource<E, A> {
     if (this.step._tag === "pure") {
       return f(this.step.a);
     } else if (this.step._tag === "bracket") {
-      return this.step.acquire.bracketExit(this.step.release, f);
+      return this.step.acquire.bracket(this.step.release, f);
     } else if (this.step._tag === "suspend") {
       return this.step.suspended.chain((r) => r.use(f));
     } else {

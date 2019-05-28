@@ -15,7 +15,7 @@
 import { Do } from "fp-ts-contrib/lib/Do";
 import { Applicative2 } from "fp-ts/lib/Applicative";
 import { Either, fold, left, right } from "fp-ts/lib/Either";
-import { constant, identity, Lazy, pipe } from "fp-ts/lib/function";
+import { constant, FunctionN, identity, Lazy, pipe } from "fp-ts/lib/function";
 import { IO as SyncIO } from "fp-ts/lib/IO";
 import { IOEither } from "fp-ts/lib/IOEither";
 import { Monad2 } from "fp-ts/lib/Monad";
@@ -28,7 +28,6 @@ import { abort, done, Error, Exit, interrupt, raise } from "./exit";
 import { Fiber, makeFiber } from "./fiber";
 import { makeRef, Ref } from "./ref";
 import { defaultRuntime, Runtime } from "./runtime";
-import { Fn1, Fn2 } from "./support/types";
 
 export type Step<E, A> =
   Succeeded<A> |
@@ -63,20 +62,20 @@ export class Suspend<E, A> {
 
 export class Async<E, A> {
   public readonly _tag: "async" = "async";
-  constructor(public readonly op: Fn1<Fn1<Either<E, A>, void>, Lazy<void>>) { }
+  constructor(public readonly op: FunctionN<[FunctionN<[Either<E, A>], void>], Lazy<void>>) { }
 }
 
 export class Chain<E, Z, A> {
   public readonly _tag: "chain" = "chain";
   constructor(public readonly inner: IO<E, Z>,
-              public readonly bind: Fn1<Z, IO<E, A>>) { }
+              public readonly bind: FunctionN<[Z], IO<E, A>>) { }
 }
 
 export class Fold<E1, E2, A1, A2> {
   public readonly _tag: "fold" = "fold";
   constructor(public readonly inner: IO<E1, A1>,
-              public readonly failure: Fn1<Error<E1>, IO<E2, A2>>,
-              public readonly success: Fn1<A1, IO<E2, A2>>) { }
+              public readonly failure: FunctionN<[Error<E1>], IO<E2, A2>>,
+              public readonly success: FunctionN<[A1], IO<E2, A2>>) { }
 }
 
 export class InterruptibleState<E, A> {
@@ -112,7 +111,7 @@ export class IO<E, A> {
    * Construct a new IO by applying f to the value produced by this
    * @param f the function to apply
    */
-  public map<B>(f: Fn1<A, B>): IO<E, B> {
+  public map<B>(f: FunctionN<[A], B>): IO<E, B> {
     return this.chain(pipe(f, succeedWith));
   }
 
@@ -135,11 +134,11 @@ export class IO<E, A> {
    * Construct a new IO by applying f to the error produced by this
    * @param f the function to apply
    */
-  public mapError<E2>(f: Fn1<E, E2>): IO<E2, A> {
+  public mapError<E2>(f: FunctionN<[E], E2>): IO<E2, A> {
     return this.chainError(pipe(f, raiseError));
   }
 
-  public bimap<E2, B>(leftMap: Fn1<E, E2>, rightMap: Fn1<A, B>): IO<E2, B> {
+  public bimap<E2, B>(leftMap: FunctionN<[E], E2>, rightMap: FunctionN<[A], B>): IO<E2, B> {
     return bimap(leftMap, rightMap)(this);
   }
 
@@ -148,7 +147,7 @@ export class IO<E, A> {
    * @param iob an io to produce the second argument to f
    * @param f the function to apply
    */
-  public zipWith<B, C>(iob: IO<E, B>, f: Fn2<A, B, C>): IO<E, C> {
+  public zipWith<B, C>(iob: IO<E, B>, f: FunctionN<[A, B], C>): IO<E, C> {
     return this.chain((a) => iob.map((b) => f(a, b)));
   }
 
@@ -180,7 +179,7 @@ export class IO<E, A> {
    * Construct a new IO that will execute the function produced by iof against the value produced by this
    * @param iof
    */
-  public ap<B>(iof: IO<E, Fn1<A, B>>): IO<E, B> {
+  public ap<B>(iof: IO<E, FunctionN<[A], B>>): IO<E, B> {
     return this.zipWith(iof, (a, f) => f(a));
   }
 
@@ -189,7 +188,7 @@ export class IO<E, A> {
    * @param this
    * @param iob
    */
-  public ap_<B, C>(this: IO<E, Fn1<B, C>>, iob: IO<E, B>): IO<E, C> {
+  public ap_<B, C>(this: IO<E, FunctionN<[B], C>>, iob: IO<E, B>): IO<E, C> {
     return this.zipWith(iob, (f, b) => f(b));
   }
 
@@ -198,7 +197,7 @@ export class IO<E, A> {
    * applied to that value
    * @param f
    */
-  public chain<B>(f: Fn1<A, IO<E, B>>): IO<E, B> {
+  public chain<B>(f: FunctionN<[A], IO<E, B>>): IO<E, B> {
     return new IO(new Chain(this, f));
   }
 
@@ -207,7 +206,7 @@ export class IO<E, A> {
    * applied to that error
    * @param f
    */
-  public chainError<E2>(f: Fn1<E, IO<E2, A>>): IO<E2, A> {
+  public chainError<E2>(f: FunctionN<[E], IO<E2, A>>): IO<E2, A> {
     return new IO(new Fold(
       this,
       (cause) => cause._tag === "failed" ? f(cause.error) : completeWith(cause),
@@ -215,7 +214,7 @@ export class IO<E, A> {
     ));
   }
 
-  public fold<B>(failed: Fn1<E, IO<E, B>>, succeeded: Fn1<A, IO<E, B>>): IO<E, B> {
+  public fold<B>(failed: FunctionN<[E], IO<E, B>>, succeeded: FunctionN<[A], IO<E, B>>): IO<E, B> {
     return new IO(new Fold(
       this,
       (cause) => cause._tag === "failed" ? failed(cause.error) : completeWith(cause),
@@ -223,7 +222,7 @@ export class IO<E, A> {
     ));
   }
 
-  public foldCause<B>(failed: Fn1<Error<E>, IO<E, B>>, succeeded: Fn1<A, IO<E, B>>): IO<E, B> {
+  public foldCause<B>(failed: FunctionN<[Error<E>], IO<E, B>>, succeeded: FunctionN<[A], IO<E, B>>): IO<E, B> {
     return new IO(new Fold(
       this,
       failed,
@@ -302,11 +301,11 @@ export class IO<E, A> {
     return delay(this, ms);
   }
 
-  public bracketExit<B>(release: Fn2<A, Exit<E, B>, IO<E, unknown>>, use: Fn1<A, IO<E, B>>): IO<E, B> {
+  public bracketExit<B>(release: FunctionN<[A, Exit<E, B>], IO<E, unknown>>, use: FunctionN<[A], IO<E, B>>): IO<E, B> {
     return bracketExit(this, release, use);
   }
 
-  public bracket<B>(release: Fn1<A, IO<E, unknown>>, use: Fn1<A, IO<E, B>>): IO<E, B> {
+  public bracket<B>(release: FunctionN<[A], IO<E, unknown>>, use: FunctionN<[A], IO<E, B>>): IO<E, B> {
     return bracket(this, release, use);
   }
 
@@ -374,7 +373,7 @@ export class IO<E, A> {
    * @param other
    * @param f
    */
-  public parZipWith<B, C>(other: IO<E, B>, f: Fn2<A, B, C>): IO<E, C> {
+  public parZipWith<B, C>(other: IO<E, B>, f: FunctionN<[A, B], C>): IO<E, C> {
     return raceFold(this, other,
       (thisExit, otherFiber) => completeWith(thisExit).zipWith(otherFiber.join, f),
       (otherExit, thisFiber) => completeWith(otherExit).zipWith(thisFiber.join, (b, a) => f(a, b))
@@ -387,7 +386,7 @@ export class IO<E, A> {
    * Execution occurs in parallel.
    * @param other
    */
-  public parAp<B>(fio: IO<E, Fn1<A, B>>): IO<E, B> {
+  public parAp<B>(fio: IO<E, FunctionN<[A], B>>): IO<E, B> {
     return this.parZipWith(fio, (a, f) => f(a));
   }
 
@@ -398,7 +397,7 @@ export class IO<E, A> {
    * @param this
    * @param other
    */
-  public parAp_<B, C>(this: IO<E, Fn1<B, C>>, other: IO<E, B>): IO<E, C> {
+  public parAp_<B, C>(this: IO<E, FunctionN<[B], C>>, other: IO<E, B>): IO<E, C> {
     return this.parZipWith(other, (f, b) => f(b));
   }
 
@@ -453,7 +452,7 @@ export class IO<E, A> {
    * @param callback a callback to invoke with the exit status of the execution
    * @param runtime  the runtime to use
    */
-  public unsafeRun(callback: Fn1<Exit<E, A>, void>, runtime: Runtime = defaultRuntime): Lazy<void> {
+  public unsafeRun(callback: FunctionN<[Exit<E, A>], void>, runtime: Runtime = defaultRuntime): Lazy<void> {
     const driver = new Driver(this, runtime);
     driver.onExit(callback);
     driver.start();
@@ -551,8 +550,8 @@ export function suspend<E, A>(thunk: Lazy<IO<E, A>>): IO<E, A> {
  * @param op the asynchronous operation.
  * op will receive a callback to resume execution when the async op is done and must return a cancellation action
  */
-export function asyncTotal<A>(op: Fn1<Fn1<A, void>, Lazy<void>>): IO<never, A> {
-  const adapted: Fn1<Fn1<Either<never, A>, void>, Lazy<void>> =
+export function asyncTotal<A>(op: FunctionN<[FunctionN<[A], void>], Lazy<void>>): IO<never, A> {
+  const adapted: FunctionN<[FunctionN<[Either<never, A>], void>], Lazy<void>> =
     (callback) => op((v) => callback(right(v)));
   return async(adapted);
 }
@@ -563,7 +562,7 @@ export function asyncTotal<A>(op: Fn1<Fn1<A, void>, Lazy<void>>): IO<never, A> {
  * @param op the asynchronous operation.
  * op will receive a callback to resume execution when the async op is done and must return a cancellation action
  */
-export function async<E, A>(op: Fn1<Fn1<Either<E, A>, void>, Lazy<void>>) {
+export function async<E, A>(op: FunctionN<[FunctionN<[Either<E, A>], void>], Lazy<void>>) {
   return new IO(new Async(op));
 }
 
@@ -628,7 +627,7 @@ export const unit: IO<never, void> = succeedWith(undefined);
  * Apply f to the value produce by on
  * @param f
  */
-export function map<A, B>(f: Fn1<A, B>) {
+export function map<A, B>(f: FunctionN<[A], B>) {
   return <E>(on: IO<E, A>): IO<E, B> =>
     on.map(f);
 }
@@ -647,7 +646,7 @@ export function as<B>(b: B) {
  * @param leftMap
  * @param rightMap
  */
-export function bimap<E1, E2, A, B>(leftMap: Fn1<E1, E2>, rightMap: Fn1<A, B>) {
+export function bimap<E1, E2, A, B>(leftMap: FunctionN<[E1], E2>, rightMap: FunctionN<[A], B>) {
   return (before: IO<E1, A>): IO<E2, B> => mapError<E1, E2>(leftMap)(map(rightMap)(before));
 
 }
@@ -656,7 +655,7 @@ export function bimap<E1, E2, A, B>(leftMap: Fn1<E1, E2>, rightMap: Fn1<A, B>) {
  * Map over the error that may be produced by an IO
  * @param f
  */
-export function mapError<E, E2>(f: Fn1<E, E2>) {
+export function mapError<E, E2>(f: FunctionN<[E], E2>) {
   return <A>(on: IO<E, A>): IO<E2, A> =>
    on.mapError(f);
 }
@@ -667,7 +666,7 @@ export function mapError<E, E2>(f: Fn1<E, E2>) {
  * This is the semigroupal formulation of applicative
  * @param f
  */
-export function zipWith<A, B, C>(f: Fn2<A, B, C>) {
+export function zipWith<A, B, C>(f: FunctionN<[A, B], C>) {
   return <E>(first: IO<E, A>, second: IO<E, B>): IO<E, C> =>
     first.zipWith(second, f);
 }
@@ -696,7 +695,7 @@ export function applySecond<E, A, B>(ioa: IO<E, A>, iob: IO<E, B>): IO<E, B> {
  * Constructs a new IO that evaluates an IO for its value and then evalues the result of applying f to that value
  * @param f
  */
-export function chain<E, A, B>(f: Fn1<A, IO<E, B>>) {
+export function chain<E, A, B>(f: FunctionN<[A], IO<E, B>>) {
   return (ioa: IO<E, A>) => new IO(new Chain(ioa, f));
 }
 
@@ -707,7 +706,7 @@ export function chain<E, A, B>(f: Fn1<A, IO<E, B>>) {
  * If the error occurs, recovery is performed by applying f to that error.
  * @param f
  */
-export function chainError<E, E2, A>(f: Fn1<E, IO<E2, A>>) {
+export function chainError<E, E2, A>(f: FunctionN<[E], IO<E2, A>>) {
   return (ioa: IO<E, A>) => ioa.chainError(f);
 }
 
@@ -716,7 +715,7 @@ export function chainError<E, E2, A>(f: Fn1<E, IO<E2, A>>) {
  * @param failed
  * @param succeeded
  */
-export function foldCause<E, A, B>(failed: Fn1<Error<E>, IO<E, B>>, succeeded: Fn1<A, IO<E, B>>) {
+export function foldCause<E, A, B>(failed: FunctionN<[Error<E>], IO<E, B>>, succeeded: FunctionN<[A], IO<E, B>>) {
   return (ioa: IO<E, A>) => ioa.foldCause(failed, succeeded);
 }
 
@@ -773,7 +772,7 @@ export function interruptibleState<E, A>(inner: IO<E, A>, state: boolean): IO<E,
 /**
  * The type of a function that allows setting interruptibility within a masked region
  */
-export type InterruptMaskCutout<E, A> = Fn1<IO<E, A>, IO<E, A>>;
+export type InterruptMaskCutout<E, A> = FunctionN<[IO<E, A>], IO<E, A>>;
 
 function makeInterruptMaskCutout<E, A>(state: boolean): InterruptMaskCutout<E, A> {
   return (inner) => inner.interruptibleState(state);
@@ -786,7 +785,7 @@ function makeInterruptMaskCutout<E, A>(state: boolean): InterruptMaskCutout<E, A
  * i.e. cutout a chunk of the mask
  * @param f
  */
-export function uninterruptibleMask<E, A>(f: Fn1<InterruptMaskCutout<E, A>, IO<E, A>>): IO<E, A> {
+export function uninterruptibleMask<E, A>(f: FunctionN<[InterruptMaskCutout<E, A>], IO<E, A>>): IO<E, A> {
   return getInterruptible
     .widenError<E>()
     .chain((state) => f(makeInterruptMaskCutout<E, A>(state)).uninterruptible());
@@ -799,7 +798,7 @@ export function uninterruptibleMask<E, A>(f: Fn1<InterruptMaskCutout<E, A>, IO<E
  * i.e. cutout a chunk of the mask
  * @param f
  */
-export function interruptibleMask<E, A>(f: Fn1<InterruptMaskCutout<E, A>, IO<E, A>>): IO<E, A> {
+export function interruptibleMask<E, A>(f: FunctionN<[InterruptMaskCutout<E, A>], IO<E, A>>): IO<E, A> {
   return getInterruptible
     .widenError<E>()
     .chain((state) => f(makeInterruptMaskCutout<E, A>(state)).interruptible());
@@ -811,7 +810,7 @@ export function interruptibleMask<E, A>(f: Fn1<InterruptMaskCutout<E, A>, IO<E, 
  * @param acquire
  */
 export const bracketExitC = <E, A>(acquire: IO<E, A>) =>
-  <B>(release: Fn2<A, Exit<E, B>, IO<E, unknown>>, use: Fn1<A, IO<E, B>>): IO<E, B> =>
+  <B>(release: FunctionN<[A, Exit<E, B>], IO<E, unknown>>, use: FunctionN<[A], IO<E, B>>): IO<E, B> =>
     bracketExit(acquire, release, use);
 
 /**
@@ -820,8 +819,8 @@ export const bracketExitC = <E, A>(acquire: IO<E, A>) =>
  * the exit status of the result of use.
  */
 export function bracketExit<E, A, B>(acquire: IO<E, A>,
-                                     release: Fn2<A, Exit<E, B>, IO<E, unknown>>,
-                                     use: Fn1<A, IO<E, B>>): IO<E, B> {
+                                     release: FunctionN<[A, Exit<E, B>], IO<E, unknown>>,
+                                     use: FunctionN<[A], IO<E, B>>): IO<E, B> {
   return uninterruptibleMask<E, B>((cutout) =>
     Do(io)
       .bind("a", acquire)
@@ -838,12 +837,12 @@ export function bracketExit<E, A, B>(acquire: IO<E, A>,
  * @param acquire
  */
 export const bracketC = <E, A>(acquire: IO<E, A>) =>
-  <B>(release: Fn1<A, IO<E, unknown>>, use: Fn1<A, IO<E, B>>): IO<E, B> =>
+  <B>(release: FunctionN<[A], IO<E, unknown>>, use: FunctionN<[A], IO<E, B>>): IO<E, B> =>
     bracket(acquire, release, use);
 
 export function bracket<E, A, B>(acquire: IO<E, A>,
-                                 release: Fn1<A, IO<E, unknown>>,
-                                 use: Fn1<A, IO<E, B>>): IO<E, B> {
+                                 release: FunctionN<[A], IO<E, unknown>>,
+                                 use: FunctionN<[A], IO<E, B>>): IO<E, B> {
   return bracketExit(acquire, (a, _) => release(a), use);
 }
 
@@ -890,7 +889,7 @@ export function flatten<E, A>(ioa: IO<E, IO<E, A>>): IO<E, A> {
  * Evaluate two IOs in parallel and zip their results with the provided function
  * @param f
  */
-export function parZipWith<A, B, C>(f: Fn2<A, B, C>) {
+export function parZipWith<A, B, C>(f: FunctionN<[A, B], C>) {
   return <E>(ioa: IO<E, A>, iob: IO<E, B>): IO<E, C> => ioa.parZipWith(iob, f);
 }
 
@@ -948,13 +947,13 @@ export function parApplyFirst<E, A, B>(ioa: IO<E, A>, iob: IO<E, B>): IO<E, A> {
  * @param onSecondWon
  */
 export function raceFold<E1, E2, A, B, C>(first: IO<E1, A>, second: IO<E1, B>,
-                                          onFirstWon: Fn2<Exit<E1, A>, Fiber<E1, B>, IO<E2, C>>,
-                                          onSecondWon: Fn2<Exit<E1, B>, Fiber<E1, A>, IO<E2, C>>): IO<E2, C> {
+                                          onFirstWon: FunctionN<[Exit<E1, A>, Fiber<E1, B>], IO<E2, C>>,
+                                          onSecondWon: FunctionN<[Exit<E1, B>, Fiber<E1, A>], IO<E2, C>>): IO<E2, C> {
   // tslint:disable-next-line:no-shadowed-variable
   function completeLatched<E1, E2, A, B, C>(latch: Ref<boolean>,
                                             channel: Deferred<E2, C>,
-                                            combine: Fn2<Exit<E1, A>, Fiber<E1, B>, IO<E2, C>>,
-                                            other: Fiber<E1, B>): Fn1<Exit<E1, A>, IO<never, void>> {
+                                            combine: FunctionN<[Exit<E1, A>, Fiber<E1, B>], IO<E2, C>>,
+                                            other: Fiber<E1, B>): FunctionN<[Exit<E1, A>], IO<never, void>> {
     return (exit) =>
       latch.modify<IO<never, void>>((flag: boolean) =>
         flag ? [unit, flag] : [channel.from(combine(exit, other)), true]
@@ -988,8 +987,8 @@ export function raceFold<E1, E2, A, B, C>(first: IO<E1, A>, second: IO<E1, B>,
 export function timeoutFold<E, E2, A, B>(
   source: IO<E, A>,
   ms: number,
-  timedOut: Fn1<Fiber<E, A>, IO<E2, B>>,
-  completed: Fn1<Exit<E, A>, IO<E2, B>>
+  timedOut: FunctionN<[Fiber<E, A>], IO<E2, B>>,
+  completed: FunctionN<[Exit<E, A>], IO<E2, B>>
 ): IO<E2, B> {
   return raceFold(
     source,
@@ -1106,8 +1105,8 @@ export type URI = typeof URI;
 
 const instanceOf = <L, A>(a: A) => succeedWith(a);
 const instanceMap = <L, A, B>(fa: IO<L, A>, f: (a: A) => B): IO<L, B> => fa.map(f);
-const instanceAp = <L, A, B>(fab: IO<L, Fn1<A, B>>, fa: IO<L, A>) => fab.ap_(fa);
-const instanceChain = <L, A, B>(fa: IO<L, A>, f: Fn1<A, IO<L, B>>) => fa.chain(f);
+const instanceAp = <L, A, B>(fab: IO<L, FunctionN<[A], B>>, fa: IO<L, A>) => fab.ap_(fa);
+const instanceChain = <L, A, B>(fa: IO<L, A>, f: FunctionN<[A], IO<L, B>>) => fa.chain(f);
 export const io: Monad2<URI> = {
   URI,
   map: instanceMap,
@@ -1116,7 +1115,7 @@ export const io: Monad2<URI> = {
   of: instanceOf
 } as const;
 
-const instanceParAp = <L, A, B>(fab: IO<L, Fn1<A, B>>, fa: IO<L, A>) => fab.parAp_(fa);
+const instanceParAp = <L, A, B>(fab: IO<L, FunctionN<[A], B>>, fa: IO<L, A>) => fab.parAp_(fa);
 export const par: Applicative2<URI> = {
   URI,
   of: instanceOf,
@@ -1132,7 +1131,7 @@ export const par: Applicative2<URI> = {
  * @param onComplete a callback to invoke with the exit status of the execution
  * @param runtime  the runtime to use
  */
-export function unsafeRun<E, A>(callback: Fn1<Exit<E, A>, void>, runtime: Runtime = defaultRuntime) {
+export function unsafeRun<E, A>(callback: FunctionN<[Exit<E, A>], void>, runtime: Runtime = defaultRuntime) {
   return (ioa: IO<E, A>): Lazy<void> => {
     const driver = new Driver(ioa, runtime);
     driver.onExit(callback);
