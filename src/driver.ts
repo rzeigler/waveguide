@@ -19,7 +19,7 @@ import { Done, done, Error, Exit, interrupt, raise } from "./exit";
 import { abortWith, IO, succeedWith } from "./io";
 import { defaultRuntime, Runtime } from "./runtime";
 import { Completable, completable } from "./support/completable";
-import { MutableStack } from "./support/mutable-stack";
+import { MutableStack, mutableStack } from "./support/mutable-stack";
 import { Fn0, Fn1 } from "./support/types";
 
 export type FrameType = Frame | FoldFrame | InterruptFrame;
@@ -75,8 +75,8 @@ export class Driver<E, A> {
   private started: boolean = false;
   private interrupted: boolean = false;
   private readonly result: Completable<Exit<E, A>> = completable();
-  private readonly frameStack: MutableStack<FrameType> = new MutableStack();
-  private readonly interruptRegionStack: MutableStack<boolean> = new MutableStack();
+  private readonly frameStack: MutableStack<FrameType> = mutableStack();
+  private readonly interruptRegionStack: MutableStack<boolean> = mutableStack();
   private cancelAsync: Fn0<void> | undefined;
 
   constructor(private readonly init: IO<E, A>, private readonly runtime: Runtime = defaultRuntime) {  }
