@@ -16,7 +16,7 @@ import { boundMethod } from "autobind-decorator";
 import { Either, fold as foldEither } from "fp-ts/lib/Either";
 import { FunctionN, Lazy } from "fp-ts/lib/function";
 import { Option } from "fp-ts/lib/Option";
-import { Done, done, Error, Exit, interrupt, raise } from "./exit";
+import { Done, done, Error, Exit, interrupt as interruptExit, raise } from "./exit";
 import { abortWith, IO, succeedWith } from "./io";
 import { defaultRuntime, Runtime } from "./runtime";
 import { Completable, completable } from "./support/completable";
@@ -66,98 +66,86 @@ const makeInterruptFrame = (interruptStatus: MutableStack<boolean>): InterruptFr
   };
 };
 
-/**
- * The driver for executing IO actions.
- *
- * Provides a runtime and necessary state context to evaluate an IO
- */
-export class Driver<E, A> {
-  private started: boolean = false;
-  private interrupted: boolean = false;
-  private readonly result: Completable<Exit<E, A>> = completable();
-  private readonly frameStack: MutableStack<FrameType> = mutableStack();
-  private readonly interruptRegionStack: MutableStack<boolean> = mutableStack();
-  private cancelAsync: Lazy<void> | undefined;
+export interface Driver<E, A> {
+  start(): void;
+  interrupt(): void;
+  onExit(f: FunctionN<[Exit<E, A>], void>): Lazy<void>;
+  exit(): Option<Exit<E, A>>;
+}
 
-  constructor(private readonly init: IO<E, A>, private readonly runtime: Runtime = defaultRuntime) {  }
+export function makeDriver<E, A>(run: IO<E, A>, runtime: Runtime = defaultRuntime): Driver<E, A> {
+  let started: boolean = false;
+  let interrupted: boolean = false;
+  const result: Completable<Exit<E, A>> = completable();
+  const frameStack: MutableStack<FrameType> = mutableStack();
+  const interruptRegionStack: MutableStack<boolean> = mutableStack();
+  let cancelAsync: Lazy<void> | undefined;
 
-  /**
-   * Start executing this driver.
-   *
-   * This executes the runloop in a trampoline so start may unwind before IO begin evaluating depending on the
-   * state of the stack
-   */
-  @boundMethod
-  public start() {
-    if (this.started) {
+  function start(): void {
+    if (started) {
       throw new Error("Bug: Runtime may not be started multiple times");
     }
-    this.runtime.dispatch(() => this.loop(this.init));
+    started = true;
+    runtime.dispatch(() => loop(run));
   }
 
-  /**
-   * Interrupt the execution of the fiber running on this driver
-   */
-  @boundMethod
-  public interrupt(): void {
-    if (this.interrupted) {
+  function interrupt(): void {
+    if (interrupted) {
       return;
     }
-    this.interrupted = true;
-    if (this.cancelAsync && this.isInterruptible()) {
-      this.cancelAsync();
-      this.resumeInterrupt();
+    interrupted = true;
+    if (cancelAsync && isInterruptible()) {
+      cancelAsync();
+      resumeInterrupt();
     }
   }
 
-  @boundMethod
-  public onExit(f: FunctionN<[Exit<E, A>], void>): Lazy<void> {
-    return this.result.listen(f);
+  function onExit(f: FunctionN<[Exit<E, A>], void>): Lazy<void> {
+    return result.listen(f);
   }
 
-  @boundMethod
-  public exit(): Option<Exit<E, A>> {
-    return this.result.value();
+  function exit(): Option<Exit<E, A>> {
+    return result.value();
   }
 
-  private loop(next: IO<unknown, unknown>): void {
-    let current: IO<unknown, unknown> | undefined = next;
-    while (current && (!this.isInterruptible() || !this.interrupted)) {
+  function loop(go: IO<unknown, unknown>): void {
+    let current: IO<unknown, unknown> | undefined = go;
+    while (current && (!isInterruptible() || !interrupted)) {
       const step = current.step;
       try {
         if (step._tag === "succeed") {
-          current = this.next(step.value);
+          current = next(step.value);
         } else if (step._tag === "caused") {
           if (step.cause._tag === "interrupted") {
-            this.interrupted = true;
+            interrupted = true;
           }
-          current = this.handle(step.cause);
+          current = handle(step.cause);
         } else if (step._tag === "complete") {
           if (step.status._tag === "value") {
-            current = this.next(step.status.value);
+            current = next(step.status.value);
           } else {
-            current = this.handle(step.status);
+            current = handle(step.status);
           }
         } else if (step._tag === "suspend") {
           current = step.thunk();
         } else if (step._tag === "async") {
-          this.contextSwitch(step.op);
+          contextSwitch(step.op);
           current = undefined;
         } else if (step._tag === "chain") {
-          this.frameStack.push(makeFrame(step.bind));
+          frameStack.push(makeFrame(step.bind));
           current = step.inner;
         } else if (step._tag === "fold") {
-          this.frameStack.push(makeFoldFrame(step.success, step.failure));
+          frameStack.push(makeFoldFrame(step.success, step.failure));
           current = step.inner;
         } else if (step._tag === "interruptible-state") {
-          this.interruptRegionStack.push(step.state);
-          this.frameStack.push(makeInterruptFrame(this.interruptRegionStack));
+          interruptRegionStack.push(step.state);
+          frameStack.push(makeInterruptFrame(interruptRegionStack));
           current = step.inner;
         } else if (step._tag === "platform-interface") {
           if (step.platform._tag === "get-runtime") {
-            current = succeedWith(this.runtime);
+            current = succeedWith(runtime);
           } else if (step.platform._tag === "get-interruptible") {
-            current = succeedWith(this.isInterruptible());
+            current = succeedWith(isInterruptible());
           } else {
             throw new Error(`Die: Unrecognized platform-interface tag ${step.platform}`);
           }
@@ -171,105 +159,101 @@ export class Driver<E, A> {
       }
     }
     // If !current then the interrupt came to late and we completed everything
-    if (this.interrupted && current) {
-      this.resumeInterrupt();
+    if (interrupted && current) {
+      resumeInterrupt();
     }
   }
 
-  /**
-   * Resume the runloop with an interrupted
-   */
-  private resumeInterrupt(): void {
-    this.runtime.dispatch(() => {
-      const next = this.handle(interrupt);
-      if (next) {
-        this.loop(next);
+  function resumeInterrupt(): void {
+    runtime.dispatch(() => {
+      const go = handle(interruptExit);
+      if (go) {
+        loop(go);
       }
     });
   }
 
-  private isInterruptible(): boolean {
-    const result =  this.interruptRegionStack.peek();
-    if (result === undefined) {
+  function isInterruptible(): boolean {
+    const flag =  interruptRegionStack.peek();
+    if (flag === undefined) {
       return true;
     }
-    return result;
+    return flag;
   }
 
-  /**
-   * Recovering from a failure is allowed when that failure is not interrupted or we are in an uninterruptible region
-   * @param cause
-   */
-  private canRecover(cause: Error<unknown>): boolean {
-    // it is always possible to recovery from fiber internal interrupts
+  function canRecover(cause: Error<unknown>): boolean {
+    // It is only possible to recovery from interrupts in an uninterruptible region
     if (cause._tag === "interrupted") {
-      return !this.isInterruptible();
+      return !isInterruptible();
     }
     return true;
   }
 
-  private next(value: unknown): IO<unknown, unknown> | undefined {
-    const frame = this.frameStack.pop();
+  function next(value: unknown): IO<unknown, unknown> | undefined {
+    const frame = frameStack.pop();
     if (frame) {
       return frame.apply(value);
     }
-    this.done(done(value) as Done<A>);
+    result.complete(done(value) as Done<A>);
     return;
   }
 
-  private handle(e: Error<unknown>): IO<unknown, unknown> | undefined {
-    let frame = this.frameStack.pop();
+  function handle(e: Error<unknown>): IO<unknown, unknown> | undefined {
+    let frame = frameStack.pop();
     while (frame) {
-      if (frame._tag === "fold-frame" && this.canRecover(e)) {
+      if (frame._tag === "fold-frame" && canRecover(e)) {
         return frame.recover(e);
       }
       // We need to make sure we leave an interrupt region while unwinding on errors
       if (frame._tag === "interrupt-frame") {
         frame.exitRegion();
       }
-      frame = this.frameStack.pop();
+      frame = frameStack.pop();
     }
     // At the end... so we have failed
-    this.done(e as Error<E>);
+    result.complete(e as Error<E>);
     return;
   }
 
-  private done(exit: Exit<E, A>): void {
-    this.result.complete(exit);
-  }
-
-  private contextSwitch(op: FunctionN<[FunctionN<[Either<unknown, unknown>], void>], Lazy<void>>): void {
+  function contextSwitch(op: FunctionN<[FunctionN<[Either<unknown, unknown>], void>], Lazy<void>>): void {
     let complete = false;
-    const cancelAsync = op((result) => {
+    const wrappedCancel = op((status) => {
       if (complete) {
         return;
       }
       complete = true;
-      this.resume(result);
+      resume(status);
     });
-    this.cancelAsync = () => {
+    cancelAsync = () => {
       complete = true;
-      cancelAsync();
+      wrappedCancel();
     };
   }
 
-  private resume(result: Either<unknown, unknown>): void {
-    this.cancelAsync = undefined;
-    this.runtime.dispatch(() => {
+  function resume(status: Either<unknown, unknown>): void {
+    cancelAsync = undefined;
+    runtime.dispatch(() => {
       foldEither(
         (cause: unknown) => {
-          const next = this.handle(raise(cause));
-          if (next) {
-            this.loop(next);
+          const go = handle(raise(cause));
+          if (go) {
+            loop(go);
           }
         },
         (value: unknown) => {
-          const next = this.next(value);
-          if (next) {
-            this.loop(next);
+          const go = next(value);
+          if (go) {
+            loop(go);
           }
         }
-      )(result);
+      )(status);
     });
   }
+
+  return {
+    start,
+    interrupt,
+    onExit,
+    exit
+  };
 }

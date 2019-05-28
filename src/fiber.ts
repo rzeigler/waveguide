@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import { fold as foldOption, fromNullable, isSome, none, Option, some } from "fp-ts/lib/Option";
-import { Driver } from "./driver";
+import { Driver, makeDriver } from "./driver";
 import { Exit } from "./exit";
 import { asyncTotal, completeWith, effect, IO, succeedWith, unit } from "./io";
 import { Runtime } from "./runtime";
@@ -73,9 +73,9 @@ function createFiber<E, A>(driver: Driver<E, A>, n?: string): Fiber<E, A> {
 
 export function makeFiber<E, A>(init: IO<E, A>, runtime: Runtime, name?: string): IO<never, Fiber<E, A>> {
   return effect(() => {
-    const driver = new Driver(init, runtime);
-    const fiber = createFiber(driver, name);
-    driver.start();
+    const drv = makeDriver(init, runtime);
+    const fiber = createFiber(drv, name);
+    drv.start();
     return fiber;
   });
 }

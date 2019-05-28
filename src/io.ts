@@ -23,7 +23,7 @@ import { none, Option, some } from "fp-ts/lib/Option";
 import { Task } from "fp-ts/lib/Task";
 import { TaskEither } from "fp-ts/lib/TaskEither";
 import { Deferred, makeDeferred } from "./deferred";
-import { Driver } from "./driver";
+import { makeDriver } from "./driver";
 import { abort, done, Error, Exit, interrupt, raise } from "./exit";
 import { Fiber, makeFiber } from "./fiber";
 import { makeRef, Ref } from "./ref";
@@ -453,11 +453,11 @@ export class IO<E, A> {
    * @param runtime  the runtime to use
    */
   public unsafeRun(callback: FunctionN<[Exit<E, A>], void>, runtime: Runtime = defaultRuntime): Lazy<void> {
-    const driver = new Driver(this, runtime);
-    driver.onExit(callback);
-    driver.start();
+    const drv = makeDriver(this, runtime);
+    drv.onExit(callback);
+    drv.start();
     return () => {
-      driver.interrupt();
+      drv.interrupt();
     };
   }
 
@@ -469,15 +469,15 @@ export class IO<E, A> {
    */
   public unsafeRunToPromise(runtime: Runtime = defaultRuntime): Promise<A> {
     return new Promise((resolve, reject) => {
-      const driver = new Driver(this, runtime);
-      driver.onExit((exit) => {
+      const drv = makeDriver(this, runtime);
+      drv.onExit((exit) => {
         if (exit._tag === "value") {
           resolve(exit.value);
         } else {
           reject(exit);
         }
       });
-      driver.start();
+      drv.start();
     });
   }
 
@@ -489,11 +489,11 @@ export class IO<E, A> {
    */
   public unsafeRunExitToPromise(runtime: Runtime = defaultRuntime): Promise<Exit<E, A>> {
     return new Promise((resolve) => {
-      const driver = new Driver(this, runtime);
-      driver.onExit((exit) => {
+      const drv = makeDriver(this, runtime);
+      drv.onExit((exit) => {
         resolve(exit);
       });
-      driver.start();
+      drv.start();
     });
   }
 }
@@ -1133,11 +1133,11 @@ export const par: Applicative2<URI> = {
  */
 export function unsafeRun<E, A>(callback: FunctionN<[Exit<E, A>], void>, runtime: Runtime = defaultRuntime) {
   return (ioa: IO<E, A>): Lazy<void> => {
-    const driver = new Driver(ioa, runtime);
-    driver.onExit(callback);
-    driver.start();
+    const drv = makeDriver(ioa, runtime);
+    drv.onExit(callback);
+    drv.start();
     return () => {
-      driver.interrupt();
+      drv.interrupt();
     };
   };
 }
@@ -1145,15 +1145,15 @@ export function unsafeRun<E, A>(callback: FunctionN<[Exit<E, A>], void>, runtime
 export function unsafeRunToPromise(runtime: Runtime = defaultRuntime) {
   return <E, A>(ioa: IO<E, A>): Promise<A> => {
     return new Promise((resolve, reject) => {
-      const driver = new Driver(ioa, runtime);
-      driver.onExit((exit: Exit<E, A>) => {
+      const drv = makeDriver(ioa, runtime);
+      drv.onExit((exit: Exit<E, A>) => {
         if (exit._tag === "value") {
           resolve(exit.value);
         } else {
           reject(exit);
         }
       });
-      driver.start();
+      drv.start();
     });
   };
 }
@@ -1161,11 +1161,11 @@ export function unsafeRunToPromise(runtime: Runtime = defaultRuntime) {
 export function unsafeRunExitToPromise(runtime: Runtime = defaultRuntime) {
   return <E, A>(ioa: IO<E, A>): Promise<Exit<E, A>> => {
     return new Promise((resolve) => {
-      const driver = new Driver(ioa, runtime);
-      driver.onExit((exit) => {
+      const drv = makeDriver(ioa, runtime);
+      drv.onExit((exit) => {
         resolve(exit);
       });
-      driver.start();
+      drv.start();
     });
   };
 }
