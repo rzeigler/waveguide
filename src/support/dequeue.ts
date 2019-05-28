@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import { Predicate } from "fp-ts/lib/function";
-import { none, Option, some, option } from "fp-ts/lib/Option";
+import { none, Option, option, some } from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
 import * as l from "./list";
 import { cons, List, nil } from "./list";
@@ -83,7 +83,7 @@ export function from<A>(front: List<A>, back: List<A>): Dequeue<A> {
   function find(p: Predicate<A>): Option<A> {
     return option.alt(l.find(front, p), () => l.find(back, p));
   }
-  
+
   return {
     offer,
     take,
