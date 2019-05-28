@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import { Lazy } from "fp-ts/lib/function";
-import { MutableQueue } from "./support/mutable-queue";
+import { MutableQueue, mutableQueue } from "./support/mutable-queue";
 
 /**
  * A trampolined execution environment.
@@ -42,7 +42,7 @@ export interface Trampoline {
  */
 export function makeTrampoline(): Trampoline {
   let running = false;
-  const queue: MutableQueue<Lazy<void>> = new MutableQueue();
+  const queue: MutableQueue<Lazy<void>> = mutableQueue();
 
   const isRunning = (): boolean => running;
 

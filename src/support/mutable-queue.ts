@@ -12,26 +12,36 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export class MutableQueue<A> {
-  private array: A[] = [];
+export interface MutableQueue<A> {
+  enqueue(a: A): void;
+  dequeue(): A | undefined;
+  peek(): A | undefined;
+  isEmpty(): boolean;
+  size(): number;
+}
 
-  public enqueue(a: A): void {
-    this.array.push(a);
+export function mutableQueue<A>(): MutableQueue<A> {
+  const array: A[] = [];
+  function enqueue(a: A): void {
+    array.push(a);
   }
-
-  public dequeue(): A | undefined {
-    return this.array.shift();
+  function dequeue(): A |  undefined {
+    return array.shift();
   }
-
-  public peek(): A | undefined {
-    return this.isEmpty() ? undefined : this.array[0];
+  function peek(): A | undefined {
+    return isEmpty() ? undefined : array[0];
   }
-
-  public isEmpty(): boolean {
-    return this.array.length === 0;
+  function isEmpty(): boolean {
+    return array.length === 0;
   }
-
-  public size(): number {
-    return this.array.length;
+  function size(): number {
+    return array.length;
   }
+  return {
+    enqueue,
+    dequeue,
+    peek,
+    isEmpty,
+    size
+  };
 }
