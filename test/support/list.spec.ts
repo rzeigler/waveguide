@@ -14,7 +14,7 @@
 
 import { expect } from "chai";
 import { none, some } from "fp-ts/lib/Option";
-import { concat, cons, filter_, find_, flatten, fromArray, nil, of, toArray } from "../../src/support/list";
+import { concat, cons, filter, find, flatten, fromArray, nil, of } from "../../src/support/list";
 
 function isEven(n: number) {
   return n % 2 === 0;
@@ -42,15 +42,15 @@ describe("List", () => {
   });
   describe("filter", () => {
     it("should filter", () => {
-      expect(filter_(fromArray([1, 2, 3]), isEven)).to.deep.equal(of(2));
+      expect(filter(fromArray([1, 2, 3]), isEven)).to.deep.equal(of(2));
     });
   });
   describe("find", () => {
     it("should find", () => {
-      expect(find_(fromArray([1, 2, 3]), isEven)).to.deep.equal(some(2));
+      expect(find(fromArray([1, 2, 3]), isEven)).to.deep.equal(some(2));
     });
     it("should not find something not there", () => {
-      expect(find_(fromArray([1, 3, 5]), isEven)).to.deep.equal(none);
+      expect(find(fromArray([1, 3, 5]), isEven)).to.deep.equal(none);
     });
   });
 });

@@ -40,7 +40,7 @@ export function cons<A>(h: A, t: List<A>): List<A> {
 }
 
 export function snoc<A>(append: A, list: List<A>): List<A> {
-  return foldr_(list, of(append), cons);
+  return foldr(list, of(append), cons);
 }
 
 export function of<A>(a: A): List<A> {
@@ -55,23 +55,23 @@ export function isNil<A>(list: List<A>): list is Nil {
   return list._tag === "nil";
 }
 
-export function cata_<A, B>(list: List<A>, ifCons: FunctionN<[A, List<A>], B>, ifNil: Lazy<B>): B {
+export function cata<A, B>(list: List<A>, ifCons: FunctionN<[A, List<A>], B>, ifNil: Lazy<B>): B {
   if (isCons(list)) {
     return ifCons(list.head, list.tail);
   }
   return ifNil();
 }
 
-export function cata<A, B>(ifCons: FunctionN<[A, List<A>], B>, ifNil: Lazy<B>): FunctionN<[List<A>], B> {
-  return (list) => cata_(list, ifCons, ifNil);
+export function catac<A, B>(ifCons: FunctionN<[A, List<A>], B>, ifNil: Lazy<B>): FunctionN<[List<A>], B> {
+  return (list) => cata(list, ifCons, ifNil);
 }
 
 export function head<A>(list: List<A>): Option<A> {
-  return cata_(list, (a, _) => some(a), () => none);
+  return cata(list, (a, _) => some(a), () => none);
 }
 
 export function tail<A>(list: List<A>): Option<List<A>> {
-  return cata_(list, (_, rest) => some(rest), () => none);
+  return cata(list, (_, rest) => some(rest), () => none);
 }
 
 export function last<A>(list: List<A>): Option<A> {
@@ -89,7 +89,7 @@ export const isEmpty = isNil;
 
 export const nonEmpty = not(isNil);
 
-export function find_<A>(list: List<A>, f: Predicate<A>): Option<A> {
+export function find<A>(list: List<A>, f: Predicate<A>): Option<A> {
     let iter = list;
     while (isCons(iter)) {
       if (f(iter.head)) {
@@ -100,11 +100,11 @@ export function find_<A>(list: List<A>, f: Predicate<A>): Option<A> {
     return none;
 }
 
-export function find<A>(f: Predicate<A>): FunctionN<[List<A>], Option<A>> {
-  return (list) => find_(list, f);
+export function findc<A>(f: Predicate<A>): FunctionN<[List<A>], Option<A>> {
+  return (list) => find(list, f);
 }
 
-export function foldl_<A, B>(list: List<A>, b: B, f: FunctionN<[B, A], B>): B {
+export function foldl<A, B>(list: List<A>, b: B, f: FunctionN<[B, A], B>): B {
   let iter = list;
   let seed = b;
   while (isCons(iter)) {
@@ -114,30 +114,30 @@ export function foldl_<A, B>(list: List<A>, b: B, f: FunctionN<[B, A], B>): B {
   return seed;
 }
 
-export function foldl<A, B>(b: B, f: FunctionN<[B, A], B>): FunctionN<[List<A>], B> {
-  return (list) => foldl_(list, b, f);
+export function foldlc<A, B>(b: B, f: FunctionN<[B, A], B>): FunctionN<[List<A>], B> {
+  return (list) => foldl(list, b, f);
 }
 
 export function reverse<A>(list: List<A>): List<A> {
-  return foldl_(list, nil as List<A>, (t, h) => cons(h, t));
+  return foldl(list, nil as List<A>, (t, h) => cons(h, t));
 }
 
-export function foldr_<A, B>(list: List<A>, b: B, f: FunctionN<[A, B], B>): B {
+export function foldr<A, B>(list: List<A>, b: B, f: FunctionN<[A, B], B>): B {
   return pipe(
     list,
     reverse,
-    foldl(b, flip(f))
+    foldlc(b, flip(f))
   );
 }
 
-export function foldr<A, B>(b: B, f: FunctionN<[A, B], B>): FunctionN<[List<A>], B> {
-  return (list) => foldr_(list, b, f);
+export function foldrc<A, B>(b: B, f: FunctionN<[A, B], B>): FunctionN<[List<A>], B> {
+  return (list) => foldr(list, b, f);
 }
 
 export function map<A, B>(list: List<A>, f: FunctionN<[A], B>): List<B> {
   return pipe(
     list,
-    foldl(nil as List<B>, (t, a) => cons(f(a), t)),
+    foldlc(nil as List<B>, (t, a) => cons(f(a), t)),
     reverse
   );
 }
@@ -146,16 +146,16 @@ export function lift<A, B>(f: FunctionN<[A], B>): FunctionN<[List<A>], List<B>> 
   return (list) => map(list, f);
 }
 
-export function filter_<A>(list: List<A>, f: Predicate<A>): List<A> {
-  return foldr_(list, nil as List<A>, (a, t) => f(a) ? cons(a, t) : t);
+export function filter<A>(list: List<A>, f: Predicate<A>): List<A> {
+  return foldr(list, nil as List<A>, (a, t) => f(a) ? cons(a, t) : t);
 }
 
-export function filter<A>(f: Predicate<A>): FunctionN<[List<A>], List<A>> {
-  return (list) => filter_(list, f);
+export function filterc<A>(f: Predicate<A>): FunctionN<[List<A>], List<A>> {
+  return (list) => filter(list, f);
 }
 
 export function concat<A>(front: List<A>, back: List<A>): List<A> {
-  return foldr_(front, back, cons);
+  return foldr(front, back, cons);
 }
 
 /**
@@ -182,12 +182,12 @@ export function chain<A, B>(list: List<A>, f: FunctionN<[A], List<B>>): List<B> 
   return pipe(
     list,
     lift(f),
-    foldl(nil as List<B>, concat)
+    foldlc(nil as List<B>, concat)
   );
 }
 
 export function flatten<A>(list: List<List<A>>): List<A> {
-  return foldl_(list, nil as List<A>, concat);
+  return foldl(list, nil as List<A>, concat);
 }
 
 export function fromArray<A>(as: ReadonlyArray<A>): List<A> {
