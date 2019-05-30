@@ -23,8 +23,8 @@ export interface Mutex {
   withExclusion<E, A>(inner: IO<E, A>): IO<E, A>;
 }
 
-export const makeMutex: IO<never, Mutex> = 
-  io.map(makeSemaphore(1), 
+export const makeMutex: IO<never, Mutex> =
+  io.map(makeSemaphore(1),
   (sem) => ({
     acquire: sem.acquire,
     release: sem.release,

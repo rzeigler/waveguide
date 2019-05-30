@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { sync, IO } from "./io";
+import { IO, sync } from "./io";
 
 /**
  * Suspend console.log in an IO

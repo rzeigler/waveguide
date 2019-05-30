@@ -17,7 +17,7 @@ import * as m from "../src/io";
 
 function promise(log: boolean) {
   const unfold = (max: number) => (cur: number): Promise<number> =>
-  max === cur ? Promise.resolve(max) : Promise.resolve(max).then((n) => unfold(max)(cur + 1).then((m) => m + n));
+  max === cur ? Promise.resolve(max) : Promise.resolve(max).then((n) => unfold(max)(cur + 1).then((v) => v + n));
 
   const start = process.hrtime.bigint();
   return unfold(1000000)(0).then((result) => {
@@ -31,7 +31,7 @@ function promise(log: boolean) {
 
 function io(log: boolean) {
   const unfold = (max: number) => (cur: number): IO<never, number> =>
-  max === cur ? m.pure(max) : m.chain(m.pure(max), (n) => m.map(unfold(max)(cur + 1), (m) => m + n));
+  max === cur ? m.pure(max) : m.chain(m.pure(max), (n) => m.map(unfold(max)(cur + 1), (v) => v + n));
 
   const start = process.hrtime.bigint();
   return m.runToPromise(unfold(1000000)(0)).then((result) => {

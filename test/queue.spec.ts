@@ -16,10 +16,10 @@ import * as fc from "fast-check";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { array } from "fp-ts/lib/Array";
 import { eqString } from "fp-ts/lib/Eq";
+import { pipe } from "fp-ts/lib/pipeable";
 import * as io from "../src/io";
 import { boundedQueue, unboundedQueue } from "../src/queue";
 import { assertEq } from "./tools.spec";
-import { pipe } from "fp-ts/lib/pipeable";
 
 const assertStringEq = assertEq(eqString);
 
@@ -35,7 +35,7 @@ describe("ConcurrentQueue", function() {
           io.runToPromise(Do(io.instances)
             .bind("q", unboundedQueue<string>())
             .bindL("writeFiber",
-              ({q}) => 
+              ({q}) =>
                   pipe(
                     array.traverse(io.instances)(ops, ([v, d]) =>
                                           io.delay(q.offer(v), d)),
@@ -44,7 +44,7 @@ describe("ConcurrentQueue", function() {
                   )
                 )
             .bindL("readFiber",
-              ({q}) => 
+              ({q}) =>
                     pipe(
                       array.traverse(io.instances)(ops,
                         ([v, _, d]) => io.delay(io.chain(q.take, assertStringEq(v)), d)),
@@ -70,7 +70,7 @@ describe("ConcurrentQueue", function() {
           io.runToPromise(Do(io.instances)
             .bind("q", boundedQueue<string>(queueSize))
             .bindL("writeFiber",
-              ({q}) => 
+              ({q}) =>
                 pipe(
                   array.traverse(io.instances)(ops, ([v, d]) =>
                                           io.delay(q.offer(v), d)),

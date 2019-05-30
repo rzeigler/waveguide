@@ -15,8 +15,8 @@
 import * as e from "fp-ts/lib/Either";
 import { Either, left, right } from "fp-ts/lib/Either";
 import { constant, identity, not } from "fp-ts/lib/function";
-import { pipe } from "fp-ts/lib/pipeable";
 import * as o from "fp-ts/lib/Option";
+import { pipe } from "fp-ts/lib/pipeable";
 import { Deferred, makeDeferred } from "./deferred";
 import { IO } from "./io";
 import * as io from "./io";
@@ -109,7 +109,7 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
     );
 
   const releaseN = <E = never>(n: number): IO<E, void> =>
-    
+
     io.applySecond(
       sanityCheck(n),
       io.uninterruptible(

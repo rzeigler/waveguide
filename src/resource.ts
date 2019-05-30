@@ -18,87 +18,105 @@ import { IO } from "./io";
 import * as io from "./io";
 import { MutableStack } from "./support/mutable-stack";
 
-// TODO: Switch this to use a wrapper class + internal ADT similar to IO
-// This implementation style did not work out all all as the API surface area has grown
-
 /**
  * A Resource<E, A> is a type that encapsulates the safe acquisition and release of a resource.
  *
  * This is a friendly monadic wrapper around bracketExit.
  */
-type ResourceADT<E, A> = Pure<E, A> | Bracket<E, A> | Suspend<E, A> | Chain<E, any, A>;
+export type Resource<E, A> =
+  Pure<A> |
+  Bracket<E, A> |
+  Suspended<E, A>  |
+  Chain<E, any, A>;
 
-export class Resource<E, A> {
-  constructor(private readonly step: ResourceADT<E, A>) { }
+export interface Pure<A> {
+  readonly _tag: "pure";
+  readonly value: A;
+}
 
-  public map<B>(f: FunctionN<[A], B>): Resource<E, B> {
-    return this.chain((a) => new Resource(new Pure(f(a))));
-  }
+export function pure<A>(value: A): Pure<A> {
+  return {
+    _tag: "pure",
+    value
+  };
+}
 
-  public zipWith<B, C>(other: Resource<E, B>, f: FunctionN<[A, B], C>): Resource<E, C> {
-    return this.chain((a) => other.map((b) => f(a, b)));
-  }
+export interface Bracket<E, A> {
+  readonly _tag: "bracket";
+  readonly acquire: IO<E, A>;
+  readonly release: FunctionN<[A], IO<E, unknown>>;
+}
 
-  public zip<B>(other: Resource<E, B>): Resource<E, readonly [A, B]> {
-    return this.zipWith(other, (a, b) => [a, b] as const);
-  }
+export function bracket<E, A>(acquire: IO<E, A>, release: FunctionN<[A], IO<E, unknown>>): Bracket<E, A> {
+  return {
+    _tag: "bracket",
+    acquire,
+    release
+  };
+}
 
-  public ap<B>(other: Resource<E, FunctionN<[A], B>>): Resource<E, B> {
-    return this.zipWith(other, (a, f) => f(a));
-  }
+export interface Suspended<E, A> {
+  readonly _tag: "suspend";
+  readonly suspended: IO<E, Resource<E, A>>;
+}
 
-  public ap_<B, C>(this: Resource<E, FunctionN<[B], C>>, other: Resource<E, B>): Resource<E, C> {
-    return this.zipWith(other, (f, b) => f(b));
-  }
+export function suspend<E, A>(suspended: IO<E, Resource<E, A>>): Suspended<E, A> {
+  return {
+    _tag: "suspend",
+    suspended
+  };
+}
 
-  public chain<B>(f: FunctionN<[A], Resource<E, B>>): Resource<E, B> {
-    return new Resource(new Chain(this, f));
-  }
+export interface Chain<E, L, A> {
+  readonly _tag: "chain";
+  readonly left: Resource<E, L>;
+  readonly bind: FunctionN<[L], Resource<E, A>>;
+}
 
-  public use<B>(f: FunctionN<[A], IO<E, B>>): IO<E, B> {
-    if (this.step._tag === "pure") {
-      return f(this.step.a);
-    } else if (this.step._tag === "bracket") {
-      return io.bracket(this.step.acquire, this.step.release, f);
-    } else if (this.step._tag === "suspend") {
-      return io.chain(this.step.suspended, (r) => r.use(f));
-    } else {
-      const s = this.step;
-      return s.left.use((a) => s.bind(a).use(f));
-    }
+export function chain<E, L, A>(left: Resource<E, L>, bind: FunctionN<[L], Resource<E, A>>): Chain<E, L, A> {
+  return {
+    _tag: "chain",
+    left,
+    bind
+  };
+}
+
+export function map<E, L, A>(res: Resource<E, L>, f: FunctionN<[L], A>): Resource<E, A> {
+  return chain(res, (r) => pure(f(r)));
+}
+
+export function zipWith<E, A, B, C>(resa: Resource<E, A>,
+                                    resb: Resource<E, B>,
+                                    f: FunctionN<[A, B], C>): Resource<E, C> {
+  return chain(resa, (a) => map(resb, (b) => f(a, b)));
+}
+
+export function zip<E, A, B>(resa: Resource<E, A>, resb: Resource<E, B>): Resource<E, readonly [A, B]> {
+  return zipWith(resa, resb, (a, b) => [a, b] as const);
+}
+
+export function ap<E, A, B>(resa: Resource<E, A>, resfab: Resource<E, FunctionN<[A], B>>): Resource<E, B> {
+  return zipWith(resa, resfab, (a, f) => f(a));
+}
+
+export function ap_<E, A, B>(resfab: Resource<E, FunctionN<[A], B>>, resa: Resource<E, A>): Resource<E, B> {
+  return zipWith(resfab, resa, (f, a) => f(a));
+}
+
+export function use<E, A, B>(res: Resource<E, A>, f: FunctionN<[A], IO<E, B>>): IO<E, B> {
+  if (res._tag === "pure") {
+    return f(res.value);
+  } else if (res._tag === "bracket") {
+    return io.bracket(res.acquire, res.release, f);
+  } else if (res._tag === "suspend") {
+    return io.chain(res.suspended, consume(f));
+  } else {
+    return use(res.left, (a) => use(res.bind(a), f));
   }
 }
 
-class Pure<E, A> {
-  public readonly _tag: "pure" = "pure";
-  constructor(public readonly a: A) { }
-}
-
-class Bracket<E, A> {
-  public readonly _tag: "bracket" = "bracket";
-  constructor(public readonly acquire: IO<E, A>, public readonly release: FunctionN<[A], IO<E, unknown>>) { }
-}
-
-class Suspend<E, A> {
-  public readonly _tag: "suspend" = "suspend";
-  constructor(public readonly suspended: IO<E, Resource<E, A>>) { }
-}
-
-class Chain<E, L, A> {
-  public readonly _tag: "chain" = "chain";
-  constructor(public readonly left: Resource<E, L>, public readonly bind: FunctionN<[L], Resource<E, A>>) { }
-}
-
-export function of<E, A>(a: A): Resource<E, A> {
-  return new Resource(new Pure(a));
-}
-
-export function from<E, A>(acquire: IO<E, A>, release: FunctionN<[A], IO<E, unknown>>): Resource<E, A> {
-  return new Resource(new Bracket(acquire, release));
-}
-
-export function suspend<E, A>(eff: IO<E, Resource<E, A>>): Resource<E, A> {
-  return new Resource(new Suspend(eff));
+export function consume<E, A, B>(f: FunctionN<[A], IO<E, B>>): FunctionN<[Resource<E, A>], IO<E, B>> {
+  return (r) => use(r, f);
 }
 
 export const URI = "Resource";
@@ -110,14 +128,10 @@ declare module "fp-ts/lib/HKT" {
   }
 }
 
-const map = <L, A, B>(fa: Resource<L, A>, f: FunctionN<[A], B>) => fa.map(f);
-const ap = <L, A, B>(ff: Resource<L, FunctionN<[A], B>>, fa: Resource<L, A>) => ff.ap_(fa);
-const chain = <L, A, B>(fa: Resource<L, A>, f: FunctionN<[A], Resource<L, B>>) => fa.chain(f);
-
-export const resource: Monad2<URI> = {
+export const instances: Monad2<URI> = {
   URI,
-  of,
+  of: pure,
   map,
-  ap,
+  ap: ap_,
   chain
 } as const;

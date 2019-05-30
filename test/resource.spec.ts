@@ -15,13 +15,14 @@
 import { done } from "../src/exit";
 import * as io from "../src/io";
 import { makeRef, Ref } from "../src/ref";
-import { from, Resource } from "../src/resource";
+import { Resource } from "../src/resource";
+import * as rsc from "../src/resource";
 import { expectExit } from "./tools.spec";
 
 describe("Resource", () => {
   it("should bracket as expected", () => {
     function makeBracket(ref: Ref<string[]>, s: string): Resource<never, string> {
-      return from(
+      return rsc.bracket(
         io.as(ref.update((ss) => [...ss, s]), s),
         (c) => io.asUnit(ref.update((ss) => ss.filter((v) => v !== c)))
       );
@@ -29,9 +30,9 @@ describe("Resource", () => {
     const eff = io.chain(makeRef()<string[]>([]),
         (ref) => {
           const resources = ["a", "b", "c", "d"].map((r) => makeBracket(ref, r))
-            .reduce((l, r) => l.chain((_) => r));
+            .reduce((l, r) => rsc.chain(l, (_) => r));
           return io.zip(
-            resources.use((v) =>
+            rsc.use(resources, (v) =>
               io.zip(ref.get, io.pure(v))
             ),
             ref.get

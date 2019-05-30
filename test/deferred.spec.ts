@@ -30,7 +30,7 @@ describe("Deferred", () => {
   );
   it("multiple sets fail", () =>
       expectExitIn(
-        io.chain(makeDeferred<never, number>(), 
+        io.chain(makeDeferred<never, number>(),
           (def) => {
             const c42 = def.done(42);
             return io.applySecond(c42, c42);

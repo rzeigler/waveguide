@@ -18,12 +18,12 @@ import { constant, FunctionN, identity, Lazy, pipe, pipeOp } from "fp-ts/lib/fun
 import { Monad2 } from "fp-ts/lib/Monad";
 import { none, some } from "fp-ts/lib/Option";
 import { Deferred, makeDeferred } from "./deferred";
+import { makeDriver } from "./driver";
 import { Error, Exit } from "./exit";
 import * as ex from "./exit";
 import { Fiber, makeFiber } from "./fiber";
 import { makeRef, Ref } from "./ref";
 import { Runtime } from "./runtime";
-import { makeDriver } from "./driver";
 
 export type IO<E, A> =
   Pure<A> |

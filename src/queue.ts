@@ -17,7 +17,7 @@ import { FunctionN, identity } from "fp-ts/lib/function";
 import { getOrElse, option } from "fp-ts/lib/Option";
 import { pipe, pipeable } from "fp-ts/lib/pipeable";
 import { Deferred, makeDeferred } from "./deferred";
-import { IO }  from "./io";
+import { IO } from "./io";
 import * as io from "./io";
 import { makeRef, Ref } from "./ref";
 import { natNumber } from "./sanity";
@@ -51,7 +51,7 @@ const droppingOffer = (n: number) => <A>(queue: Dequeue<A>, a: A): Dequeue<A> =>
   queue.size() >= n ? queue : queue.offer(a);
 
 export function unboundedQueue<A>(): IO<never, ConcurrentQueue<A>> {
-  return io.map(makeRef()(initial<A>()), 
+  return io.map(makeRef()(initial<A>()),
     (ref) => makeConcurrentQueueImpl(ref, makeDeferred<never, A>(), unboundedOffer, io.unit, identity));
 }
 
@@ -83,7 +83,7 @@ export function boundedQueue<A>(capacity: number): IO<never, ConcurrentQueue<A>>
       makeSemaphore(capacity),
       (ref, sem) =>
         makeConcurrentQueueImpl(
-          ref, 
+          ref,
           makeDeferred<never, A>(),
           unboundedOffer,
           sem.acquire,
@@ -146,7 +146,7 @@ function makeConcurrentQueueImpl<A>(state: Ref<State<A>>,
     )(ticketExit, ticketUse)
   );
 
-  const offer = (a: A): IO<never, void> => 
+  const offer = (a: A): IO<never, void> =>
     io.applySecond(
       offerGate,
       io.uninterruptible(

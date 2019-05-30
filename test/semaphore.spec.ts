@@ -15,12 +15,12 @@
 import fc, {Arbitrary} from "fast-check";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { array } from "fp-ts/lib/Array";
+import { pipe } from "fp-ts/lib/pipeable";
 import { done, interrupt} from "../src/exit";
 import * as io from "../src/io";
 import { makeRef } from "../src/ref";
 import { makeSemaphore } from "../src/semaphore";
 import { expectExit } from "./tools.spec";
-import { pipe } from "fp-ts/lib/pipeable";
 
 describe("semaphore", () => {
   it("acquire is observable", () => {
@@ -58,9 +58,9 @@ describe("semaphore", () => {
       io.chain(makeRef()(false),
         (gate) =>
           io.chain(makeSemaphore(1),
-            (sem) => 
+            (sem) =>
               io.chain(io.fork(io.applySecond(sem.acquireN(2), gate.set(true))),
-                (child) => 
+                (child) =>
                   io.chain(io.applySecond(child.interrupt, child.wait),
                     (exit) => io.zip(sem.available, gate.get)
                   )
