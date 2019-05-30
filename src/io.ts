@@ -19,12 +19,15 @@ import { Monad2 } from "fp-ts/lib/Monad";
 import { none, some } from "fp-ts/lib/Option";
 import { Deferred, makeDeferred } from "./deferred";
 import { makeDriver } from "./driver";
-import { Error, Exit } from "./exit";
+import { Cause, Exit } from "./exit";
 import * as ex from "./exit";
 import { Fiber, makeFiber } from "./fiber";
 import { makeRef, Ref } from "./ref";
 import { Runtime } from "./runtime";
 
+/**
+ * A description of an effect to perform
+ */
 export type IO<E, A> =
   Pure<A> |
   Raised<E> |
@@ -42,6 +45,10 @@ export interface Pure<A> {
   readonly value: A;
 }
 
+/**
+ * Create an IO that succeeds immediately with a value
+ * @param a the value
+ */
 export function pure<A>(a: A): Pure<A> {
   return {
     _tag: "pure",
@@ -51,21 +58,36 @@ export function pure<A>(a: A): Pure<A> {
 
 export interface Raised<E> {
   readonly _tag: "raised";
-  readonly error: Error<E>;
+  readonly error: Cause<E>;
 }
 
-export function raised<E>(e: Error<E>): Raised<E> {
+/**
+ * Create an IO that fails immediately with some Cause
+ * @param e 
+ */
+export function raised<E>(e: Cause<E>): Raised<E> {
   return {_tag: "raised", error: e};
 }
 
+/**
+ * Create an IO that fails immediately with an error
+ * @param e 
+ */
 export function raiseError<E>(e: E): Raised<E> {
   return raised(ex.raise(e));
 }
 
+/**
+ * Creates an IO that fails immediately with an abort
+ * @param u 
+ */
 export function raiseAbort(u: unknown): Raised<never> {
   return raised(ex.abort(u));
 }
 
+/**
+ * An IO that is already interrupted
+ */
 export const raiseInterrupt: Raised<never> = raised(ex.interrupt);
 
 export interface Completed<E, A> {
@@ -73,6 +95,10 @@ export interface Completed<E, A> {
   readonly exit: Exit<E, A>;
 }
 
+/**
+ * Create an IO that completes immediately with the provided exit status
+ * @param exit
+ */
 export function completed<E, A>(exit: Exit<E, A>): Completed<E, A> {
   return {
     _tag: "completed",
@@ -85,6 +111,12 @@ export interface Suspended<E, A> {
   readonly thunk: Lazy<IO<E, A>>;
 }
 
+/**
+ * Wrap a block of impure code in an IO.
+ * 
+ * When evaluated this IO will run thunk to produce the next IO to execute.
+ * @param thunk 
+ */
 export function suspended<E, A>(thunk: Lazy<IO<E, A>>): Suspended<E, A> {
   return {
     _tag: "suspended",
@@ -92,6 +124,12 @@ export function suspended<E, A>(thunk: Lazy<IO<E, A>>): Suspended<E, A> {
   };
 }
 
+/**
+ * Wrap a block of impure code in an IO
+ * 
+ * When evaluated the created IO will produce the value produced by the thunk
+ * @param thunk 
+ */
 export function sync<A>(thunk: Lazy<A>): Suspended<never, A> {
   return suspended(() => pure(thunk()));
 }
@@ -101,6 +139,14 @@ export interface Async<E, A> {
   readonly op: FunctionN<[FunctionN<[Either<E, A>], void>], Lazy<void>>;
 }
 
+/**
+ * Wrap an impure callback in an IO
+ *
+ * The provided function must accept a callback to report results to and return a cancellation action.
+ * If your action is uncancellable for some reason, you should return an empty thunk and wrap the created IO
+ * in uninterruptible
+ * @param op 
+ */
 export function async<E, A>(op: FunctionN<[FunctionN<[Either<E, A>], void>], Lazy<void>>): Async<E, A> {
   return {
     _tag: "async",
@@ -108,6 +154,12 @@ export function async<E, A>(op: FunctionN<[FunctionN<[Either<E, A>], void>], Laz
   };
 }
 
+/**
+ * Wrap an impure callback in IO
+ *
+ * This is a variant of async where the effect cannot fail.
+ * @param op
+ */
 export function asyncTotal<A>(op: FunctionN<[FunctionN<[A], void>], Lazy<void>>): Async<never, A> {
   return async((callback) => op((a) => callback(right(a))));
 }
@@ -118,6 +170,11 @@ export interface InterruptibleRegion<E, A> {
   readonly flag: boolean;
 }
 
+/**
+ * Demarcate a region of interruptible state
+ * @param inner 
+ * @param flag 
+ */
 export function interruptibleRegion<E, A>(inner: IO<E, A>, flag: boolean): InterruptibleRegion<E, A> {
   return {
     _tag: "interrupt-region",
@@ -132,6 +189,11 @@ export interface Chain<E, Z, A> {
   readonly bind: FunctionN<[Z], IO<E, A>>;
 }
 
+/**
+ * Product an new IO that will use the value produced by inner to produce the next IO to evaluate
+ * @param inner
+ * @param bind
+ */
 export function chain<E, Z, A>(inner: IO<E, Z>, bind: FunctionN<[Z], IO<E, A>>): Chain<E, Z, A> {
   return {
     _tag: "chain",
@@ -140,23 +202,28 @@ export function chain<E, Z, A>(inner: IO<E, Z>, bind: FunctionN<[Z], IO<E, A>>):
   };
 }
 
+/**
+ * Flatten a nested IO
+ * 
+ * @param inner 
+ */
 export function flatten<E, A>(inner: IO<E, IO<E, A>>): IO<E, A> {
   return chain(inner, identity);
 }
 
-export function liftChain<E, Z, A>(bind: FunctionN<[Z], IO<E, A>>): FunctionN<[IO<E, Z>], Chain<E, Z, A>> {
+export function chainWith<E, Z, A>(bind: FunctionN<[Z], IO<E, A>>): FunctionN<[IO<E, Z>], Chain<E, Z, A>> {
   return (io) => chain(io, bind);
 }
 
 export interface Collapse<E1, E2, A1, A2> {
   readonly _tag: "collapse";
   readonly inner: IO<E1, A1>;
-  readonly failure: FunctionN<[Error<E1>], IO<E2, A2>>;
+  readonly failure: FunctionN<[Cause<E1>], IO<E2, A2>>;
   readonly success: FunctionN<[A1], IO<E2, A2>>;
 }
 
-export function collapse<E1, E2, A1, A2>(inner: IO<E1, A1>,
-                                         failure: FunctionN<[Error<E1>], IO<E2, A2>>,
+export function foldExit<E1, E2, A1, A2>(inner: IO<E1, A1>,
+                                         failure: FunctionN<[Cause<E1>], IO<E2, A2>>,
                                          success: FunctionN<[A1], IO<E2, A2>>): Collapse<E1, E2, A1, A2> {
   return {
     _tag: "collapse",
@@ -166,10 +233,10 @@ export function collapse<E1, E2, A1, A2>(inner: IO<E1, A1>,
   };
 }
 
-export function liftCollapse<E1, E2, A1, A2>(failure: FunctionN<[Error<E1>], IO<E2, A2>>,
+export function foldExitWith<E1, E2, A1, A2>(failure: FunctionN<[Cause<E1>], IO<E2, A2>>,
                                              success: FunctionN<[A1], IO<E2, A2>>):
                                              FunctionN<[IO<E1, A1>], Collapse<E1, E2, A1, A2>> {
-  return (io) => collapse(io, failure, success);
+  return (io) => foldExit(io, failure, success);
 }
 
 export interface AccessInterruptible {
@@ -202,7 +269,7 @@ export function as<E, A, B>(io: IO<E, A>, b: B): IO<E, B> {
   return map(io, constant(b));
 }
 
-export function liftAs<B>(b: B): <E, A>(io: IO<E, A>) => IO<E, B> {
+export function asWith<B>(b: B): <E, A>(io: IO<E, A>) => IO<E, B> {
   return <E, A>(io: IO<E, A>) => as(io, b);
 }
 
@@ -213,13 +280,13 @@ export function asUnit<E, A>(io: IO<E, A>): IO<E, void> {
 export const unit: IO<never, void> = pure(undefined);
 
 export function chainError<E1, E2, A>(io: IO<E1, A>, f: FunctionN<[E1], IO<E2, A>>): IO<E2, A> {
-  return collapse(io,
+  return foldExit(io,
     (cause) => cause._tag === "raise" ? f(cause.error) : completed(cause),
     pure
   );
 }
 
-export function liftChainError<E1, E2, A>(f: FunctionN<[E1], IO<E2, A>>): FunctionN<[IO<E1, A>], IO<E2, A>> {
+export function chainErrorWith<E1, E2, A>(f: FunctionN<[E1], IO<E2, A>>): FunctionN<[IO<E1, A>], IO<E2, A>> {
   return (io) => chainError(io, f);
 }
 
@@ -227,20 +294,20 @@ export function mapError<E1, E2, A>(io: IO<E1, A>, f: FunctionN<[E1], E2>): IO<E
   return chainError(io, pipe(f, raiseError));
 }
 
-export function liftMapError<E1, E2>(f: FunctionN<[E1], E2>): <A>(io: IO<E1, A>) => IO<E2, A> {
+export function mapErrorWith<E1, E2>(f: FunctionN<[E1], E2>): <A>(io: IO<E1, A>) => IO<E2, A> {
   return <A>(io: IO<E1, A>) => mapError(io, f);
 }
 
 export function bimap<E1, E2, A, B>(io: IO<E1, A>,
                                     leftMap: FunctionN<[E1], E2>,
                                     rightMap: FunctionN<[A], B>): IO<E2, B> {
-  return collapse(io,
+  return foldExit(io,
     (cause) => cause._tag === "raise" ? raiseError(leftMap(cause.error)) : completed(cause),
     pipe(rightMap, pure)
   );
 }
 
-export function liftBimap<E1, E2, A, B>(leftMap: FunctionN<[E1], E2>,
+export function bimapWith<E1, E2, A, B>(leftMap: FunctionN<[E1], E2>,
                                         rightMap: FunctionN<[A], B>): FunctionN<[IO<E1, A>], IO<E2, B>> {
   return (io) => bimap(io, leftMap, rightMap);
 }
@@ -276,7 +343,7 @@ export function ap<E, A, B>(ioa: IO<E, A>, iof: IO<E, FunctionN<[A], B>>): IO<E,
   return zipWith(ioa, iof, (a, f) => f(a));
 }
 
-export function liftAp<E, A>(ioa: IO<E, A>): <B>(iof: IO<E, FunctionN<[A], B>>) => IO<E, B> {
+export function apWith<E, A>(ioa: IO<E, A>): <B>(iof: IO<E, FunctionN<[A], B>>) => IO<E, B> {
   return <B>(iof: IO<E, FunctionN<[A], B>>) => ap(ioa, iof);
 }
 
@@ -284,12 +351,12 @@ export function ap_<E, A, B>(iof: IO<E, FunctionN<[A], B>>, ioa: IO<E, A>): IO<E
   return zipWith(iof, ioa, (f, a) => f(a));
 }
 
-export function liftAp_<E, A, B>(iof: IO<E, FunctionN<[A], B>>): FunctionN<[IO<E, A>], IO<E, B>> {
+export function apWith_<E, A, B>(iof: IO<E, FunctionN<[A], B>>): FunctionN<[IO<E, A>], IO<E, B>> {
   return (io) => ap_(iof, io);
 }
 
 export function flip<E, A>(io: IO<E, A>): IO<A, E> {
-  return collapse(
+  return foldExit(
     io,
     (error) => error._tag === "raise" ? pure(error.error) : completed(error),
     raiseError
@@ -297,7 +364,7 @@ export function flip<E, A>(io: IO<E, A>): IO<A, E> {
 }
 
 export function result<E, A>(io: IO<E, A>): IO<never, Exit<E, A>> {
-  return collapse<E, never, A, Exit<E, A>>(
+  return foldExit<E, never, A, Exit<E, A>>(
     io,
     pure,
     pipe(ex.done, pure)
@@ -348,8 +415,8 @@ export function bracketExit<E, A, B>(acquire: IO<E, A>,
                                      use: FunctionN<[A], IO<E, B>>): IO<E, B> {
   return uninterruptibleMask<E, B>((cutout) =>
     chain(acquire,
-      (a) => pipeOp(a, use, cutout, result, liftChain(
-        (exit) => pipeOp(release(a, exit), result, liftChain(
+      (a) => pipeOp(a, use, cutout, result, chainWith(
+        (exit) => pipeOp(release(a, exit), result, chainWith(
           (finalize) => completed(combineFinalizerExit(exit, finalize))
         ))
       ))
@@ -367,7 +434,7 @@ function combineFinalizerExit<E, A>(fiberExit: Exit<E, A>, releaseExit: Exit<E, 
   if (fiberExit._tag === "value" && releaseExit._tag === "value") {
     return fiberExit;
   } else if (fiberExit._tag === "value") {
-    return releaseExit as Error<E>;
+    return releaseExit as Cause<E>;
   } else if (releaseExit._tag === "value") {
     return fiberExit;
   } else {
@@ -392,11 +459,11 @@ export function onComplete<E, A>(ioa: IO<E, A>, finalizer: IO<E, unknown>): IO<E
   return uninterruptibleMask((cutout) =>
     pipeOp(
       result(cutout(ioa)),
-      liftChain((exit) =>
+      chainWith((exit) =>
         pipeOp(
           finalizer,
           result,
-          liftChain((finalize) =>
+          chainWith((finalize) =>
             completed(combineFinalizerExit(exit, finalize))
           )
         )
@@ -409,12 +476,12 @@ export function onInterrupted<E, A>(ioa: IO<E, A>, finalizer: IO<E, unknown>): I
   return uninterruptibleMask((cutout) =>
     pipeOp(
       result(cutout(ioa)),
-      liftChain((exit) =>
+      chainWith((exit) =>
         exit._tag === "interrupt" ?
           pipeOp(
             finalizer,
             result,
-            liftChain((finalize) =>
+            chainWith((finalize) =>
               completed(combineFinalizerExit(exit, finalize))
             )
           ) :

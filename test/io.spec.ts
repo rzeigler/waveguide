@@ -244,8 +244,8 @@ describe("io", () => {
         eqvIO(
           pipe(
             ioa,
-            io.liftChain(kab),
-            io.liftChain(kbc)
+            io.chainWith(kab),
+            io.chainWith(kbc)
           ),
           io.chain(ioa, (a) => io.chain(kab(a), kbc))
         ),

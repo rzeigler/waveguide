@@ -28,7 +28,7 @@ describe("fiber", () => {
       pipe(
         io.delay(io.pure(42), 10),
         io.fork,
-        io.liftChain((fiber) => fiber.join)
+        io.chainWith((fiber) => fiber.join)
       ),
       done(42)
     )
@@ -38,7 +38,7 @@ describe("fiber", () => {
       pipe(
         io.never,
         io.fork,
-        io.liftChain((fiber) =>
+        io.chainWith((fiber) =>
           io.applySecond(
             io.delay(fiber.interrupt, 10),
             fiber.wait

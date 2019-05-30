@@ -16,7 +16,7 @@ import { boundMethod } from "autobind-decorator";
 import { Either, fold as foldEither } from "fp-ts/lib/Either";
 import { FunctionN, Lazy } from "fp-ts/lib/function";
 import { Option } from "fp-ts/lib/Option";
-import { Done, done, Error, Exit, interrupt as interruptExit, raise } from "./exit";
+import { Done, done, Cause, Exit, interrupt as interruptExit, raise } from "./exit";
 import { IO } from "./io";
 import * as io from "./io";
 import { defaultRuntime, Runtime } from "./runtime";
@@ -38,11 +38,11 @@ const makeFrame = (f: FunctionN<[unknown], IO<unknown, unknown>>): Frame => ({
 interface FoldFrame {
   readonly _tag: "fold-frame";
   apply(u: unknown): IO<unknown, unknown>;
-  recover(cause: Error<unknown>): IO<unknown, unknown>;
+  recover(cause: Cause<unknown>): IO<unknown, unknown>;
 }
 
 const makeFoldFrame = (f: FunctionN<[unknown], IO<unknown, unknown>>,
-                       r: FunctionN<[Error<unknown>], IO<unknown, unknown>>): FoldFrame => ({
+                       r: FunctionN<[Cause<unknown>], IO<unknown, unknown>>): FoldFrame => ({
   _tag: "fold-frame",
   apply: f,
   recover: r
@@ -177,7 +177,7 @@ export function makeDriver<E, A>(run: IO<E, A>, runtime: Runtime = defaultRuntim
     return flag;
   }
 
-  function canRecover(cause: Error<unknown>): boolean {
+  function canRecover(cause: Cause<unknown>): boolean {
     // It is only possible to recovery from interrupts in an uninterruptible region
     if (cause._tag === "interrupt") {
       return !isInterruptible();
@@ -194,7 +194,7 @@ export function makeDriver<E, A>(run: IO<E, A>, runtime: Runtime = defaultRuntim
     return;
   }
 
-  function handle(e: Error<unknown>): IO<unknown, unknown> | undefined {
+  function handle(e: Cause<unknown>): IO<unknown, unknown> | undefined {
     let frame = frameStack.pop();
     while (frame) {
       if (frame._tag === "fold-frame" && canRecover(e)) {
@@ -207,7 +207,7 @@ export function makeDriver<E, A>(run: IO<E, A>, runtime: Runtime = defaultRuntim
       frame = frameStack.pop();
     }
     // At the end... so we have failed
-    result.complete(e as Error<E>);
+    result.complete(e as Cause<E>);
     return;
   }
 

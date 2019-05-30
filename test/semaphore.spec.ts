@@ -111,7 +111,7 @@ describe("semaphore", () => {
                       io.fork
                     ))
                   ),
-                  io.liftChain((fibers) => array.traverse(io.instances)(fibers, (f) => f.wait)),
+                  io.chainWith((fibers) => array.traverse(io.instances)(fibers, (f) => f.wait)),
                   (result) => io.applySecond(result, sem.available)
                 )
               );

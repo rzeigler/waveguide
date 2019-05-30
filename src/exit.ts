@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export type Exit<E, A> = Done<A> | Error<E>;
+export type Exit<E, A> = Done<A> | Cause<E>;
 
 export interface Done<A> {
   readonly _tag: "value";
@@ -26,7 +26,7 @@ export function done<A>(v: A): Done<A> {
   };
 }
 
-export type Error<E> = Raise<E> | Abort | Interrupt;
+export type Cause<E> = Raise<E> | Abort | Interrupt;
 
 export interface Raise<E> {
   readonly _tag: "raise";
