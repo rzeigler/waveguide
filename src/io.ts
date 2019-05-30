@@ -63,7 +63,7 @@ export interface Raised<E> {
 
 /**
  * Create an IO that fails immediately with some Cause
- * @param e 
+ * @param e
  */
 export function raised<E>(e: Cause<E>): Raised<E> {
   return {_tag: "raised", error: e};
@@ -71,7 +71,7 @@ export function raised<E>(e: Cause<E>): Raised<E> {
 
 /**
  * Create an IO that fails immediately with an error
- * @param e 
+ * @param e
  */
 export function raiseError<E>(e: E): Raised<E> {
   return raised(ex.raise(e));
@@ -79,7 +79,7 @@ export function raiseError<E>(e: E): Raised<E> {
 
 /**
  * Creates an IO that fails immediately with an abort
- * @param u 
+ * @param u
  */
 export function raiseAbort(u: unknown): Raised<never> {
   return raised(ex.abort(u));
@@ -113,9 +113,9 @@ export interface Suspended<E, A> {
 
 /**
  * Wrap a block of impure code in an IO.
- * 
+ *
  * When evaluated this IO will run thunk to produce the next IO to execute.
- * @param thunk 
+ * @param thunk
  */
 export function suspended<E, A>(thunk: Lazy<IO<E, A>>): Suspended<E, A> {
   return {
@@ -126,9 +126,9 @@ export function suspended<E, A>(thunk: Lazy<IO<E, A>>): Suspended<E, A> {
 
 /**
  * Wrap a block of impure code in an IO
- * 
+ *
  * When evaluated the created IO will produce the value produced by the thunk
- * @param thunk 
+ * @param thunk
  */
 export function sync<A>(thunk: Lazy<A>): Suspended<never, A> {
   return suspended(() => pure(thunk()));
@@ -145,7 +145,7 @@ export interface Async<E, A> {
  * The provided function must accept a callback to report results to and return a cancellation action.
  * If your action is uncancellable for some reason, you should return an empty thunk and wrap the created IO
  * in uninterruptible
- * @param op 
+ * @param op
  */
 export function async<E, A>(op: FunctionN<[FunctionN<[Either<E, A>], void>], Lazy<void>>): Async<E, A> {
   return {
@@ -172,8 +172,8 @@ export interface InterruptibleRegion<E, A> {
 
 /**
  * Demarcate a region of interruptible state
- * @param inner 
- * @param flag 
+ * @param inner
+ * @param flag
  */
 export function interruptibleRegion<E, A>(inner: IO<E, A>, flag: boolean): InterruptibleRegion<E, A> {
   return {
@@ -190,7 +190,7 @@ export interface Chain<E, Z, A> {
 }
 
 /**
- * Product an new IO that will use the value produced by inner to produce the next IO to evaluate
+ * Produce an new IO that will use the value produced by inner to produce the next IO to evaluate
  * @param inner
  * @param bind
  */
@@ -204,8 +204,8 @@ export function chain<E, Z, A>(inner: IO<E, Z>, bind: FunctionN<[Z], IO<E, A>>):
 
 /**
  * Flatten a nested IO
- * 
- * @param inner 
+ *
+ * @param inner
  */
 export function flatten<E, A>(inner: IO<E, IO<E, A>>): IO<E, A> {
   return chain(inner, identity);
@@ -257,28 +257,57 @@ export function withRuntime<E, A>(f: FunctionN<[Runtime], IO<E, A>>): IO<E, A> {
   return chain(accessRuntime, f);
 }
 
+/**
+ * Map the value produced by an IO
+ * @param io
+ * @param f
+ */
 export function map<E, A, B>(io: IO<E, A>, f: FunctionN<[A], B>): IO<E, B> {
   return chain(io, pipe(f, pure));
 }
 
-export function lift<E, A, B>(f: FunctionN<[A], B>): FunctionN<[IO<E, A>], IO<E, B>> {
-  return (io) => map(io, f);
+/**
+ * Lift a function on values to a function on IOs
+ * @param f
+ */
+export function lift<A, B>(f: FunctionN<[A], B>): <E>(io: IO<E, A>) => IO<E, B> {
+  return <E>(io: IO<E, A>) => map(io, f);
 }
 
+/**
+ * Map the value produced by an IO to the constant b
+ * @param io
+ * @param b
+ */
 export function as<E, A, B>(io: IO<E, A>, b: B): IO<E, B> {
   return map(io, constant(b));
 }
 
-export function asWith<B>(b: B): <E, A>(io: IO<E, A>) => IO<E, B> {
+/**
+ * @param b
+ */
+export function liftAs<B>(b: B): <E, A>(io: IO<E, A>) => IO<E, B> {
   return <E, A>(io: IO<E, A>) => as(io, b);
 }
 
+/**
+ * Map the value produced by an IO to undefined
+ * @param io
+ */
 export function asUnit<E, A>(io: IO<E, A>): IO<E, void> {
   return as<E, A, void>(io, undefined);
 }
 
+/**
+ * An IO that succeeds immediately with undefineds
+ */
 export const unit: IO<never, void> = pure(undefined);
 
+/**
+ * Produce an new IO that will use the error produced by inner to produce a recovery program
+ * @param io
+ * @param f
+ */
 export function chainError<E1, E2, A>(io: IO<E1, A>, f: FunctionN<[E1], IO<E2, A>>): IO<E2, A> {
   return foldExit(io,
     (cause) => cause._tag === "raise" ? f(cause.error) : completed(cause),
@@ -286,18 +315,37 @@ export function chainError<E1, E2, A>(io: IO<E1, A>, f: FunctionN<[E1], IO<E2, A
   );
 }
 
+/**
+ * Data last form of chainError
+ * @param f
+ */
 export function chainErrorWith<E1, E2, A>(f: FunctionN<[E1], IO<E2, A>>): FunctionN<[IO<E1, A>], IO<E2, A>> {
   return (io) => chainError(io, f);
 }
 
+/**
+ * Map the error produced by an IO
+ * @param io
+ * @param f
+ */
 export function mapError<E1, E2, A>(io: IO<E1, A>, f: FunctionN<[E1], E2>): IO<E2, A> {
   return chainError(io, pipe(f, raiseError));
 }
 
+/**
+ * Lift a function on error values to a function on IOs
+ * @param f
+ */
 export function mapErrorWith<E1, E2>(f: FunctionN<[E1], E2>): <A>(io: IO<E1, A>) => IO<E2, A> {
   return <A>(io: IO<E1, A>) => mapError(io, f);
 }
 
+/**
+ * Map over either the error or value produced by an IO
+ * @param io
+ * @param leftMap
+ * @param rightMap
+ */
 export function bimap<E1, E2, A, B>(io: IO<E1, A>,
                                     leftMap: FunctionN<[E1], E2>,
                                     rightMap: FunctionN<[A], B>): IO<E2, B> {
@@ -307,21 +355,42 @@ export function bimap<E1, E2, A, B>(io: IO<E1, A>,
   );
 }
 
+/**
+ * Data last form of bimap
+ * @param leftMap
+ * @param rightMap
+ */
 export function bimapWith<E1, E2, A, B>(leftMap: FunctionN<[E1], E2>,
                                         rightMap: FunctionN<[A], B>): FunctionN<[IO<E1, A>], IO<E2, B>> {
   return (io) => bimap(io, leftMap, rightMap);
 }
 
+/**
+ * Zip the result of two IOs together using the provided function
+ * @param first
+ * @param second
+ * @param f
+ */
 export function zipWith<E, A, B, C>(first: IO<E, A>, second: IO<E, B>, f: FunctionN<[A, B], C>): IO<E, C> {
   return chain(first, (a) =>
     map(second, (b) => f(a, b))
   );
 }
 
+/**
+ * Zip the result of two IOs together into a tuple type
+ * @param first
+ * @param second
+ */
 export function zip<E, A, B>(first: IO<E, A>, second: IO<E, B>): IO<E, readonly [A, B]> {
   return zipWith(first, second, tuple2);
 }
 
+/**
+ * Evaluate two IOs in sequence and produce the value produced by the first
+ * @param first
+ * @param second
+ */
 export function applyFirst<E, A, B>(first: IO<E, A>, second: IO<E, B>): IO<E, A> {
   return zipWith(first, second, fst);
 }
@@ -424,12 +493,6 @@ export function bracketExit<E, A, B>(acquire: IO<E, A>,
   );
 }
 
-export function bracketExitC<E, A>(acquire: IO<E, A>):
-  <B>(release: FunctionN<[A, Exit<E, B>], IO<E, unknown>>, use: FunctionN<[A], IO<E, B>>) => IO<E, B> {
-  return <B>(release: FunctionN<[A, Exit<E, B>], IO<E, unknown>>, use: FunctionN<[A], IO<E, B>>) =>
-    bracketExit(acquire, release, use);
-}
-
 function combineFinalizerExit<E, A>(fiberExit: Exit<E, A>, releaseExit: Exit<E, unknown>): Exit<E, A> {
   if (fiberExit._tag === "value" && releaseExit._tag === "value") {
     return fiberExit;
@@ -448,11 +511,6 @@ export function bracket<E, A, B>(acquire: IO<E, A>,
                                  release: FunctionN<[A], IO<E, unknown>>,
                                  use: FunctionN<[A], IO<E, B>>): IO<E, B> {
   return bracketExit(acquire, (e, _) => release(e), use);
-}
-
-export function bracketC<E, A>(acquire: IO<E, A>):
-<B>(release: FunctionN<[A], IO<E, unknown>>, use: FunctionN<[A], IO<E, B>>) => IO<E, B> {
-  return <B>(release: FunctionN<[A], IO<E, unknown>>, use: FunctionN<[A], IO<E, B>>) => bracket(acquire, release, use);
 }
 
 export function onComplete<E, A>(ioa: IO<E, A>, finalizer: IO<E, unknown>): IO<E, A> {

@@ -16,7 +16,7 @@ import { boundMethod } from "autobind-decorator";
 import { Either, fold as foldEither } from "fp-ts/lib/Either";
 import { FunctionN, Lazy } from "fp-ts/lib/function";
 import { Option } from "fp-ts/lib/Option";
-import { Done, done, Cause, Exit, interrupt as interruptExit, raise } from "./exit";
+import { Cause, Done, done, Exit, interrupt as interruptExit, raise } from "./exit";
 import { IO } from "./io";
 import * as io from "./io";
 import { defaultRuntime, Runtime } from "./runtime";

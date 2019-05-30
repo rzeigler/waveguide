@@ -17,5 +17,5 @@ parent: Modules
 **Signature**
 
 ```ts
-export const natNumber = (msg: unknown) => (n: number) => ...
+export const natNumber = (msg: unknown) => (n: number): IO<never, void> => ...
 ```

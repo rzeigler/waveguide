@@ -8,21 +8,68 @@ parent: Modules
 
 <h2 class="text-delta">Table of contents</h2>
 
+- [Abort (interface)](#abort-interface)
+- [Done (interface)](#done-interface)
+- [Interrupt (interface)](#interrupt-interface)
+- [Raise (interface)](#raise-interface)
 - [Cause (type alias)](#cause-type-alias)
 - [Exit (type alias)](#exit-type-alias)
-- [Aborted (class)](#aborted-class)
-- [Failed (class)](#failed-class)
-- [Interrupted (class)](#interrupted-class)
-- [Value (class)](#value-class)
+- [interrupt (constant)](#interrupt-constant)
+- [abort (function)](#abort-function)
+- [done (function)](#done-function)
+- [raise (function)](#raise-function)
 
 ---
+
+# Abort (interface)
+
+**Signature**
+
+```ts
+export interface Abort {
+  readonly _tag: 'abort'
+  readonly abortedWith: unknown
+}
+```
+
+# Done (interface)
+
+**Signature**
+
+```ts
+export interface Done<A> {
+  readonly _tag: 'value'
+  readonly value: A
+}
+```
+
+# Interrupt (interface)
+
+**Signature**
+
+```ts
+export interface Interrupt {
+  readonly _tag: 'interrupt'
+}
+```
+
+# Raise (interface)
+
+**Signature**
+
+```ts
+export interface Raise<E> {
+  readonly _tag: 'raise'
+  readonly error: E
+}
+```
 
 # Cause (type alias)
 
 **Signature**
 
 ```ts
-export type Cause<E> = Failed<E> | Aborted | Interrupted
+export type Cause<E> = Raise<E> | Abort | Interrupt
 ```
 
 # Exit (type alias)
@@ -30,46 +77,37 @@ export type Cause<E> = Failed<E> | Aborted | Interrupted
 **Signature**
 
 ```ts
-export type Exit<E, A> = Value<A> | Cause<E>
+export type Exit<E, A> = Done<A> | Cause<E>
 ```
 
-# Aborted (class)
+# interrupt (constant)
 
 **Signature**
 
 ```ts
-export class Aborted {
-  constructor(public readonly error: unknown) { ... }
-  ...
-}
+export const interrupt: Interrupt = ...
 ```
 
-# Failed (class)
+# abort (function)
 
 **Signature**
 
 ```ts
-export class Failed<E> {
-  constructor(public readonly error: E) { ... }
-  ...
-}
+export function abort(a: unknown): Abort { ... }
 ```
 
-# Interrupted (class)
+# done (function)
 
 **Signature**
 
 ```ts
-export class Interrupted { ... }
+export function done<A>(v: A): Done<A> { ... }
 ```
 
-# Value (class)
+# raise (function)
 
 **Signature**
 
 ```ts
-export class Value<A> {
-  constructor(public readonly value: A) { ... }
-  ...
-}
+export function raise<E>(e: E): Raise<E> { ... }
 ```

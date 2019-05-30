@@ -31,5 +31,5 @@ export interface Mutex {
 **Signature**
 
 ```ts
-export const makeMutex: IO<never, Mutex> = ...
+export const  = ...
 ```

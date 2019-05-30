@@ -8,59 +8,29 @@ parent: Modules
 
 <h2 class="text-delta">Table of contents</h2>
 
-- [MutableQueue (class)](#mutablequeue-class)
-  - [enqueue (method)](#enqueue-method)
-  - [dequeue (method)](#dequeue-method)
-  - [peek (method)](#peek-method)
-  - [isEmpty (method)](#isempty-method)
-  - [size (method)](#size-method)
+- [MutableQueue (interface)](#mutablequeue-interface)
+- [mutableQueue (function)](#mutablequeue-function)
 
 ---
 
-# MutableQueue (class)
+# MutableQueue (interface)
 
 **Signature**
 
 ```ts
-export class MutableQueue<A> { ... }
+export interface MutableQueue<A> {
+  enqueue(a: A): void
+  dequeue(): A | undefined
+  peek(): A | undefined
+  isEmpty(): boolean
+  size(): number
+}
 ```
 
-## enqueue (method)
+# mutableQueue (function)
 
 **Signature**
 
 ```ts
-public enqueue(a: A): void { ... }
-```
-
-## dequeue (method)
-
-**Signature**
-
-```ts
-public dequeue(): A | undefined { ... }
-```
-
-## peek (method)
-
-**Signature**
-
-```ts
-public peek(): A | undefined { ... }
-```
-
-## isEmpty (method)
-
-**Signature**
-
-```ts
-public isEmpty(): boolean { ... }
-```
-
-## size (method)
-
-**Signature**
-
-```ts
-public size(): number { ... }
+export function mutableQueue<A>(): MutableQueue<A> { ... }
 ```

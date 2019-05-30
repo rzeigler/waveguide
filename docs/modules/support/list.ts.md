@@ -8,296 +8,348 @@ parent: Modules
 
 <h2 class="text-delta">Table of contents</h2>
 
+- [Cons (interface)](#cons-interface)
+- [Nil (interface)](#nil-interface)
 - [List (type alias)](#list-type-alias)
-- [Cons (class)](#cons-class)
-  - [prepend (method)](#prepend-method)
-  - [cata (method)](#cata-method)
-  - [cataL (method)](#catal-method)
-  - [head (method)](#head-method)
-  - [tail (method)](#tail-method)
-  - [foldl (method)](#foldl-method)
-  - [reverse (method)](#reverse-method)
-  - [drop (method)](#drop-method)
-  - [init (method)](#init-method)
-  - [last (method)](#last-method)
-  - [filter (method)](#filter-method)
-  - [find (method)](#find-method)
-  - [isEmpty (method)](#isempty-method)
-  - [size (method)](#size-method)
-- [Nil (class)](#nil-class)
-  - [prepend (method)](#prepend-method-1)
-  - [cata (method)](#cata-method-1)
-  - [cataL (method)](#catal-method-1)
-  - [head (method)](#head-method-1)
-  - [tail (method)](#tail-method-1)
-  - [foldl (method)](#foldl-method-1)
-  - [reverse (method)](#reverse-method-1)
-  - [filter (method)](#filter-method-1)
-  - [drop (method)](#drop-method-1)
-  - [init (method)](#init-method-1)
-  - [last (method)](#last-method-1)
-  - [isEmpty (method)](#isempty-method-1)
-  - [find (method)](#find-method-1)
-  - [size (method)](#size-method-1)
-- [list (constant)](#list-constant)
+- [URI (type alias)](#uri-type-alias)
+- [URI (constant)](#uri-constant)
+- [instances (constant)](#instances-constant)
+- [isEmpty (constant)](#isempty-constant)
+- [nil (constant)](#nil-constant)
+- [nonEmpty (constant)](#nonempty-constant)
+- [ap (function)](#ap-function)
+- [cata (function)](#cata-function)
+- [catac (function)](#catac-function)
+- [chain (function)](#chain-function)
+- [concat (function)](#concat-function)
+- [cons (function)](#cons-function)
+- [filter (function)](#filter-function)
+- [filterc (function)](#filterc-function)
+- [find (function)](#find-function)
+- [findc (function)](#findc-function)
+- [flatten (function)](#flatten-function)
+- [foldl (function)](#foldl-function)
+- [foldlc (function)](#foldlc-function)
+- [foldr (function)](#foldr-function)
+- [foldrc (function)](#foldrc-function)
+- [fromArray (function)](#fromarray-function)
+- [head (function)](#head-function)
+- [isCons (function)](#iscons-function)
+- [isNil (function)](#isnil-function)
+- [last (function)](#last-function)
+- [lift (function)](#lift-function)
+- [map (function)](#map-function)
+- [of (function)](#of-function)
+- [reverse (function)](#reverse-function)
+- [size (function)](#size-function)
+- [snoc (function)](#snoc-function)
+- [tail (function)](#tail-function)
+- [toArray (function)](#toarray-function)
 
 ---
+
+# Cons (interface)
+
+**Signature**
+
+```ts
+export interface Cons<A> {
+  readonly _tag: 'cons'
+  readonly head: A
+  readonly tail: List<A>
+}
+```
+
+# Nil (interface)
+
+**Signature**
+
+```ts
+export interface Nil {
+  readonly _tag: 'nil'
+}
+```
 
 # List (type alias)
 
 **Signature**
 
 ```ts
-export type List<A> = Cons<A> | Nil<A>
+export type List<A> = Cons<A> | Nil
 ```
 
-# Cons (class)
+# URI (type alias)
 
 **Signature**
 
 ```ts
-export class Cons<A> {
-  constructor(public readonly a: A, public readonly rest: List<A>) { ... }
-  ...
-}
+export type URI = typeof URI
 ```
 
-## prepend (method)
+# URI (constant)
 
 **Signature**
 
 ```ts
-public prepend(a: A): List<A> { ... }
+export const URI = ...
 ```
 
-## cata (method)
+# instances (constant)
 
 **Signature**
 
 ```ts
-public cata<B>(ifNil: B, ifCons: Function2<A, List<A>, B>): B { ... }
+export const instances: Monad1<URI> = ...
 ```
 
-## cataL (method)
+# isEmpty (constant)
 
 **Signature**
 
 ```ts
-public cataL<B>(ifNil: Lazy<B>, ifCons: Function2<A, List<A>, B>): B { ... }
+export const isEmpty = ...
 ```
 
-## head (method)
+# nil (constant)
 
 **Signature**
 
 ```ts
-public head(): Option<A> { ... }
+export const nil: List<never> = ...
 ```
 
-## tail (method)
+# nonEmpty (constant)
 
 **Signature**
 
 ```ts
-public tail(): Option<List<A>> { ... }
+export const nonEmpty = ...
 ```
 
-## foldl (method)
+# ap (function)
 
 **Signature**
 
 ```ts
-public foldl<B>(b: B, f: Function2<B, A, B>): B { ... }
+export function ap<A, B>(list: List<A>, fns: List<FunctionN<[A], B>>): List<B> { ... }
 ```
 
-## reverse (method)
+# cata (function)
 
 **Signature**
 
 ```ts
-public reverse(): List<A> { ... }
+export function cata<A, B>(list: List<A>, ifCons: FunctionN<[A, List<A>], B>, ifNil: Lazy<B>): B { ... }
 ```
 
-## drop (method)
+# catac (function)
 
 **Signature**
 
 ```ts
-public drop(n: number): List<A> { ... }
+export function catac<A, B>(ifCons: FunctionN<[A, List<A>], B>, ifNil: Lazy<B>): FunctionN<[List<A>], B> { ... }
 ```
 
-## init (method)
+# chain (function)
 
 **Signature**
 
 ```ts
-public init(): Option<List<A>> { ... }
+export function chain<A, B>(list: List<A>, f: FunctionN<[A], List<B>>): List<B> { ... }
 ```
 
-## last (method)
+# concat (function)
 
 **Signature**
 
 ```ts
-public last(): Option<A> { ... }
+export function concat<A>(front: List<A>, back: List<A>): List<A> { ... }
 ```
 
-## filter (method)
+# cons (function)
 
 **Signature**
 
 ```ts
-public filter(f: Predicate<A>): List<A> { ... }
+export function cons<A>(h: A, t: List<A>): List<A> { ... }
 ```
 
-## find (method)
+# filter (function)
 
 **Signature**
 
 ```ts
-public find(f: Predicate<A>): Option<A> { ... }
+export function filter<A>(list: List<A>, f: Predicate<A>): List<A> { ... }
 ```
 
-## isEmpty (method)
+# filterc (function)
 
 **Signature**
 
 ```ts
-public isEmpty(): this is Nil<A> { ... }
+export function filterc<A>(f: Predicate<A>): FunctionN<[List<A>], List<A>> { ... }
 ```
 
-## size (method)
+# find (function)
 
 **Signature**
 
 ```ts
-public size(): number { ... }
+export function find<A>(list: List<A>, f: Predicate<A>): Option<A> { ... }
 ```
 
-# Nil (class)
+# findc (function)
 
 **Signature**
 
 ```ts
-export class Nil<A> { ... }
+export function findc<A>(f: Predicate<A>): FunctionN<[List<A>], Option<A>> { ... }
 ```
 
-## prepend (method)
+# flatten (function)
 
 **Signature**
 
 ```ts
-public prepend(a: A): List<A> { ... }
+export function flatten<A>(list: List<List<A>>): List<A> { ... }
 ```
 
-## cata (method)
+# foldl (function)
 
 **Signature**
 
 ```ts
-public cata<B>(ifNil: B, ifCons: Function2<A, List<A>, B>): B { ... }
+export function foldl<A, B>(list: List<A>, b: B, f: FunctionN<[B, A], B>): B { ... }
 ```
 
-## cataL (method)
+# foldlc (function)
 
 **Signature**
 
 ```ts
-public cataL<B>(ifNil: Lazy<B>, ifCons: Function2<A, List<A>, B>): B { ... }
+export function foldlc<A, B>(b: B, f: FunctionN<[B, A], B>): FunctionN<[List<A>], B> { ... }
 ```
 
-## head (method)
+# foldr (function)
 
 **Signature**
 
 ```ts
-public head(): Option<A> { ... }
+export function foldr<A, B>(list: List<A>, b: B, f: FunctionN<[A, B], B>): B { ... }
 ```
 
-## tail (method)
+# foldrc (function)
 
 **Signature**
 
 ```ts
-public tail(): Option<List<A>> { ... }
+export function foldrc<A, B>(b: B, f: FunctionN<[A, B], B>): FunctionN<[List<A>], B> { ... }
 ```
 
-## foldl (method)
+# fromArray (function)
 
 **Signature**
 
 ```ts
-public foldl<B>(b: B, f: Function2<B, A, B>): B { ... }
+export function fromArray<A>(as: ReadonlyArray<A>): List<A> { ... }
 ```
 
-## reverse (method)
+# head (function)
 
 **Signature**
 
 ```ts
-public reverse(): List<A> { ... }
+export function head<A>(list: List<A>): Option<A> { ... }
 ```
 
-## filter (method)
+# isCons (function)
 
 **Signature**
 
 ```ts
-public filter(): List<A> { ... }
+export function isCons<A>(list: List<A>): list is Cons<A> { ... }
 ```
 
-## drop (method)
+# isNil (function)
 
 **Signature**
 
 ```ts
-public drop(n: number): List<A> { ... }
+export function isNil<A>(list: List<A>): list is Nil { ... }
 ```
 
-## init (method)
+# last (function)
 
 **Signature**
 
 ```ts
-public init(): Option<List<A>> { ... }
+export function last<A>(list: List<A>): Option<A> { ... }
 ```
 
-## last (method)
+# lift (function)
 
 **Signature**
 
 ```ts
-public last(): Option<A> { ... }
+export function lift<A, B>(f: FunctionN<[A], B>): FunctionN<[List<A>], List<B>> { ... }
 ```
 
-## isEmpty (method)
+# map (function)
 
 **Signature**
 
 ```ts
-public isEmpty(): this is Nil<A> { ... }
+export function map<A, B>(list: List<A>, f: FunctionN<[A], B>): List<B> { ... }
 ```
 
-## find (method)
+# of (function)
 
 **Signature**
 
 ```ts
-public find(f: Predicate<A>): Option<A> { ... }
+export function of<A>(a: A): List<A> { ... }
 ```
 
-## size (method)
+# reverse (function)
 
 **Signature**
 
 ```ts
-public size(): number { ... }
+export function reverse<A>(list: List<A>): List<A> { ... }
 ```
 
-# list (constant)
+# size (function)
+
+Get the size of a list.
+
+This has pathologically bad performance.
 
 **Signature**
 
 ```ts
-export const list = ...
+export function size(list: List<unknown>): number { ... }
+```
+
+# snoc (function)
+
+**Signature**
+
+```ts
+export function snoc<A>(append: A, list: List<A>): List<A> { ... }
+```
+
+# tail (function)
+
+**Signature**
+
+```ts
+export function tail<A>(list: List<A>): Option<List<A>> { ... }
+```
+
+# toArray (function)
+
+**Signature**
+
+```ts
+export function toArray<A>(as: List<A>): A[] { ... }
 ```
