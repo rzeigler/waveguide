@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { abortWith, IO, unit } from "./io";
+import { IO, unit, raiseAbort } from "./io";
 
 export const natNumber = (msg: unknown) => (n: number): IO<never, void> =>
-  n < 0 || Math.round(n) !== n ? abortWith(msg) : unit;
+  n < 0 || Math.round(n) !== n ? raiseAbort(msg) : unit;

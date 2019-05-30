@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import { done } from "../src/exit";
-import { succeedWith } from "../src/io";
+import * as io from "../src/io";
 import { makeRef, Ref } from "../src/ref";
 import { from, Resource } from "../src/resource";
 import { expectExit } from "./tools.spec";
@@ -22,17 +22,20 @@ describe("Resource", () => {
   it("should bracket as expected", () => {
     function makeBracket(ref: Ref<string[]>, s: string): Resource<never, string> {
       return from(
-        ref.update((ss) => [...ss, s]).as(s),
-        (c) => ref.update((ss) => ss.filter((v) => v !== c)).unit()
+        io.as(ref.update((ss) => [...ss, s]), s),
+        (c) => io.asUnit(ref.update((ss) => ss.filter((v) => v !== c)))
       );
     }
-    const eff = makeRef()<string[]>([])
-      .chain((ref) => {
-        const resources = ["a", "b", "c", "d"].map((r) => makeBracket(ref, r))
-          .reduce((l, r) => l.chain((_) => r));
-        return resources.use((v) =>
-          ref.get.zip(succeedWith(v))
-        ).zip(ref.get);
+    const eff = io.chain(makeRef()<string[]>([]),
+        (ref) => {
+          const resources = ["a", "b", "c", "d"].map((r) => makeBracket(ref, r))
+            .reduce((l, r) => l.chain((_) => r));
+          return io.zip(
+            resources.use((v) =>
+              io.zip(ref.get, io.pure(v))
+            ),
+            ref.get
+          );
       });
     return expectExit(eff, done([[["a", "b", "c", "d"], "d"], []]));
   });

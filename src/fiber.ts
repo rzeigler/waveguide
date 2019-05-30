@@ -15,7 +15,8 @@
 import { fold as foldOption, fromNullable, isSome, none, Option, some } from "fp-ts/lib/Option";
 import { Driver, makeDriver } from "./driver";
 import { Exit } from "./exit";
-import { asyncTotal, completeWith, effect, IO, succeedWith, unit } from "./io";
+import { IO } from "./io";
+import * as io from "./io";
 import { Runtime } from "./runtime";
 
 export interface Fiber<E, A> {
@@ -51,16 +52,16 @@ export interface Fiber<E, A> {
 
 function createFiber<E, A>(driver: Driver<E, A>, n?: string): Fiber<E, A> {
   const name = fromNullable(n);
-  const sendInterrupt = effect(() => {
+  const sendInterrupt = io.sync(() => {
     driver.interrupt();
   });
-  const wait = asyncTotal(driver.onExit);
-  const interrupt = sendInterrupt.applySecond(wait).applySecond(unit);
-  const join = wait.widenError<E>().chain((exit) => completeWith(exit));
-  const result = effect(() => driver.exit())
-    .widenError<E>()
-    .chain((opt) => foldOption(() => succeedWith(none), (exit: Exit<E, A>) => completeWith(exit).map(some))(opt));
-  const isComplete = effect(() => isSome(driver.exit()));
+  const wait = io.asyncTotal(driver.onExit);
+  const interrupt = io.applySecond(sendInterrupt, io.asUnit(wait));
+  const join = io.chain(wait, (exit) => io.completed(exit));
+  const result =
+    io.chain(io.sync(() => driver.exit()),
+      (opt) => foldOption(() => io.pure(none), (exit: Exit<E, A>) => io.map(io.completed(exit), some))(opt));
+  const isComplete = io.sync(() => isSome(driver.exit()));
   return {
     name,
     wait,
@@ -72,10 +73,10 @@ function createFiber<E, A>(driver: Driver<E, A>, n?: string): Fiber<E, A> {
 }
 
 export function makeFiber<E, A>(init: IO<E, A>, runtime: Runtime, name?: string): IO<never, Fiber<E, A>> {
-  return effect(() => {
-    const drv = makeDriver(init, runtime);
-    const fiber = createFiber(drv, name);
-    drv.start();
+  return io.sync(() => {
+    const driver = makeDriver(init, runtime);
+    const fiber = createFiber(driver, name);
+    driver.start();
     return fiber;
   });
 }

@@ -15,27 +15,27 @@
 import fc from "fast-check";
 import { makeDeferred  } from "../src/deferred";
 import { done } from "../src/exit";
-import { succeedWith } from "../src/io";
+import * as io from "../src/io";
 import { eqvIO, expectExit, expectExitIn } from "./tools.spec";
 
 describe("Deferred", () => {
   it("can bet set", () =>
     eqvIO(
-      makeDeferred<never, number>()
-        .chain((def) =>
-          def.done(42).applySecond(def.wait)
+      io.chain(makeDeferred<never, number>(),
+        (def) =>
+          io.applySecond(def.done(42), def.wait)
         ),
-      succeedWith(42)
+      io.pure(42)
     )
   );
   it("multiple sets fail", () =>
       expectExitIn(
-        makeDeferred<never, number>()
-          .chain((def) => {
+        io.chain(makeDeferred<never, number>(), 
+          (def) => {
             const c42 = def.done(42);
-            return c42.applySecond(c42);
+            return io.applySecond(c42, c42);
           }),
-        (exit) => exit._tag === "aborted" ? (exit.abortedWith as Error).message : undefined,
+        (exit) => exit._tag === "abort" ? (exit.abortedWith as Error).message : undefined,
         "Die: Completable is already completed"
       )
   );
@@ -47,10 +47,12 @@ describe("Deferred", () => {
           fc.nat(50),
           (delay) =>
             expectExit(
-              makeDeferred<never, number>()
-                .chain((def) =>
-                  def.done(42).delay(delay).fork()
-                    .applySecond(def.wait)
+              io.chain(makeDeferred<never, number>(),
+                (def) =>
+                  io.applySecond(
+                    io.fork(io.delay(def.done(42), delay)),
+                    def.wait
+                  )
                 ),
               done(42)
             )

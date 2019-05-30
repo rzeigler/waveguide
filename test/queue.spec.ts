@@ -16,9 +16,10 @@ import * as fc from "fast-check";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { array } from "fp-ts/lib/Array";
 import { eqString } from "fp-ts/lib/Eq";
-import { io } from "../src/io";
+import * as io from "../src/io";
 import { boundedQueue, unboundedQueue } from "../src/queue";
 import { assertEq } from "./tools.spec";
+import { pipe } from "fp-ts/lib/pipeable";
 
 const assertStringEq = assertEq(eqString);
 
@@ -31,22 +32,30 @@ describe("ConcurrentQueue", function() {
         fc.nat(100),
         fc.nat(100),
         (ops, delayWrite, delayRead) =>
-          Do(io)
+          io.runToPromise(Do(io.instances)
             .bind("q", unboundedQueue<string>())
             .bindL("writeFiber",
-              ({q}) => array.traverse(io)(ops, ([v, d]) =>
-                                          q.offer(v).delay(d))
-                  .delay(delayWrite)
-                  .fork())
+              ({q}) => 
+                  pipe(
+                    array.traverse(io.instances)(ops, ([v, d]) =>
+                                          io.delay(q.offer(v), d)),
+                    io.liftDelay(delayWrite),
+                    io.fork
+                  )
+                )
             .bindL("readFiber",
-              ({q}) => array.traverse(io)(ops,
-                                          ([v, _, d]) => q.take.chain(assertStringEq(v)).delay(d))
-                .delay(delayRead)
-                .fork())
+              ({q}) => 
+                    pipe(
+                      array.traverse(io.instances)(ops,
+                        ([v, _, d]) => io.delay(io.chain(q.take, assertStringEq(v)), d)),
+                      io.liftDelay(delayRead),
+                      io.fork
+                    )
+            )
             .doL(({writeFiber}) => writeFiber.wait)
             .doL(({readFiber}) => readFiber.join)
             .return(() => undefined)
-            .unsafeRunToPromise()
+          )
       )
     )
   );
@@ -58,22 +67,27 @@ describe("ConcurrentQueue", function() {
         fc.nat(100),
         fc.nat(100),
         (ops, queueSize, delayWrite, delayRead) =>
-          Do(io)
+          io.runToPromise(Do(io.instances)
             .bind("q", boundedQueue<string>(queueSize))
             .bindL("writeFiber",
-              ({q}) => array.traverse(io)(ops, ([v, d]) =>
-                                          q.offer(v).delay(d))
-                  .delay(delayWrite)
-                  .fork())
+              ({q}) => 
+                pipe(
+                  array.traverse(io.instances)(ops, ([v, d]) =>
+                                          io.delay(q.offer(v), d)),
+                  io.liftDelay(delayWrite),
+                  io.fork
+                )
+            )
             .bindL("readFiber",
-              ({q}) => array.traverse(io)(ops,
-                                          ([v, _, d]) => q.take.chain(assertStringEq(v)).delay(d))
-                .delay(delayRead)
-                .fork())
+              ({q}) =>
+                pipe(
+                  array.traverse(io.instances)(ops,
+                                          ([v, _, d]) => io.delay(io.chain(q.take, assertStringEq(v)), d)),
+                io.liftDelay(delayRead),
+                io.fork))
             .doL(({writeFiber}) => writeFiber.wait)
             .doL(({readFiber}) => readFiber.join)
-            .return(() => undefined)
-            .unsafeRunToPromise()
+            .return(() => undefined))
       )
     )
   );

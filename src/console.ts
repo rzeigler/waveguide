@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { effect, IO } from "./io";
+import { sync, IO } from "./io";
 
 /**
  * Suspend console.log in an IO
  * @param msg
  */
 export function log(msg: string): IO<never, void> {
-  return effect(() => {
+  return sync(() => {
     // tslint:disable-next-line
     console.log(msg);
   });
@@ -30,7 +30,7 @@ export function log(msg: string): IO<never, void> {
  * @param msg
  */
 export function warn(msg: string): IO<never, void> {
-  return effect(() => {
+  return sync(() => {
     // tslint:disable-next-line
     console.warn(msg);
   });
@@ -41,7 +41,7 @@ export function warn(msg: string): IO<never, void> {
  * @param msg
  */
 export function error(msg: string): IO<never, void> {
-  return effect(() => {
+  return sync(() => {
     // tslint:disable-next-line
     console.error(msg);
   });

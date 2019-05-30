@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { IO, succeedWith } from "../src/io";
+import { IO } from "../src/io";
+import * as m from "../src/io";
 
 function promise(log: boolean) {
   const unfold = (max: number) => (cur: number): Promise<number> =>
@@ -30,10 +31,10 @@ function promise(log: boolean) {
 
 function io(log: boolean) {
   const unfold = (max: number) => (cur: number): IO<never, number> =>
-  max === cur ? succeedWith(max) : succeedWith(max).chain((n) => unfold(max)(cur + 1).map((m) => m + n));
+  max === cur ? m.pure(max) : m.chain(m.pure(max), (n) => m.map(unfold(max)(cur + 1), (m) => m + n));
 
   const start = process.hrtime.bigint();
-  return unfold(1000000)(0).unsafeRunToPromise().then((result) => {
+  return m.runToPromise(unfold(1000000)(0)).then((result) => {
     if (log) {
       // tslint:disable-next-line
       console.log(process.hrtime.bigint() - start, result)

@@ -14,7 +14,7 @@
 
 import fc from "fast-check";
 import { array } from "fp-ts/lib/Array";
-import { io, succeedWith } from "../src/io";
+import * as io from "../src/io";
 import { makeRef } from "../src/ref";
 import { eqvIO } from "./tools.spec";
 
@@ -22,8 +22,8 @@ describe("Ref", function() {
   this.timeout(5000);
   it("should be initialized with a value", () =>
     eqvIO(
-      makeRef()(42).chain((r) => r.get),
-      succeedWith(42)
+      io.chain(makeRef()(42), (r) => r.get),
+      io.pure(42)
     )
   );
   describe("properties", () => {
@@ -34,10 +34,10 @@ describe("Ref", function() {
           fc.array(fc.nat(), 1, 10),
           (initial, sets) =>
             eqvIO(
-              makeRef()(initial)
-                .chain((r) => array.traverse(io)(sets, (v) => r.set(v)).applySecond(r.get)),
-              makeRef()(initial)
-                .chain((r) => r.set(sets[sets.length - 1]).applySecond(r.get))
+             io.chain(makeRef()(initial),
+                (r) => io.applySecond(array.traverse(io.instances)(sets, (v) => r.set(v)), r.get)),
+                io.chain(makeRef()(initial),
+                  (r) => io.applySecond(r.set(sets[sets.length - 1]), r.get))
             )
         )
       )
@@ -57,11 +57,14 @@ describe("Ref", function() {
           fc.nat(1000),
           (initial, value, count) =>
             eqvIO(
-              makeRef()(initial)
-                .chain((cell) => cell.set(value).applySecond(cell.get)),
-              makeRef()(initial)
-                .chain((cell) =>
-                   array.traverse(io)(repeat(value, count + 1), (v) => cell.set(v)).applySecond(cell.get))
+              io.chain(makeRef()(initial),
+                (cell) => io.applySecond(cell.set(value), cell.get)),
+              io.chain(makeRef()(initial),
+                (cell) =>
+                  io.applySecond(
+                    array.traverse(io.instances)(repeat(value, count + 1), (v) => cell.set(v)),
+                    cell.get)
+                  )
             )
         )
       )
@@ -73,10 +76,10 @@ describe("Ref", function() {
           fc.nat(),
           (before, after) =>
             eqvIO(
-              makeRef()(before)
-                .chain((cell) => cell.set(after)),
-              makeRef()(before)
-                .chain((cell) => cell.get)
+              io.chain(makeRef()(before),
+                (cell) => cell.set(after)),
+              io.chain(makeRef()(before),
+                (cell) => cell.get)
             )
         )
       )

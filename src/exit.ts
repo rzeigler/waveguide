@@ -29,35 +29,33 @@ export function done<A>(v: A): Done<A> {
 export type Error<E> = Raise<E> | Abort | Interrupt;
 
 export interface Raise<E> {
-  readonly _tag: "failed";
+  readonly _tag: "raise";
   readonly error: E;
 }
 
 export function raise<E>(e: E): Raise<E> {
   return {
-    _tag: "failed",
+    _tag: "raise",
     error: e
   };
 }
 
 export interface Abort {
-  readonly _tag: "aborted";
+  readonly _tag: "abort";
   readonly abortedWith: unknown;
 }
 
 export function abort(a: unknown): Abort {
   return {
-    _tag: "aborted",
+    _tag: "abort",
     abortedWith: a
   };
 }
 
 export interface Interrupt {
-  readonly _tag: "interrupted";
+  readonly _tag: "interrupt";
 }
 
 export const interrupt: Interrupt = {
-  _tag: "interrupted"
+  _tag: "interrupt"
 };
-
-// TODO: Monad and Bifunctor interface for Exit<E,A>

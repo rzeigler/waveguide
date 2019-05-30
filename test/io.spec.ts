@@ -15,10 +15,11 @@
 import * as fc from "fast-check";
 import { array } from "fp-ts/lib/Array";
 import { left, right } from "fp-ts/lib/Either";
-import { FunctionN, identity, pipe } from "fp-ts/lib/function";
+import { FunctionN, identity } from "fp-ts/lib/function";
+import { pipe } from "fp-ts/lib/pipeable";
 import {abort, done, interrupt, raise } from "../src/exit";
-import { abortWith, async, asyncTotal, completeWith, effect, getInterruptible, interrupted, interruptible, IO, io,
-   never, raiseError, raiseErrorC, succeedWith, succeedWithC, suspend, uninterruptible } from "../src/io";
+import { IO } from "../src/io";
+import * as io from "../src/io";
 import { makeRef } from "../src/ref";
 import {
   arbConstIO,
@@ -35,50 +36,50 @@ import {
 describe("io", () => {
   describe("#succeed", () => {
     it("should complete with a completed", () =>
-      expectExit(succeedWith(42), done(42))
+      expectExit(io.pure(42), done(42))
     );
   });
   describe("#fail", () => {
     it("should complete with a failed", () =>
-      expectExit(raiseError("boom"), raise("boom"))
+      expectExit(io.raiseError("boom"), raise("boom"))
     );
   });
   describe("#abort", () => {
     it("should complete with an aborted", () =>
-      expectExit(abortWith("boom"), abort("boom"))
+      expectExit(io.raiseAbort("boom"), abort("boom"))
     );
   });
   describe("#interrupted", () => {
     it("should complete with an interrupted", () =>
-      expectExit(interrupted, interrupt)
+      expectExit(io.raiseInterrupt, interrupt)
     );
   });
   describe("#exitWith", () => {
     it("should complete with a completed when provided", () =>
-      expectExit(completeWith(done(42)), done(42))
+      expectExit(io.completed(done(42)), done(42))
     );
     it("should complete with a failed when provided", () =>
-      expectExit(completeWith(raise("boom")), raise("boom"))
+      expectExit(io.completed(raise("boom")), raise("boom"))
     );
     it("should complete with an aborted when provided", () =>
-      expectExit(completeWith(abort("boom")), abort("boom"))
+      expectExit(io.completed(abort("boom")), abort("boom"))
     );
     it("should complete with an interrupted when provided", () =>
-      expectExit(completeWith(interrupt), interrupt)
+      expectExit(io.completed(interrupt), interrupt)
     );
   });
   describe("#effect", () => {
     it("should complete at some a success", () =>
-      expectExit(effect(() => 42), done(42))
+      expectExit(io.sync(() => 42), done(42))
     );
   });
   describe("#suspend", () => {
     it("should complete with synchronous effects", () =>
-      expectExit(suspend(() => succeedWith(42)), done(42))
+      expectExit(io.suspended(() => io.pure(42)), done(42))
     );
     it("should complete with asynchronous effects", () =>
-      expectExit(suspend(() =>
-        asyncTotal((callback) => {
+      expectExit(io.suspended(() =>
+        io.asyncTotal((callback) => {
           const handle = setTimeout(() => callback(42), 0);
           return () => { clearTimeout(handle); };
         })
@@ -87,7 +88,7 @@ describe("io", () => {
   });
   describe("#delay", () => {
     it("should complete with a success eventually", () =>
-      expectExit(asyncTotal((callback) => {
+      expectExit(io.asyncTotal((callback) => {
         const handle = setTimeout(() => callback(42), 0);
         return () => { clearTimeout(handle); };
       }), done(42))
@@ -95,13 +96,13 @@ describe("io", () => {
   });
   describe("#async", () => {
     it("should complete with a success eventually", () =>
-      expectExit(async((callback) => {
+      expectExit(io.async((callback) => {
         const handle = setTimeout(() => callback(right(42)), 0);
         return () => { clearTimeout(handle); };
       }), done(42))
     );
     it("should complete with a failed eventually", () =>
-      expectExit(async((callback) => {
+      expectExit(io.async((callback) => {
         const handle = setTimeout(() => callback(left("boom")), 0);
         return () => { clearTimeout(handle); };
       }), raise("boom"))
@@ -109,18 +110,18 @@ describe("io", () => {
   });
   describe("#interrupted", () => {
     it("should complete with interrupted", () =>
-      expectExit(interrupted, interrupt)
+      expectExit(io.raiseInterrupt, interrupt)
     );
   });
   describe("#run", () => {
     it("should complete with an expected completion", () =>
-      expectExit(succeedWith(42).result(), done(done(42)))
+      expectExit(io.result(io.pure(42)), done(done(42)))
     );
     it("should complete with an expected failure", () =>
-      expectExit(raiseError("boom").result(), done(raise("boom")))
+      expectExit(io.result(io.raiseError("boom")), done(raise("boom")))
     );
     it("should complete with an expected abort", () =>
-      expectExit(abortWith("boom").result(), done(abort("boom")))
+      expectExit(io.result(io.raiseAbort("boom")), done(abort("boom")))
     );
     /**
      * This may be counter-intruitive, but the interrupted io sets the interrupted flag.
@@ -130,54 +131,56 @@ describe("io", () => {
      * above
      */
     it("should complete with an expected interrupt", () =>
-      expectExit(uninterruptible(interrupted.result()), interrupt)
-    );
-  });
-  describe("raceFirstDone", () => {
-    it("should resolve with the first success", () =>
-      expectExit(succeedWith(42).delay(10).race(never), done(42))
-    );
-    it("should resolve with the first success (flipped)", () =>
-      expectExit(never.widen<number>().race(succeedWith(42).delay(10)), done(42))
-    );
-    it("should resolve with the first error", () =>
-      expectExit(raiseError("boom").delay(10).race(never), raise("boom"))
-    );
-    it("should resolve with the first error (flipped)", () =>
-      expectExit(never.widenError<string>().race(raiseError("boom").delay(10)), raise("boom"))
+      expectExit(io.uninterruptible(io.result(io.raiseInterrupt)), interrupt)
     );
   });
   describe("raceFirst", () => {
+    it("should resolve with the first success", () =>
+      expectExit(io.raceFirst(io.delay(io.pure(42), 10), io.never), done(42))
+    );
+    it("should resolve with the first success (flipped)", () =>
+      expectExit(io.raceFirst(io.never, io.delay(io.pure(42), 10)), done(42))
+    );
+    it("should resolve with the first error", () =>
+      expectExit(io.raceFirst(io.delay(io.raiseError("boom"), 10), io.never), raise("boom"))
+    );
+    it("should resolve with the first error (flipped)", () =>
+      expectExit(io.raceFirst(io.never, io.delay(io.raiseError("boom"), 10)), raise("boom"))
+    );
+  });
+  describe("race", () => {
     it("should resolve wih a success", () =>
-      expectExit(succeedWith(42).delay(10).raceSuccess(never)
-                  .zip(never.widen<number>().raceSuccess(succeedWith(42).delay(14))), done([42, 42]))
+      expectExit(io.zip(
+        io.race(io.delay(io.pure(42), 10), io.never),
+        io.race(io.never, io.delay(io.pure(42), 14))
+      ), done([42, 42]))
     );
     it("should resolve to a success on a failure", () =>
-      expectExit(raiseErrorC<number>()("boom!").raceSuccess(succeedWith(42).delay(10)), done(42))
+      expectExit(io.race(io.raiseError("boom!"), io.delay(io.pure(42), 10)), done(42))
     );
   });
   describe("interruptible state", () => {
     it("should set interrupt status", () =>
       expectExit(
-        interruptible(getInterruptible),
+        io.interruptible(io.accessInterruptible),
         done(true)
       )
     );
     it("should set nested interrupt status", () =>
       expectExit(
-        uninterruptible(interruptible(getInterruptible)),
+        io.uninterruptible(io.interruptible(io.accessInterruptible)),
         done(true)
       )
     );
     it("should compose", () =>
       expectExit(
-        uninterruptible(interruptible(uninterruptible(getInterruptible))),
+        io.uninterruptible(io.interruptible(io.uninterruptible(io.accessInterruptible))),
         done(false)
       )
     );
     it("should allow setting uninterruptible", () =>
       expectExit(
-        uninterruptible(getInterruptible),
+        io.uninterruptible(io.accessInterruptible),
         done(false)
       )
     );
@@ -190,9 +193,9 @@ describe("io", () => {
     const even: FunctionN<[number], boolean> = (n: number) => n % 2 === 0;
 
     const functor = {
-      identity: <E, A>(ioa: IO<E, A>) => eqvIO(ioa.map(identity), ioa),
+      identity: <E, A>(ioa: IO<E, A>) => eqvIO(io.map(ioa, identity), ioa),
       composition: <E, A, B, C>(ioa: IO<E, A>, fab: FunctionN<[A], B>, fbc: FunctionN<[B], C>) =>
-        eqvIO(ioa.map(fab).map(fbc), ioa.map(pipe(fab, fbc)))
+        eqvIO(pipe(ioa, io.lift(fab), io.lift(fbc)), io.map(ioa, (a) => fbc(fab(a))))
     };
 
     const apply = {
@@ -200,62 +203,74 @@ describe("io", () => {
                                            iofab: IO<E, FunctionN<[A], B>>,
                                            iofbc: IO<E, FunctionN<[B], C>>) =>
         eqvIO(
-          iofbc.map((bc) => (ab: FunctionN<[A], B>) => (a: A) => bc(ab(a))).ap_(iofab).ap_(ioa),
-          iofbc.ap_(iofab.ap_(ioa))
+          io.ap_(
+            io.ap_(
+              io.map(iofbc,
+                (bc) => (ab: FunctionN<[A], B>) => (a: A) => bc(ab(a))
+              ),
+              iofab
+            ),
+            ioa
+          ),
+          io.ap_(iofbc, io.ap_(iofab, ioa))
         )
     };
 
     const applicative = {
       identity: <E, A>(ioa: IO<E, A>) =>
         eqvIO(
-          succeedWithC<E>()(identity).ap_(ioa),
+          io.ap(ioa, io.pure(identity)),
           ioa
         ),
       homomorphism: <A, B>(fab: FunctionN<[A], B>, a: A) =>
         eqvIO(
-          succeedWith(fab).ap_(succeedWith(a)),
-          succeedWith(fab(a))
+          io.ap_(io.pure(fab), io.pure(a)),
+          io.pure(fab(a))
         ),
       interchange: <E, A, B>(a: A, iofab: IO<E, FunctionN<[A], B>>) =>
         eqvIO(
-          iofab.ap_(succeedWith(a)),
-          succeedWithC<E>()((ab: FunctionN<[A], B>) => ab(a)).ap_(iofab)
+          io.ap_(iofab, io.pure(a)),
+          io.ap_(io.pure((ab: FunctionN<[A], B>) => ab(a)), iofab)
         ),
       derivedMap: <E, A, B>(ab: FunctionN<[A], B>, ioa: IO<E, A>) =>
         eqvIO(
-          ioa.map(ab),
-          succeedWithC<E>()(ab).ap_(ioa)
+          io.map(ioa, ab),
+          io.ap_(io.pure(ab), ioa)
         )
     };
 
     const chain = {
       associativivity: <E, A, B, C>(ioa: IO<E, A>, kab: FunctionN<[A], IO<E, B>>, kbc: FunctionN<[B], IO<E, C>>) =>
         eqvIO(
-          ioa.chain(kab).chain(kbc),
-          ioa.chain((a) => kab(a).chain(kbc))
+          pipe(
+            ioa,
+            io.liftChain(kab),
+            io.liftChain(kbc)
+          ),
+          io.chain(ioa, (a) => io.chain(kab(a), kbc))
         ),
       derivedAp: <E, A, B>(iofab: IO<E, FunctionN<[A], B>>, ioa: IO<E, A>) =>
         eqvIO(
-          ioa.ap(iofab),
-          iofab.chain((f) => ioa.map(f))
+          io.ap(ioa, iofab),
+          io.chain(iofab, (f) => io.map(ioa, f))
         )
     };
 
     const monad = {
       leftIdentity: <E, A, B>(kab: FunctionN<[A], IO<E, B>>, a: A) =>
         eqvIO(
-          succeedWithC<E>()(a).chain(kab),
+          io.chain(io.pure(a), kab),
           kab(a)
         ),
       rightIdentity: <E, A>(ioa: IO<E, A>) =>
         eqvIO(
-          ioa.chain(succeedWith),
+          io.chain(ioa, io.pure),
           ioa
         ),
       derivedMap: <E, A, B>(ab: FunctionN<[A], B>, ioa: IO<E, A>) =>
         eqvIO(
-          ioa.map(ab),
-          ioa.chain((a) => succeedWith(ab(a)))
+          io.map(ioa, ab),
+          io.chain(ioa, (a) => io.pure(ab(a)))
         )
     };
 
@@ -279,8 +294,8 @@ describe("io", () => {
         fc.assert(
           fc.asyncProperty(
             arbIO(fc.string()),
-            fc.constant(strlen).map(succeedWith),
-            fc.constant(even).map(succeedWith),
+            fc.constant(strlen).map(io.pure),
+            fc.constant(even).map(io.pure),
             apply.associativeComposition
           )
         )
@@ -337,7 +352,7 @@ describe("io", () => {
       it(" - derived ap", () =>
         fc.assert(
           fc.asyncProperty(
-            fc.constant(strlen).map(succeedWith),
+            fc.constant(strlen).map(io.pure),
             arbIO(fc.string()),
             chain.derivedAp
           )
@@ -377,8 +392,8 @@ describe("io", () => {
         // The host exists to ensure we are testing in async boundaries
         recoveryEquivalence: <E, E2, A>(host: IO<E2, A>, e: E, kea: FunctionN<[E], IO<E2, A>>) =>
           eqvIO(
-           host.chain((_) => raiseErrorC<A>()(e).chainError(kea)),
-           host.chain((_) => kea(e))
+           io.chain(host, (_) => io.chainError(io.raiseError(e), kea)),
+           io.chain(host, (_) => kea(e))
           )
       };
       it(" - recovery equivalence", () =>
@@ -404,8 +419,8 @@ describe("io", () => {
           fc.array(arbIO(fc.integer())),
           (before, err, after) =>
             eqvIO(
-              array.sequence(io)([...before, err, ...after]),
-              err.as([])
+              array.sequence(io.instances)([...before, err, ...after]),
+              io.as(err, [])
             )
         )
       )
@@ -414,21 +429,21 @@ describe("io", () => {
   it("many async ios should be parZipWithAble", () => {
     const ios: Array<IO<never, number>> = [];
     for (let i = 0; i < 10000; i++) {
-      ios.push(succeedWith(1).delay(Math.random() * 100));
+      ios.push(io.delay(io.pure(1), Math.random() * 100));
     }
     return eqvIO(
-      array.reduce(ios, succeedWith(42), (l, r) => l.parApplyFirst(r)),
-      succeedWith(42)
+      array.reduce(ios, io.pure(42) as IO<never, number>, (l, r) => io.parApplyFirst(l, r)),
+      io.pure(42)
     );
   });
   it("many sync ios should be parZipWithAble", () => {
     const ios: Array<IO<never, number>> = [];
     for (let i = 0; i < 10000; i++) {
-      ios.push(succeedWith(1));
+      ios.push(io.pure(1));
     }
     return eqvIO(
-      array.reduce(ios, succeedWith(42), (l, r) => l.parApplyFirst(r)),
-      succeedWith(42)
+      array.reduce(ios, io.pure(42) as IO<never, number>, (l, r) => io.parApplyFirst(l, r)),
+      io.pure(42)
     );
   });
   describe("#bracketExit", function() {
@@ -448,12 +463,13 @@ describe("io", () => {
           arbEitherIO(fc.string(), fc.nat()),
           (acqDelay, useDelay, relDelay, interruptDelay, useResult) =>
             expectExit(
-              makeRef()(0)
-              .chain((cell) => {
-                const action = (cell.update((n) => n + 1).delay(acqDelay)).widenError<string>()
-                  .bracket((_) => cell.update((n) => n - 1).delay(relDelay), (_) => useResult.delay(useDelay));
-                return action.fork()
-                  .chain((child) => child.interrupt.delay(interruptDelay).applySecond(cell.get));
+              io.chain(makeRef()(0),
+              (cell) => {
+                const action = io.bracket(
+                    io.delay(cell.update((n) => n + 1), acqDelay),
+                    (_) => io.delay(cell.update((n) => n - 1), relDelay), (_) => io.delay(useResult, useDelay));
+                return io.chain(io.fork(action),
+                  (child) => io.applySecond(io.delay(child.interrupt, interruptDelay), cell.get));
               }),
               done(0)
             )

@@ -14,7 +14,8 @@
 
 import { FunctionN } from "fp-ts/lib/function";
 import { Monad2 } from "fp-ts/lib/Monad";
-import { bracket, IO } from "./io";
+import { IO } from "./io";
+import * as io from "./io";
 import { MutableStack } from "./support/mutable-stack";
 
 // TODO: Switch this to use a wrapper class + internal ADT similar to IO
@@ -58,9 +59,9 @@ export class Resource<E, A> {
     if (this.step._tag === "pure") {
       return f(this.step.a);
     } else if (this.step._tag === "bracket") {
-      return this.step.acquire.bracket(this.step.release, f);
+      return io.bracket(this.step.acquire, this.step.release, f);
     } else if (this.step._tag === "suspend") {
-      return this.step.suspended.chain((r) => r.use(f));
+      return io.chain(this.step.suspended, (r) => r.use(f));
     } else {
       const s = this.step;
       return s.left.use((a) => s.bind(a).use(f));
@@ -75,7 +76,7 @@ class Pure<E, A> {
 
 class Bracket<E, A> {
   public readonly _tag: "bracket" = "bracket";
-  constructor(public readonly acquire: IO<E, A>, public readonly release: FunctionN<[A], IO<E, void>>) { }
+  constructor(public readonly acquire: IO<E, A>, public readonly release: FunctionN<[A], IO<E, unknown>>) { }
 }
 
 class Suspend<E, A> {
@@ -92,7 +93,7 @@ export function of<E, A>(a: A): Resource<E, A> {
   return new Resource(new Pure(a));
 }
 
-export function from<E, A>(acquire: IO<E, A>, release: FunctionN<[A], IO<E, void>>): Resource<E, A> {
+export function from<E, A>(acquire: IO<E, A>, release: FunctionN<[A], IO<E, unknown>>): Resource<E, A> {
   return new Resource(new Bracket(acquire, release));
 }
 

@@ -17,7 +17,8 @@ import { Either, fold as foldEither } from "fp-ts/lib/Either";
 import { FunctionN, Lazy } from "fp-ts/lib/function";
 import { Option } from "fp-ts/lib/Option";
 import { Done, done, Error, Exit, interrupt as interruptExit, raise } from "./exit";
-import { abortWith, IO, succeedWith } from "./io";
+import { IO } from "./io";
+import * as io from "./io";
 import { defaultRuntime, Runtime } from "./runtime";
 import { Completable, completable } from "./support/completable";
 import { MutableStack, mutableStack } from "./support/mutable-stack";
@@ -58,7 +59,7 @@ const makeInterruptFrame = (interruptStatus: MutableStack<boolean>): InterruptFr
     _tag: "interrupt-frame",
     apply(u: unknown) {
       interruptStatus.pop();
-      return succeedWith(u);
+      return io.pure(u);
     },
     exitRegion() {
       interruptStatus.pop();
@@ -111,51 +112,46 @@ export function makeDriver<E, A>(run: IO<E, A>, runtime: Runtime = defaultRuntim
   function loop(go: IO<unknown, unknown>): void {
     let current: IO<unknown, unknown> | undefined = go;
     while (current && (!isInterruptible() || !interrupted)) {
-      const step = current.step;
       try {
-        if (step._tag === "succeed") {
-          current = next(step.value);
-        } else if (step._tag === "caused") {
-          if (step.cause._tag === "interrupted") {
+        if (current._tag === "pure") {
+          current = next(current.value);
+        } else if (current._tag === "raised") {
+          if (current.error._tag === "interrupt") {
             interrupted = true;
           }
-          current = handle(step.cause);
-        } else if (step._tag === "complete") {
-          if (step.status._tag === "value") {
-            current = next(step.status.value);
+          current = handle(current.error);
+        } else if (current._tag === "completed") {
+          if (current.exit._tag === "value") {
+            current = next(current.exit.value);
           } else {
-            current = handle(step.status);
+            current = handle(current.exit);
           }
-        } else if (step._tag === "suspend") {
-          current = step.thunk();
-        } else if (step._tag === "async") {
-          contextSwitch(step.op);
+        } else if (current._tag === "suspended") {
+          current = current.thunk();
+        } else if (current._tag === "async") {
+          contextSwitch(current.op);
           current = undefined;
-        } else if (step._tag === "chain") {
-          frameStack.push(makeFrame(step.bind));
-          current = step.inner;
-        } else if (step._tag === "fold") {
-          frameStack.push(makeFoldFrame(step.success, step.failure));
-          current = step.inner;
-        } else if (step._tag === "interruptible-state") {
-          interruptRegionStack.push(step.state);
+        } else if (current._tag === "chain") {
+          frameStack.push(makeFrame(current.bind));
+          current = current.inner;
+        } else if (current._tag === "collapse") {
+          frameStack.push(makeFoldFrame(current.success, current.failure));
+          current = current.inner;
+        } else if (current._tag === "interrupt-region") {
+          interruptRegionStack.push(current.flag);
           frameStack.push(makeInterruptFrame(interruptRegionStack));
-          current = step.inner;
-        } else if (step._tag === "platform-interface") {
-          if (step.platform._tag === "get-runtime") {
-            current = succeedWith(runtime);
-          } else if (step.platform._tag === "get-interruptible") {
-            current = succeedWith(isInterruptible());
-          } else {
-            throw new Error(`Die: Unrecognized platform-interface tag ${step.platform}`);
-          }
+          current = current.inner;
+        } else if (current._tag === "access-runtime") {
+          current = io.pure(runtime);
+        } else if (current._tag === "access-interruptible") {
+          current = io.pure(isInterruptible());
         } else {
           // This should never happen.
           // However, there is not great way of ensuring the above is total and its worth having during developments
-          throw new Error(`Die: Unrecognized step type ${step}`);
+          throw new Error(`Die: Unrecognized current type ${current}`);
         }
       } catch (e) {
-        current = abortWith(e);
+        current = io.raiseAbort(e);
       }
     }
     // If !current then the interrupt came to late and we completed everything
@@ -183,7 +179,7 @@ export function makeDriver<E, A>(run: IO<E, A>, runtime: Runtime = defaultRuntim
 
   function canRecover(cause: Error<unknown>): boolean {
     // It is only possible to recovery from interrupts in an uninterruptible region
-    if (cause._tag === "interrupted") {
+    if (cause._tag === "interrupt") {
       return !isInterruptible();
     }
     return true;

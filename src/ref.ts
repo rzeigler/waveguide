@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import { FunctionN } from "fp-ts/lib/function";
-import { effect, IO } from "./io";
+import { sync, IO } from "./io";
 
 export interface Ref<A> {
   readonly get: IO<never, A>;
@@ -27,22 +27,22 @@ export interface Ref<A> {
  * Curried form of makeRef_ to allow for inference on the initial type
  */
 export const makeRef = <E = never>() => <A>(initial: A): IO<E, Ref<A>> =>
-  effect(() => {
+  sync(() => {
       let value = initial;
 
-      const get = effect(() => value);
+      const get = sync(() => value);
 
-      const set = (a: A) => effect(() => {
+      const set = (a: A) => sync(() => {
         const prev = value;
         value = a;
         return prev;
       });
 
-      const update = (f: FunctionN<[A], A>) => effect(() => {
+      const update = (f: FunctionN<[A], A>) => sync(() => {
         return value = f(value);
       });
 
-      const modify = <B>(f: FunctionN<[A], readonly [B, A]>) => effect(() => {
+      const modify = <B>(f: FunctionN<[A], readonly [B, A]>) => sync(() => {
         const [b, a] = f(value);
         value = a;
         return b;
@@ -53,7 +53,7 @@ export const makeRef = <E = never>() => <A>(initial: A): IO<E, Ref<A>> =>
         set,
         update,
         modify
-      };
+      } as Ref<A>;
     });
 
 export function makeRef_<E, A>(initial: A): IO<E, Ref<A>> {

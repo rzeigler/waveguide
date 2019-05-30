@@ -16,7 +16,7 @@ import { Exit } from "./exit";
 import { IO, unit } from "./io";
 
 export function ticketExit(ticket: Ticket<unknown>, exit: Exit<never, unknown>): IO<never, void> {
-  if (exit._tag === "interrupted") {
+  if (exit._tag === "interrupt") {
     return ticket.cleanup;
   }
   return unit;

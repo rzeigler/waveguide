@@ -14,10 +14,12 @@
 
 import * as e from "fp-ts/lib/Either";
 import { Either, left, right } from "fp-ts/lib/Either";
-import { constant, identity, not, pipeOp } from "fp-ts/lib/function";
+import { constant, identity, not } from "fp-ts/lib/function";
+import { pipe } from "fp-ts/lib/pipeable";
 import * as o from "fp-ts/lib/Option";
 import { Deferred, makeDeferred } from "./deferred";
-import { abortWith, bracketC, bracketExitC, IO, unit } from "./io";
+import { IO } from "./io";
+import * as io from "./io";
 import { makeRef, Ref } from "./ref";
 import { Dequeue, empty } from "./support/dequeue";
 import { makeTicket, Ticket, ticketExit, ticketUse } from "./ticket";
@@ -41,43 +43,45 @@ const isReservationFor = (latch: Deferred<never, void>) => (rsv: readonly [numbe
 
 function sanityCheck(n: number): IO<never, void> {
   if (n < 0) {
-    return abortWith(new Error("Die: semaphore permits must be non negative"));
+    return io.raiseAbort(new Error("Die: semaphore permits must be non negative"));
   }
   if (Math.round(n) !== n) {
-    return abortWith(new Error("Die: semaphore permits may not be fractional"));
+    return io.raiseAbort(new Error("Die: semaphore permits may not be fractional"));
   }
-  return unit;
+  return io.unit;
 }
 
 function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
   const cancelWait = (n: number, latch: Deferred<never, void>): IO<never, void> =>
-    ref.modify(
-      (current) =>
-        pipeOp(
-          current,
-          e.fold(
-            (waiting) =>
-              pipeOp(
-                waiting.find(isReservationFor(latch)),
-                o.fold(
-                  () => [releaseN(n), left(waiting) as State] as const,
-                  ([pending]) => [
-                    releaseN(n - pending),
-                    left(waiting.filter(not(isReservationFor(latch)))) as State
-                  ] as const
-                )
-              ),
-            (ready) => [unit, right(ready + n) as State] as const
+    io.uninterruptible(io.flatten(
+      ref.modify(
+        (current) =>
+          pipe(
+            current,
+            e.fold(
+              (waiting) =>
+                pipe(
+                  waiting.find(isReservationFor(latch)),
+                  o.fold(
+                    () => [releaseN(n), left(waiting) as State] as const,
+                    ([pending]) => [
+                      releaseN(n - pending),
+                      left(waiting.filter(not(isReservationFor(latch)))) as State
+                    ] as const
+                  )
+                ),
+              (ready) => [io.unit, right(ready + n) as State] as const
+            )
           )
-        )
-    ).flatten().uninterruptible();
+      )
+    ));
 
   const ticketN = (n: number): IO<never, Ticket<void>> =>
-    makeDeferred<never, void>()
-      .chain((latch) =>
+    io.chain(makeDeferred<never, void>(),
+      (latch) =>
         ref.modify(
           (current) =>
-            pipeOp(
+            pipe(
               current,
               e.fold(
                 (waiting) => [
@@ -86,7 +90,7 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
                 ] as const,
                 (ready) => ready >= n ?
                   [
-                    makeTicket(unit, releaseN(n)),
+                    makeTicket(io.unit, releaseN(n)),
                     right(ready - n) as State
                   ] as const :
                   [
@@ -99,43 +103,49 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
       );
 
   const acquireN = <E = never>(n: number): IO<E, void> =>
-    sanityCheck(n)
-      .applySecond(n === 0 ? unit : bracketExitC(ticketN(n))(ticketExit, ticketUse));
+    io.applySecond(
+      sanityCheck(n),
+      n === 0 ? io.unit : io.bracketExitC(ticketN(n))(ticketExit, ticketUse)
+    );
 
   const releaseN = <E = never>(n: number): IO<E, void> =>
-    sanityCheck(n)
-      .applySecond(n === 0 ? unit :
-        ref.modify(
-          (current) =>
-            pipeOp(
-              current,
-              e.fold(
-                (waiting) =>
-                  pipeOp(
-                    waiting.take(),
-                    o.fold(
-                      () => [unit, right(n) as State] as const,
-                      ([[needed, latch], q]) => n >= needed ?
-                        [
-                          latch.done(undefined).applyFirst(n > needed ? releaseN(n - needed) : unit),
-                          left(q) as State
-                        ] as const :
-                        [
-                          unit,
-                          left(q.push([needed - n, latch] as const)) as State
-                        ] as const
-                    )
-                  ),
-                (ready) => [unit, right(ready + n) as State] as const
+    
+    io.applySecond(
+      sanityCheck(n),
+      io.uninterruptible(
+        n === 0 ? io.unit :
+        io.flatten(ref.modify(
+            (current) =>
+              pipe(
+                current,
+                e.fold(
+                  (waiting) =>
+                    pipe(
+                      waiting.take(),
+                      o.fold(
+                        () => [io.unit, right(n) as State] as const,
+                        ([[needed, latch], q]) => n >= needed ?
+                          [
+                            io.applyFirst(latch.done(undefined), n > needed ? releaseN(n - needed) : io.unit),
+                            left(q) as State
+                          ] as const :
+                          [
+                            io.unit,
+                            left(q.push([needed - n, latch] as const)) as State
+                          ] as const
+                      )
+                    ),
+                  (ready) => [io.unit, right(ready + n) as State] as const
+                )
               )
-            )
-        ).flatten().uninterruptible());
+        ))
+      ));
 
   const withPermitsN = <E, A>(n: number, inner: IO<E, A>): IO<E, A> =>
-    bracketC(acquireN<E>(n).interruptible())(constant(releaseN(n)), (_) => inner);
+    // hrm... why downcast necessary?
+    io.bracketC(io.interruptible(acquireN<E>(n)))(constant(releaseN(n) as IO<E, unknown>), (_) => inner);
 
-  const available = ref.get
-    .map(e.fold((q) => -1 * q.size(), identity));
+  const available = io.map(ref.get, e.fold((q) => -1 * q.size(), identity));
 
   return {
     acquireN,
@@ -155,7 +165,8 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
  * This must be non-negative
  */
 export function makeSemaphore(n: number): IO<never, Semaphore> {
-  return sanityCheck(n)
-    .applySecond(makeRef()<State>(right(n)))
-    .map(makeSemaphoreImpl);
+  return io.applySecond(
+      sanityCheck(n),
+      io.map(makeRef()<State>(right(n)), makeSemaphoreImpl)
+    );
 }

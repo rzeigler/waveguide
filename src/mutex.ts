@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import { IO } from "./io";
+import * as io from "./io";
 import { makeSemaphore } from "./semaphore";
 
 export interface Mutex {
@@ -22,11 +23,12 @@ export interface Mutex {
   withExclusion<E, A>(inner: IO<E, A>): IO<E, A>;
 }
 
-export const makeMutex: IO<never, Mutex> = makeSemaphore(1)
-  .map((sem) => ({
+export const makeMutex: IO<never, Mutex> = 
+  io.map(makeSemaphore(1), 
+  (sem) => ({
     acquire: sem.acquire,
     release: sem.release,
-    available: sem.available.map((n) => n > 0),
+    available: io.map(sem.available, (n) => n > 0),
     withExclusion<E, A>(inner: IO<E, A>): IO<E, A> {
       return sem.withPermit(inner);
     }

@@ -6,7 +6,7 @@
   "types": "lib/index.d.ts",
   "homepage": "https://rzeigler.github.com/waveguide",
   "scripts": {
-    "clean": "rimraf lib/",
+    "clean": "rimraf lib/ build/",
     "build": "tsc",
     "test-build": "tsc -p tsconfig.test.json",
     "test": "tsc -p tsconfig.test.json && mocha --recursive build/**/*.spec.js",

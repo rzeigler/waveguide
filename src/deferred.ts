@@ -13,7 +13,8 @@
 // limitations under the License.
 
 import { Exit } from "./exit";
-import { asyncTotal, completeWith, effect, interrupted, IO, raiseError, succeedWith } from "./io";
+import { IO } from "./io";
+import * as io from "./io";
 import { Completable, completable} from "./support/completable";
 
 export interface Deferred<E, A> {
@@ -25,31 +26,31 @@ export interface Deferred<E, A> {
 }
 
 export function makeDeferred<E, A, E2 = never>(): IO<E2, Deferred<E, A>> {
-  return effect(() => {
+  return io.sync(() => {
     const c: Completable<IO<E, A>> = completable();
-    const wait = asyncTotal<IO<E, A>>((callback) =>
+    const wait = io.flatten(io.asyncTotal<IO<E, A>>((callback) =>
       c.listen(callback)
-    ).flatten();
-    const interrupt = effect(() => {
-      c.complete(interrupted);
+    ));
+    const interrupt = io.sync(() => {
+      c.complete(io.raiseInterrupt);
     });
-    const done = (a: A): IO<never, void> => effect(() => {
-      c.complete(succeedWith(a));
+    const done = (a: A): IO<never, void> => io.sync(() => {
+      c.complete(io.pure(a));
     });
-    const error = (e: E): IO<never, void> => effect(() => {
-      c.complete(raiseError(e));
+    const error = (e: E): IO<never, void> => io.sync(() => {
+      c.complete(io.raiseError(e));
     });
-    const complete = (exit: Exit<E, A>): IO<never, void> => effect(() => {
-      c.complete(completeWith(exit));
+    const complete = (exit: Exit<E, A>): IO<never, void> => io.sync(() => {
+      c.complete(io.completed(exit));
     });
     const from = (source: IO<E, A>): IO<never, void> =>
-      source.result().chain(complete).onInterrupted(interrupt);
+      io.onInterrupted(io.chain(io.result(source), complete), interrupt);
     return {
       wait,
       interrupt,
       done,
       error,
       from
-    };
+    } as Deferred<E, A>;
   });
 }

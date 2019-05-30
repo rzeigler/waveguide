@@ -19,7 +19,8 @@ import fc, { Arbitrary } from "fast-check";
 import { Eq } from "fp-ts/lib/Eq";
 import { constTrue, FunctionN, identity } from "fp-ts/lib/function";
 import { done, Exit } from "../src/exit";
-import { abortWith, asyncTotal, completeWith, IO, raiseError, succeedWith, suspend, unit } from "../src/io";
+import { asyncTotal, completed, IO, pure, raiseAbort, raiseError, runToPromiseExit, suspended, unit } from "../src/io";
+import * as io from "../src/io";
 /**
  * @deprecated use eqvIO instead
  */
@@ -28,19 +29,19 @@ export function expectExit<E, A>(ioa: IO<E, A>, expected: Exit<E, A>): Promise<v
 }
 
 export function expectExitIn<E, A, B>(ioa: IO<E, A>, f: FunctionN<[Exit<E, A>], B>, expected: B): Promise<void> {
-  return ioa.unsafeRunExitToPromise()
+  return runToPromiseExit(ioa)
     .then((result) => {
       expect(f(result)).to.deep.equal(expected);
     });
 }
 
 export const assertEq = <A>(S: Eq<A>) => (a1: A) => (a2: A): IO<never, void> =>
-  S.equals(a1, a2) ? unit : abortWith(`${a1} <> ${a2}`);
+  S.equals(a1, a2) ? unit : raiseAbort(`${a1} <> ${a2}`);
 
 export function eqvIO<E, A>(io1: IO<E, A>, io2: IO<E, A>): Promise<boolean> {
-  return io1.unsafeRunExitToPromise()
+  return runToPromiseExit(io1)
     .then((result1) =>
-      io2.unsafeRunExitToPromise()
+      runToPromiseExit(io2)
         .then((result2) => {
           return expect(result1).to.deep.equal(result2);
         })
@@ -49,7 +50,7 @@ export function eqvIO<E, A>(io1: IO<E, A>, io2: IO<E, A>): Promise<boolean> {
 }
 
 export function exitType<E, A>(io1: IO<E, A>, tag: Exit<E, A>["_tag"]): Promise<void> {
-  return io1.unsafeRunExitToPromise()
+  return runToPromiseExit(io1)
     .then((result) => expect(result._tag).to.equal(tag))
     .then(() => undefined);
 }
@@ -61,13 +62,13 @@ export function arbIO<E, A>(arb: Arbitrary<A>): Arbitrary<IO<E, A>> {
   return arbVariant
     .chain((ioStep) => {
       if (ioStep === "succeed") {
-        return arb.map((a) => succeedWith(a));
+        return arb.map((a) => pure(a) as IO<E, A>); // force downcast
       } else if (ioStep === "complete") {
-        return arb.map((a) => completeWith(done(a)));
+        return arb.map((a) => completed(done(a)));
       } else if (ioStep === "suspend") {
         // We now need to do recursion... wooo
         return arbIO<E, A>(arb)
-          .map((nestedIO) => suspend(() => nestedIO));
+          .map((nestedIO) => suspended(() => nestedIO));
       } else { // async with random delay
         return fc.tuple(fc.nat(50), arb)
           .map(
@@ -96,7 +97,7 @@ export function arbKleisliIO<E, A, B>(arbAB: Arbitrary<FunctionN<[A], B>>): Arbi
   return arbAB.chain((fab) =>
     arbIO<E, undefined>(fc.constant(undefined)) // construct an IO of arbitrary type we can push a result into
       .map((slot) =>
-        (a: A) => slot.map((_) => fab(a))
+        (a: A) => io.map(slot, (_) => fab(a))
       )
   );
 }
@@ -104,7 +105,7 @@ export function arbKleisliIO<E, A, B>(arbAB: Arbitrary<FunctionN<[A], B>>): Arbi
 export function arbErrorKleisliIO<E, E2, A>(arbEE: Arbitrary<FunctionN<[E], E2>>):
 Arbitrary<FunctionN<[E], IO<E2, A>>> {
   return arbKleisliIO<A, E, E2>(arbEE)
-    .map((f) => (e: E) => f(e).flip());
+    .map((f) => (e: E) => io.flip(f(e)));
 }
 
 /**
@@ -116,7 +117,7 @@ export function arbErrorIO<E, A>(arbE: Arbitrary<E>): Arbitrary<IO<E, A>> {
     .chain((err) =>
       arbConstIO<E, undefined>(undefined)
         .map((iou) =>
-          iou.chain((_) => raiseError(err))
+          io.chain(iou, (_) => raiseError(err))
         )
     );
 }
