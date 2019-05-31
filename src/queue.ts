@@ -13,9 +13,9 @@
 // limitations under the License.
 
 import { Either, fold, left, right } from "fp-ts/lib/Either";
-import { FunctionN, identity } from "fp-ts/lib/function";
+import { FunctionN, identity, pipe, pipeOp } from "fp-ts/lib/function";
 import { getOrElse, option } from "fp-ts/lib/Option";
-import { pipe, pipeable } from "fp-ts/lib/pipeable";
+import { pipeable } from "fp-ts/lib/pipeable";
 import { Deferred, makeDeferred } from "./deferred";
 import { IO } from "./io";
 import * as io from "./io";
@@ -41,7 +41,7 @@ const unboundedOffer = <A>(queue: Dequeue<A>, a: A): Dequeue<A> => queue.offer(a
 // Possibly predicates that allow testing if the queue is at least of some size
 const slidingOffer = (n: number) => <A>(queue: Dequeue<A>, a: A): Dequeue<A> =>
   queue.size() >= n ?
-    pipe(queue.take(),
+    pipeOp(queue.take(),
       poption.map((t) => t[1]),
       getOrElse(() => queue))
       .offer(a) :
@@ -107,7 +107,7 @@ function makeConcurrentQueueImpl<A>(state: Ref<State<A>>,
                                     takeGate: FunctionN<[IO<never, A>], IO<never, A>>): ConcurrentQueue<A> {
   function cleanupLatch(latch: Deferred<never, A>): IO<never, void> {
     return io.asUnit(state.update((current) =>
-      pipe(
+      pipeOp(
         current,
         fold(
           (waiting) => left(waiting.filter((item) => item !== latch)),
@@ -118,11 +118,11 @@ function makeConcurrentQueueImpl<A>(state: Ref<State<A>>,
   }
 
   const take = takeGate(
-    io.bracketExitC(
+    io.bracketExit(
       io.chain(factory,
         (latch) =>
           state.modify((current) =>
-            pipe(
+            pipeOp(
               current,
               fold(
                 (waiting) => [
@@ -130,7 +130,7 @@ function makeConcurrentQueueImpl<A>(state: Ref<State<A>>,
                   left(waiting.offer(latch)) as State<A>
                 ] as const,
                 (ready) =>
-                  pipe(
+                  pipeOp(
                     ready.take(),
                     poption.map(([next, q]) =>
                       [makeTicket(io.pure(next), io.unit), right(q) as State<A>] as const),
@@ -142,8 +142,7 @@ function makeConcurrentQueueImpl<A>(state: Ref<State<A>>,
               )
             )
         )
-    )
-    )(ticketExit, ticketUse)
+    ), ticketExit, ticketUse)
   );
 
   const offer = (a: A): IO<never, void> =>
@@ -152,11 +151,11 @@ function makeConcurrentQueueImpl<A>(state: Ref<State<A>>,
       io.uninterruptible(
         io.flatten(
           state.modify((current) =>
-            pipe(
+            pipeOp(
               current,
               fold(
                 (waiting) =>
-                  pipe(
+                  pipeOp(
                     waiting.take(),
                     poption.map(([next, q]) => [next.done(a), left(q) as State<A>] as const),
                     getOrElse(() => [io.unit, right(overflowStrategy(empty(), a)) as State<A>] as const)

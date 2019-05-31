@@ -14,7 +14,7 @@
 
 import fc from "fast-check";
 import { Do } from "fp-ts-contrib/lib/Do";
-import { pipe } from "fp-ts/lib/pipeable";
+import { pipeOp } from "fp-ts/lib/function";
 import { makeDeferred } from "../src/deferred";
 import { done, interrupt } from "../src/exit";
 import { IO } from "../src/io";
@@ -25,7 +25,7 @@ import { arbEitherIO, eqvIO, expectExit } from "./tools.spec";
 describe("fiber", () => {
   it("fibers are joinable", () =>
     expectExit(
-      pipe(
+      pipeOp(
         io.delay(io.pure(42), 10),
         io.fork,
         io.chainWith((fiber) => fiber.join)
@@ -35,7 +35,7 @@ describe("fiber", () => {
   );
   it("fibers are interruptible", () =>
     expectExit(
-      pipe(
+      pipeOp(
         io.never,
         io.fork,
         io.chainWith((fiber) =>

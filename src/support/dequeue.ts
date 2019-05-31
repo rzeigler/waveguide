@@ -12,9 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Predicate } from "fp-ts/lib/function";
+import { pipeOp, Predicate } from "fp-ts/lib/function";
 import { none, Option, option, some } from "fp-ts/lib/Option";
-import { pipe } from "fp-ts/lib/pipeable";
 import * as l from "./list";
 import { cons, List, nil } from "./list";
 
@@ -34,7 +33,7 @@ export function from<A>(front: List<A>, back: List<A>): Dequeue<A> {
     return l.cata(
       front,
       (h, t) => some([h, from(t, back)] as const),
-      () => pipe(
+      () => pipeOp(
         back,
         l.reverse,
         l.catac(
@@ -53,7 +52,7 @@ export function from<A>(front: List<A>, back: List<A>): Dequeue<A> {
     return l.cata(
       back,
       (h, t) => some([h, from(front, t)] as const),
-      () => pipe(
+      () => pipeOp(
         front,
         l.reverse,
         l.catac(
