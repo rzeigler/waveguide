@@ -18,8 +18,8 @@ import * as fn from "fp-ts/lib/function";
 import * as O from "fp-ts/lib/Option";
 import { none, some } from "fp-ts/lib/Option";
 import * as p from "fp-ts/lib/pipeable";
-import { Dequeue, empty } from "../../src/support/dequeue";
 import { pipe } from "fp-ts/lib/pipeable";
+import { Dequeue, empty } from "../../src/support/dequeue";
 
 describe("Dequeue", () => {
   it("take on empty is none", () => {
