@@ -14,8 +14,9 @@
 
 import * as e from "fp-ts/lib/Either";
 import { Either, left, right } from "fp-ts/lib/Either";
-import { constant, identity, not, pipeOp } from "fp-ts/lib/function";
+import { constant, identity, not } from "fp-ts/lib/function";
 import * as o from "fp-ts/lib/Option";
+import { pipe } from "fp-ts/lib/pipeable";
 import { Deferred, makeDeferred } from "./deferred";
 import * as io from "./io";
 import { IO } from "./io";
@@ -55,11 +56,11 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
     io.uninterruptible(io.flatten(
       ref.modify(
         (current) =>
-          pipeOp(
+          pipe(
             current,
             e.fold(
               (waiting) =>
-                pipeOp(
+                pipe(
                   waiting.find(isReservationFor(latch)),
                   o.fold(
                     () => [releaseN(n), left(waiting) as State] as const,
@@ -80,7 +81,7 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
       (latch) =>
         ref.modify(
           (current) =>
-            pipeOp(
+            pipe(
               current,
               e.fold(
                 (waiting) => [
@@ -115,11 +116,11 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
         n === 0 ? io.unit :
         io.flatten(ref.modify(
             (current) =>
-              pipeOp(
+              pipe(
                 current,
                 e.fold(
                   (waiting) =>
-                    pipeOp(
+                    pipe(
                       waiting.take(),
                       o.fold(
                         () => [io.unit, right(n) as State] as const,

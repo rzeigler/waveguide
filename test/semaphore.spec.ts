@@ -15,7 +15,7 @@
 import fc, {Arbitrary} from "fast-check";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { array } from "fp-ts/lib/Array";
-import { pipeOp } from "fp-ts/lib/function";
+import { pipe } from "fp-ts/lib/pipeable";
 import { done, interrupt} from "../src/exit";
 import * as io from "../src/io";
 import { makeRef } from "../src/ref";
@@ -103,9 +103,9 @@ describe("semaphore", () => {
           (acquires) => {
             const eff = io.chain(makeSemaphore(100),
               (sem) =>
-                pipeOp(
+                pipe(
                   array.traverse(io.instances)(acquires, ([n, pre, post, int]) =>
-                    sem.withPermitsN(n, pipeOp(
+                    sem.withPermitsN(n, pipe(
                       (int ? io.raiseInterrupt : io.after(post)),
                       io.liftDelay(pre),
                       io.fork

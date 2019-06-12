@@ -14,9 +14,10 @@
 
 import { Applicative2 } from "fp-ts/lib/Applicative";
 import { Either, left, right } from "fp-ts/lib/Either";
-import { constant, FunctionN, identity, Lazy, pipe, pipeOp } from "fp-ts/lib/function";
+import { constant, flow, FunctionN, identity, Lazy } from "fp-ts/lib/function";
 import { Monad2 } from "fp-ts/lib/Monad";
 import { none, some } from "fp-ts/lib/Option";
+import { pipe } from "fp-ts/lib/pipeable";
 import { Deferred, makeDeferred } from "./deferred";
 import { makeDriver } from "./driver";
 import { Cause, Exit } from "./exit";
@@ -263,7 +264,7 @@ export function withRuntime<E, A>(f: FunctionN<[Runtime], IO<E, A>>): IO<E, A> {
  * @param f
  */
 export function map<E, A, B>(io: IO<E, A>, f: FunctionN<[A], B>): IO<E, B> {
-  return chain(io, pipe(f, pure));
+  return chain(io, flow(f, pure));
 }
 
 /**
@@ -329,7 +330,7 @@ export function chainErrorWith<E1, E2, A>(f: FunctionN<[E1], IO<E2, A>>): Functi
  * @param f
  */
 export function mapError<E1, E2, A>(io: IO<E1, A>, f: FunctionN<[E1], E2>): IO<E2, A> {
-  return chainError(io, pipe(f, raiseError));
+  return chainError(io, flow(f, raiseError));
 }
 
 /**
@@ -351,7 +352,7 @@ export function bimap<E1, E2, A, B>(io: IO<E1, A>,
                                     rightMap: FunctionN<[A], B>): IO<E2, B> {
   return foldExit(io,
     (cause) => cause._tag === "raise" ? raiseError(leftMap(cause.error)) : completed(cause),
-    pipe(rightMap, pure)
+    flow(rightMap, pure)
   );
 }
 
@@ -436,7 +437,7 @@ export function result<E, A>(io: IO<E, A>): IO<never, Exit<E, A>> {
   return foldExit<E, never, A, Exit<E, A>>(
     io,
     pure,
-    pipe(ex.done, pure)
+    flow(ex.done, pure)
   );
 }
 
@@ -484,8 +485,8 @@ export function bracketExit<E, A, B>(acquire: IO<E, A>,
                                      use: FunctionN<[A], IO<E, B>>): IO<E, B> {
   return uninterruptibleMask<E, B>((cutout) =>
     chain(acquire,
-      (a) => pipeOp(a, use, cutout, result, chainWith(
-        (exit) => pipeOp(release(a, exit), result, chainWith(
+      (a) => pipe(a, use, cutout, result, chainWith(
+        (exit) => pipe(release(a, exit), result, chainWith(
           (finalize) => completed(combineFinalizerExit(exit, finalize))
         ))
       ))
@@ -515,10 +516,10 @@ export function bracket<E, A, B>(acquire: IO<E, A>,
 
 export function onComplete<E, A>(ioa: IO<E, A>, finalizer: IO<E, unknown>): IO<E, A> {
   return uninterruptibleMask((cutout) =>
-    pipeOp(
+    pipe(
       result(cutout(ioa)),
       chainWith((exit) =>
-        pipeOp(
+        pipe(
           finalizer,
           result,
           chainWith((finalize) =>
@@ -532,11 +533,11 @@ export function onComplete<E, A>(ioa: IO<E, A>, finalizer: IO<E, unknown>): IO<E
 
 export function onInterrupted<E, A>(ioa: IO<E, A>, finalizer: IO<E, unknown>): IO<E, A> {
   return uninterruptibleMask((cutout) =>
-    pipeOp(
+    pipe(
       result(cutout(ioa)),
       chainWith((exit) =>
         exit._tag === "interrupt" ?
-          pipeOp(
+          pipe(
             finalizer,
             result,
             chainWith((finalize) =>

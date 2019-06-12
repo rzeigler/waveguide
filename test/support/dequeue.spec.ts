@@ -17,7 +17,9 @@ import fc, { Arbitrary, Command } from "fast-check";
 import * as fn from "fp-ts/lib/function";
 import * as O from "fp-ts/lib/Option";
 import { none, some } from "fp-ts/lib/Option";
+import * as p from "fp-ts/lib/pipeable";
 import { Dequeue, empty } from "../../src/support/dequeue";
+import { pipe } from "fp-ts/lib/pipeable";
 
 describe("Dequeue", () => {
   it("take on empty is none", () => {
@@ -28,13 +30,13 @@ describe("Dequeue", () => {
   });
   it("take after offer is a value", () => {
     const queue = empty().offer(42);
-    const result = queue.take();
-    expect(result).to.deep.equal(some([42, empty()]));
+    const result = pipe(queue.take(), O.map((v) => v[0]));
+    expect(result).to.deep.equal(some(42));
   });
   it("pull after offer is a value", () => {
     const queue = empty<number>().offer(42);
     const result = queue.pull();
-    fn.pipeOp(
+    p.pipe(
       result,
       O.fold(
         () => { throw new Error("expected some"); },
@@ -48,7 +50,7 @@ describe("Dequeue", () => {
       .offer(43)
       .offer(44);
     const result = queue.take();
-    fn.pipeOp(
+    p.pipe(
       result,
       O.fold(
         () => { throw new Error("expected some"); },
@@ -65,7 +67,7 @@ describe("Dequeue", () => {
       .offer(43)
       .offer(44);
     const result = queue.pull();
-    fn.pipeOp(
+    p.pipe(
       result,
       O.fold(
         () => { throw new Error("expected some"); },
@@ -108,7 +110,7 @@ describe("Dequeue", () => {
     },
     run(m: Model, r: Real): void {
       const expected = m.fake.shift();
-      fn.pipeOp(
+      p.pipe(
         r.actual.pull(),
         O.fold(
           () => {
@@ -150,7 +152,7 @@ describe("Dequeue", () => {
     },
     run(m: Model, r: Real): void {
       const expected = m.fake.pop();
-      fn.pipeOp(
+      p.pipe(
         r.actual.take(),
         O.fold(
           () => {

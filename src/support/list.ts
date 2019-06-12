@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { flip, FunctionN, Lazy, not, pipeOp, Predicate } from "fp-ts/lib/function";
+import { flip, FunctionN, Lazy, not, Predicate } from "fp-ts/lib/function";
 import { Monad1 } from "fp-ts/lib/Monad";
 import { none, Option, some } from "fp-ts/lib/Option";
+import { pipe } from "fp-ts/lib/pipeable";
 
 export type List<A> = Cons<A> | Nil;
 
@@ -122,7 +123,7 @@ export function reverse<A>(list: List<A>): List<A> {
 }
 
 export function foldr<A, B>(list: List<A>, b: B, f: FunctionN<[A, B], B>): B {
-  return pipeOp(
+  return pipe(
     list,
     reverse,
     foldlc(b, flip(f))
@@ -134,7 +135,7 @@ export function foldrc<A, B>(b: B, f: FunctionN<[A, B], B>): FunctionN<[List<A>]
 }
 
 export function map<A, B>(list: List<A>, f: FunctionN<[A], B>): List<B> {
-  return pipeOp(
+  return pipe(
     list,
     foldlc(nil as List<B>, (t, a) => cons(f(a), t)),
     reverse
@@ -178,7 +179,7 @@ export function ap<A, B>(list: List<A>, fns: List<FunctionN<[A], B>>): List<B> {
 }
 
 export function chain<A, B>(list: List<A>, f: FunctionN<[A], List<B>>): List<B> {
-  return pipeOp(
+  return pipe(
     list,
     lift(f),
     foldlc(nil as List<B>, concat)

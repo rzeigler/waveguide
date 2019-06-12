@@ -15,7 +15,8 @@
 import * as fc from "fast-check";
 import { array } from "fp-ts/lib/Array";
 import { left, right } from "fp-ts/lib/Either";
-import { FunctionN, identity, pipeOp } from "fp-ts/lib/function";
+import { FunctionN, identity } from "fp-ts/lib/function";
+import { pipe } from "fp-ts/lib/pipeable";
 import {abort, done, interrupt, raise } from "../src/exit";
 import { IO } from "../src/io";
 import * as io from "../src/io";
@@ -194,7 +195,7 @@ describe("io", () => {
     const functor = {
       identity: <E, A>(ioa: IO<E, A>) => eqvIO(io.map(ioa, identity), ioa),
       composition: <E, A, B, C>(ioa: IO<E, A>, fab: FunctionN<[A], B>, fbc: FunctionN<[B], C>) =>
-        eqvIO(pipeOp(ioa, io.lift(fab), io.lift(fbc)), io.map(ioa, (a) => fbc(fab(a))))
+        eqvIO(pipe(ioa, io.lift(fab), io.lift(fbc)), io.map(ioa, (a) => fbc(fab(a))))
     };
 
     const apply = {
@@ -241,7 +242,7 @@ describe("io", () => {
     const chain = {
       associativivity: <E, A, B, C>(ioa: IO<E, A>, kab: FunctionN<[A], IO<E, B>>, kbc: FunctionN<[B], IO<E, C>>) =>
         eqvIO(
-          pipeOp(
+          pipe(
             ioa,
             io.chainWith(kab),
             io.chainWith(kbc)
