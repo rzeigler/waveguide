@@ -42,8 +42,8 @@ export type IO<E, A> =
   (Runtime extends A ? AccessRuntime : never);
 
 export interface Pure<A> {
-  readonly _tag: "pure";
-  readonly value: A;
+    readonly _tag: "pure";
+    readonly value: A;
 }
 
 /**
@@ -51,15 +51,15 @@ export interface Pure<A> {
  * @param a the value
  */
 export function pure<A>(a: A): Pure<A> {
-  return {
-    _tag: "pure",
-    value: a
-  };
+    return {
+        _tag: "pure",
+        value: a
+    };
 }
 
 export interface Raised<E> {
-  readonly _tag: "raised";
-  readonly error: Cause<E>;
+    readonly _tag: "raised";
+    readonly error: Cause<E>;
 }
 
 /**
@@ -67,7 +67,7 @@ export interface Raised<E> {
  * @param e
  */
 export function raised<E>(e: Cause<E>): Raised<E> {
-  return {_tag: "raised", error: e};
+    return {_tag: "raised", error: e};
 }
 
 /**
@@ -75,7 +75,7 @@ export function raised<E>(e: Cause<E>): Raised<E> {
  * @param e
  */
 export function raiseError<E>(e: E): Raised<E> {
-  return raised(ex.raise(e));
+    return raised(ex.raise(e));
 }
 
 /**
@@ -83,7 +83,7 @@ export function raiseError<E>(e: E): Raised<E> {
  * @param u
  */
 export function raiseAbort(u: unknown): Raised<never> {
-  return raised(ex.abort(u));
+    return raised(ex.abort(u));
 }
 
 /**
@@ -92,8 +92,8 @@ export function raiseAbort(u: unknown): Raised<never> {
 export const raiseInterrupt: Raised<never> = raised(ex.interrupt);
 
 export interface Completed<E, A> {
-  readonly _tag: "completed";
-  readonly exit: Exit<E, A>;
+    readonly _tag: "completed";
+    readonly exit: Exit<E, A>;
 }
 
 /**
@@ -101,15 +101,15 @@ export interface Completed<E, A> {
  * @param exit
  */
 export function completed<E, A>(exit: Exit<E, A>): Completed<E, A> {
-  return {
-    _tag: "completed",
-    exit
-  };
+    return {
+        _tag: "completed",
+        exit
+    };
 }
 
 export interface Suspended<E, A> {
-  readonly _tag: "suspended";
-  readonly thunk: Lazy<IO<E, A>>;
+    readonly _tag: "suspended";
+    readonly thunk: Lazy<IO<E, A>>;
 }
 
 /**
@@ -119,10 +119,10 @@ export interface Suspended<E, A> {
  * @param thunk
  */
 export function suspended<E, A>(thunk: Lazy<IO<E, A>>): Suspended<E, A> {
-  return {
-    _tag: "suspended",
-    thunk
-  };
+    return {
+        _tag: "suspended",
+        thunk
+    };
 }
 
 /**
@@ -132,12 +132,12 @@ export function suspended<E, A>(thunk: Lazy<IO<E, A>>): Suspended<E, A> {
  * @param thunk
  */
 export function sync<A>(thunk: Lazy<A>): Suspended<never, A> {
-  return suspended(() => pure(thunk()));
+    return suspended(() => pure(thunk()));
 }
 
 export interface Async<E, A> {
-  readonly _tag: "async";
-  readonly op: FunctionN<[FunctionN<[Either<E, A>], void>], Lazy<void>>;
+    readonly _tag: "async";
+    readonly op: FunctionN<[FunctionN<[Either<E, A>], void>], Lazy<void>>;
 }
 
 /**
@@ -149,10 +149,10 @@ export interface Async<E, A> {
  * @param op
  */
 export function async<E, A>(op: FunctionN<[FunctionN<[Either<E, A>], void>], Lazy<void>>): Async<E, A> {
-  return {
-    _tag: "async",
-    op
-  };
+    return {
+        _tag: "async",
+        op
+    };
 }
 
 /**
@@ -162,13 +162,13 @@ export function async<E, A>(op: FunctionN<[FunctionN<[Either<E, A>], void>], Laz
  * @param op
  */
 export function asyncTotal<A>(op: FunctionN<[FunctionN<[A], void>], Lazy<void>>): Async<never, A> {
-  return async((callback) => op((a) => callback(right(a))));
+    return async((callback) => op((a) => callback(right(a))));
 }
 
 export interface InterruptibleRegion<E, A> {
-  readonly _tag: "interrupt-region";
-  readonly inner: IO<E, A>;
-  readonly flag: boolean;
+    readonly _tag: "interrupt-region";
+    readonly inner: IO<E, A>;
+    readonly flag: boolean;
 }
 
 /**
@@ -177,17 +177,17 @@ export interface InterruptibleRegion<E, A> {
  * @param flag
  */
 export function interruptibleRegion<E, A>(inner: IO<E, A>, flag: boolean): InterruptibleRegion<E, A> {
-  return {
-    _tag: "interrupt-region",
-    inner,
-    flag
-  };
+    return {
+        _tag: "interrupt-region",
+        inner,
+        flag
+    };
 }
 
 export interface Chain<E, Z, A> {
-  readonly _tag: "chain";
-  readonly inner: IO<E, Z>;
-  readonly bind: FunctionN<[Z], IO<E, A>>;
+    readonly _tag: "chain";
+    readonly inner: IO<E, Z>;
+    readonly bind: FunctionN<[Z], IO<E, A>>;
 }
 
 /**
@@ -196,11 +196,11 @@ export interface Chain<E, Z, A> {
  * @param bind
  */
 export function chain<E, Z, A>(inner: IO<E, Z>, bind: FunctionN<[Z], IO<E, A>>): Chain<E, Z, A> {
-  return {
-    _tag: "chain",
-    inner,
-    bind
-  };
+    return {
+        _tag: "chain",
+        inner,
+        bind
+    };
 }
 
 /**
@@ -209,53 +209,53 @@ export function chain<E, Z, A>(inner: IO<E, Z>, bind: FunctionN<[Z], IO<E, A>>):
  * @param inner
  */
 export function flatten<E, A>(inner: IO<E, IO<E, A>>): IO<E, A> {
-  return chain(inner, identity);
+    return chain(inner, identity);
 }
 
 export function chainWith<E, Z, A>(bind: FunctionN<[Z], IO<E, A>>): FunctionN<[IO<E, Z>], Chain<E, Z, A>> {
-  return (io) => chain(io, bind);
+    return (io) => chain(io, bind);
 }
 
 export interface Collapse<E1, E2, A1, A2> {
-  readonly _tag: "collapse";
-  readonly inner: IO<E1, A1>;
-  readonly failure: FunctionN<[Cause<E1>], IO<E2, A2>>;
-  readonly success: FunctionN<[A1], IO<E2, A2>>;
+    readonly _tag: "collapse";
+    readonly inner: IO<E1, A1>;
+    readonly failure: FunctionN<[Cause<E1>], IO<E2, A2>>;
+    readonly success: FunctionN<[A1], IO<E2, A2>>;
 }
 
 export function foldExit<E1, E2, A1, A2>(inner: IO<E1, A1>,
-                                         failure: FunctionN<[Cause<E1>], IO<E2, A2>>,
-                                         success: FunctionN<[A1], IO<E2, A2>>): Collapse<E1, E2, A1, A2> {
-  return {
-    _tag: "collapse",
-    inner,
-    failure,
-    success
-  };
+    failure: FunctionN<[Cause<E1>], IO<E2, A2>>,
+    success: FunctionN<[A1], IO<E2, A2>>): Collapse<E1, E2, A1, A2> {
+    return {
+        _tag: "collapse",
+        inner,
+        failure,
+        success
+    };
 }
 
 export function foldExitWith<E1, E2, A1, A2>(failure: FunctionN<[Cause<E1>], IO<E2, A2>>,
-                                             success: FunctionN<[A1], IO<E2, A2>>):
-                                             FunctionN<[IO<E1, A1>], Collapse<E1, E2, A1, A2>> {
-  return (io) => foldExit(io, failure, success);
+    success: FunctionN<[A1], IO<E2, A2>>):
+    FunctionN<[IO<E1, A1>], Collapse<E1, E2, A1, A2>> {
+    return (io) => foldExit(io, failure, success);
 }
 
 export interface AccessInterruptible {
-  readonly _tag: "access-interruptible";
+    readonly _tag: "access-interruptible";
 }
 
 // These must be typed to IO or we end up with an IO<never, any>
 export const accessInterruptible: IO<never, boolean> = { _tag: "access-interruptible" };
 
 export interface AccessRuntime {
-  readonly _tag: "access-runtime";
+    readonly _tag: "access-runtime";
 }
 
 // These must be typed to IO or we end up with an IO<never, any>
 export const accessRuntime: IO<never, Runtime> = { _tag: "access-runtime" };
 
 export function withRuntime<E, A>(f: FunctionN<[Runtime], IO<E, A>>): IO<E, A> {
-  return chain(accessRuntime, f);
+    return chain(accessRuntime, f);
 }
 
 /**
@@ -264,7 +264,7 @@ export function withRuntime<E, A>(f: FunctionN<[Runtime], IO<E, A>>): IO<E, A> {
  * @param f
  */
 export function map<E, A, B>(io: IO<E, A>, f: FunctionN<[A], B>): IO<E, B> {
-  return chain(io, flow(f, pure));
+    return chain(io, flow(f, pure));
 }
 
 /**
@@ -272,7 +272,7 @@ export function map<E, A, B>(io: IO<E, A>, f: FunctionN<[A], B>): IO<E, B> {
  * @param f
  */
 export function lift<A, B>(f: FunctionN<[A], B>): <E>(io: IO<E, A>) => IO<E, B> {
-  return <E>(io: IO<E, A>) => map(io, f);
+    return <E>(io: IO<E, A>) => map(io, f);
 }
 
 /**
@@ -281,14 +281,14 @@ export function lift<A, B>(f: FunctionN<[A], B>): <E>(io: IO<E, A>) => IO<E, B> 
  * @param b
  */
 export function as<E, A, B>(io: IO<E, A>, b: B): IO<E, B> {
-  return map(io, constant(b));
+    return map(io, constant(b));
 }
 
 /**
  * @param b
  */
 export function liftAs<B>(b: B): <E, A>(io: IO<E, A>) => IO<E, B> {
-  return <E, A>(io: IO<E, A>) => as(io, b);
+    return <E, A>(io: IO<E, A>) => as(io, b);
 }
 
 /**
@@ -296,7 +296,7 @@ export function liftAs<B>(b: B): <E, A>(io: IO<E, A>) => IO<E, B> {
  * @param io
  */
 export function asUnit<E, A>(io: IO<E, A>): IO<E, void> {
-  return as<E, A, void>(io, undefined);
+    return as<E, A, void>(io, undefined);
 }
 
 /**
@@ -310,10 +310,10 @@ export const unit: IO<never, void> = pure(undefined);
  * @param f
  */
 export function chainError<E1, E2, A>(io: IO<E1, A>, f: FunctionN<[E1], IO<E2, A>>): IO<E2, A> {
-  return foldExit(io,
-    (cause) => cause._tag === "raise" ? f(cause.error) : completed(cause),
-    pure
-  );
+    return foldExit(io,
+        (cause) => cause._tag === "raise" ? f(cause.error) : completed(cause),
+        pure
+    );
 }
 
 /**
@@ -321,7 +321,7 @@ export function chainError<E1, E2, A>(io: IO<E1, A>, f: FunctionN<[E1], IO<E2, A
  * @param f
  */
 export function chainErrorWith<E1, E2, A>(f: FunctionN<[E1], IO<E2, A>>): FunctionN<[IO<E1, A>], IO<E2, A>> {
-  return (io) => chainError(io, f);
+    return (io) => chainError(io, f);
 }
 
 /**
@@ -330,7 +330,7 @@ export function chainErrorWith<E1, E2, A>(f: FunctionN<[E1], IO<E2, A>>): Functi
  * @param f
  */
 export function mapError<E1, E2, A>(io: IO<E1, A>, f: FunctionN<[E1], E2>): IO<E2, A> {
-  return chainError(io, flow(f, raiseError));
+    return chainError(io, flow(f, raiseError));
 }
 
 /**
@@ -338,7 +338,7 @@ export function mapError<E1, E2, A>(io: IO<E1, A>, f: FunctionN<[E1], E2>): IO<E
  * @param f
  */
 export function mapErrorWith<E1, E2>(f: FunctionN<[E1], E2>): <A>(io: IO<E1, A>) => IO<E2, A> {
-  return <A>(io: IO<E1, A>) => mapError(io, f);
+    return <A>(io: IO<E1, A>) => mapError(io, f);
 }
 
 /**
@@ -348,12 +348,12 @@ export function mapErrorWith<E1, E2>(f: FunctionN<[E1], E2>): <A>(io: IO<E1, A>)
  * @param rightMap
  */
 export function bimap<E1, E2, A, B>(io: IO<E1, A>,
-                                    leftMap: FunctionN<[E1], E2>,
-                                    rightMap: FunctionN<[A], B>): IO<E2, B> {
-  return foldExit(io,
-    (cause) => cause._tag === "raise" ? raiseError(leftMap(cause.error)) : completed(cause),
-    flow(rightMap, pure)
-  );
+    leftMap: FunctionN<[E1], E2>,
+    rightMap: FunctionN<[A], B>): IO<E2, B> {
+    return foldExit(io,
+        (cause) => cause._tag === "raise" ? raiseError(leftMap(cause.error)) : completed(cause),
+        flow(rightMap, pure)
+    );
 }
 
 /**
@@ -362,8 +362,8 @@ export function bimap<E1, E2, A, B>(io: IO<E1, A>,
  * @param rightMap
  */
 export function bimapWith<E1, E2, A, B>(leftMap: FunctionN<[E1], E2>,
-                                        rightMap: FunctionN<[A], B>): FunctionN<[IO<E1, A>], IO<E2, B>> {
-  return (io) => bimap(io, leftMap, rightMap);
+    rightMap: FunctionN<[A], B>): FunctionN<[IO<E1, A>], IO<E2, B>> {
+    return (io) => bimap(io, leftMap, rightMap);
 }
 
 /**
@@ -373,9 +373,9 @@ export function bimapWith<E1, E2, A, B>(leftMap: FunctionN<[E1], E2>,
  * @param f
  */
 export function zipWith<E, A, B, C>(first: IO<E, A>, second: IO<E, B>, f: FunctionN<[A, B], C>): IO<E, C> {
-  return chain(first, (a) =>
-    map(second, (b) => f(a, b))
-  );
+    return chain(first, (a) =>
+        map(second, (b) => f(a, b))
+    );
 }
 
 /**
@@ -384,7 +384,7 @@ export function zipWith<E, A, B, C>(first: IO<E, A>, second: IO<E, B>, f: Functi
  * @param second
  */
 export function zip<E, A, B>(first: IO<E, A>, second: IO<E, B>): IO<E, readonly [A, B]> {
-  return zipWith(first, second, tuple2);
+    return zipWith(first, second, tuple2);
 }
 
 /**
@@ -393,318 +393,318 @@ export function zip<E, A, B>(first: IO<E, A>, second: IO<E, B>): IO<E, readonly 
  * @param second
  */
 export function applyFirst<E, A, B>(first: IO<E, A>, second: IO<E, B>): IO<E, A> {
-  return zipWith(first, second, fst);
+    return zipWith(first, second, fst);
 }
 
 export function applyThis<E, A>(first: IO<E, A>): <B>(second: IO<E, B>) => IO<E, A> {
-  return <B>(second: IO<E, B>) => applyFirst(first, second);
+    return <B>(second: IO<E, B>) => applyFirst(first, second);
 }
 
 export function applySecond<E, A, B>(first: IO<E, A>, second: IO<E, B>): IO<E, B> {
-  return zipWith(first, second, snd);
+    return zipWith(first, second, snd);
 }
 
 export function applyOther<E, A>(first: IO<E, A>): <B>(second: IO<E, B>) => IO<E, B> {
-  return <B>(second: IO<E, B>) => applySecond(first, second);
+    return <B>(second: IO<E, B>) => applySecond(first, second);
 }
 
 export function ap<E, A, B>(ioa: IO<E, A>, iof: IO<E, FunctionN<[A], B>>): IO<E, B> {
-  // Find the apply/thrush operator I'm sure exists in fp-ts somewhere
-  return zipWith(ioa, iof, (a, f) => f(a));
+    // Find the apply/thrush operator I'm sure exists in fp-ts somewhere
+    return zipWith(ioa, iof, (a, f) => f(a));
 }
 
 export function apWith<E, A>(ioa: IO<E, A>): <B>(iof: IO<E, FunctionN<[A], B>>) => IO<E, B> {
-  return <B>(iof: IO<E, FunctionN<[A], B>>) => ap(ioa, iof);
+    return <B>(iof: IO<E, FunctionN<[A], B>>) => ap(ioa, iof);
 }
 
 export function ap_<E, A, B>(iof: IO<E, FunctionN<[A], B>>, ioa: IO<E, A>): IO<E, B> {
-  return zipWith(iof, ioa, (f, a) => f(a));
+    return zipWith(iof, ioa, (f, a) => f(a));
 }
 
 export function apWith_<E, A, B>(iof: IO<E, FunctionN<[A], B>>): FunctionN<[IO<E, A>], IO<E, B>> {
-  return (io) => ap_(iof, io);
+    return (io) => ap_(iof, io);
 }
 
 export function flip<E, A>(io: IO<E, A>): IO<A, E> {
-  return foldExit(
-    io,
-    (error) => error._tag === "raise" ? pure(error.error) : completed(error),
-    raiseError
-  );
+    return foldExit(
+        io,
+        (error) => error._tag === "raise" ? pure(error.error) : completed(error),
+        raiseError
+    );
 }
 
 export function result<E, A>(io: IO<E, A>): IO<never, Exit<E, A>> {
-  return foldExit<E, never, A, Exit<E, A>>(
-    io,
-    pure,
-    flow(ex.done, pure)
-  );
+    return foldExit<E, never, A, Exit<E, A>>(
+        io,
+        pure,
+        flow(ex.done, pure)
+    );
 }
 
 export function resultE<E, A>(io: IO<E, A>): IO<E, Exit<E, A>> {
-  return result(io);
+    return result(io);
 }
 
 export function interruptible<E, A>(io: IO<E, A>): IO<E, A> {
-  return interruptibleRegion(io, true);
+    return interruptibleRegion(io, true);
 }
 
 export function uninterruptible<E, A>(io: IO<E, A>): IO<E, A> {
-  return interruptibleRegion(io, false);
+    return interruptibleRegion(io, false);
 }
 
 export function after(ms: number): IO<never, void> {
-  return chain(accessRuntime,
-      (runtime) =>
-        asyncTotal((callback) =>
-          runtime.dispatchLater(() => callback(undefined), ms)
-        )
+    return chain(accessRuntime,
+        (runtime) =>
+            asyncTotal((callback) =>
+                runtime.dispatchLater(() => callback(undefined), ms)
+            )
     );
 }
 
 export type InterruptMaskCutout<E, A> = FunctionN<[IO<E, A>], IO<E, A>>;
 
 function makeInterruptMaskCutout<E, A>(state: boolean): InterruptMaskCutout<E, A> {
-  return (inner) => interruptibleRegion(inner, state);
+    return (inner) => interruptibleRegion(inner, state);
 }
 
 export function uninterruptibleMask<E, A>(f: FunctionN<[InterruptMaskCutout<E, A>], IO<E, A>>): IO<E, A> {
-  return chain(accessInterruptible,
-      (flag) => uninterruptible(f(makeInterruptMaskCutout(flag)))
-  );
+    return chain(accessInterruptible,
+        (flag) => uninterruptible(f(makeInterruptMaskCutout(flag)))
+    );
 }
 
 export function interruptibleMask<E, A>(f: FunctionN<[InterruptMaskCutout<E, A>], IO<E, A>>): IO<E, A> {
-  return chain(accessInterruptible,
-      (flag) => interruptible(f(makeInterruptMaskCutout(flag)))
-  );
+    return chain(accessInterruptible,
+        (flag) => interruptible(f(makeInterruptMaskCutout(flag)))
+    );
 }
 
 export function bracketExit<E, A, B>(acquire: IO<E, A>,
-                                     release: FunctionN<[A, Exit<E, B>], IO<E, unknown>>,
-                                     use: FunctionN<[A], IO<E, B>>): IO<E, B> {
-  return uninterruptibleMask<E, B>((cutout) =>
-    chain(acquire,
-      (a) => pipe(a, use, cutout, result, chainWith(
-        (exit) => pipe(release(a, exit), result, chainWith(
-          (finalize) => completed(combineFinalizerExit(exit, finalize))
-        ))
-      ))
-    )
-  );
+    release: FunctionN<[A, Exit<E, B>], IO<E, unknown>>,
+    use: FunctionN<[A], IO<E, B>>): IO<E, B> {
+    return uninterruptibleMask<E, B>((cutout) =>
+        chain(acquire,
+            (a) => pipe(a, use, cutout, result, chainWith(
+                (exit) => pipe(release(a, exit), result, chainWith(
+                    (finalize) => completed(combineFinalizerExit(exit, finalize))
+                ))
+            ))
+        )
+    );
 }
 
 function combineFinalizerExit<E, A>(fiberExit: Exit<E, A>, releaseExit: Exit<E, unknown>): Exit<E, A> {
-  if (fiberExit._tag === "value" && releaseExit._tag === "value") {
-    return fiberExit;
-  } else if (fiberExit._tag === "value") {
-    return releaseExit as Cause<E>;
-  } else if (releaseExit._tag === "value") {
-    return fiberExit;
-  } else {
+    if (fiberExit._tag === "value" && releaseExit._tag === "value") {
+        return fiberExit;
+    } else if (fiberExit._tag === "value") {
+        return releaseExit as Cause<E>;
+    } else if (releaseExit._tag === "value") {
+        return fiberExit;
+    } else {
     // TODO: Figure out how to sanely report both of these, we swallow them currently
     // This would affect chainError (i.e. assume multiples are actually an abort condition that happens to be typed)
-    return fiberExit;
-  }
+        return fiberExit;
+    }
 }
 
 export function bracket<E, A, B>(acquire: IO<E, A>,
-                                 release: FunctionN<[A], IO<E, unknown>>,
-                                 use: FunctionN<[A], IO<E, B>>): IO<E, B> {
-  return bracketExit(acquire, (e, _) => release(e), use);
+    release: FunctionN<[A], IO<E, unknown>>,
+    use: FunctionN<[A], IO<E, B>>): IO<E, B> {
+    return bracketExit(acquire, (e, _) => release(e), use);
 }
 
 export function onComplete<E, A>(ioa: IO<E, A>, finalizer: IO<E, unknown>): IO<E, A> {
-  return uninterruptibleMask((cutout) =>
-    pipe(
-      result(cutout(ioa)),
-      chainWith((exit) =>
+    return uninterruptibleMask((cutout) =>
         pipe(
-          finalizer,
-          result,
-          chainWith((finalize) =>
-            completed(combineFinalizerExit(exit, finalize))
-          )
+            result(cutout(ioa)),
+            chainWith((exit) =>
+                pipe(
+                    finalizer,
+                    result,
+                    chainWith((finalize) =>
+                        completed(combineFinalizerExit(exit, finalize))
+                    )
+                )
+            )
         )
-      )
-    )
-  );
+    );
 }
 
 export function onInterrupted<E, A>(ioa: IO<E, A>, finalizer: IO<E, unknown>): IO<E, A> {
-  return uninterruptibleMask((cutout) =>
-    pipe(
-      result(cutout(ioa)),
-      chainWith((exit) =>
-        exit._tag === "interrupt" ?
-          pipe(
-            finalizer,
-            result,
-            chainWith((finalize) =>
-              completed(combineFinalizerExit(exit, finalize))
+    return uninterruptibleMask((cutout) =>
+        pipe(
+            result(cutout(ioa)),
+            chainWith((exit) =>
+                exit._tag === "interrupt" ?
+                    pipe(
+                        finalizer,
+                        result,
+                        chainWith((finalize) =>
+                            completed(combineFinalizerExit(exit, finalize))
+                        )
+                    ) :
+                    completed(exit)
             )
-          ) :
-          completed(exit)
-      )
-    )
-  );
+        )
+    );
 }
 
 export const shifted: IO<never, void> =
   uninterruptible(chain(accessRuntime, (runtime: Runtime) => // why does this not trigger noImplicitAny
-    asyncTotal<void>((callback) => {
-      runtime.dispatch(() => callback(undefined));
-      // tslint:disable-next-line
-      return () => { };
-    })
+      asyncTotal<void>((callback) => {
+          runtime.dispatch(() => callback(undefined));
+          // tslint:disable-next-line
+          return () => { };
+      })
   ));
 
 export function shift<E, A>(io: IO<E, A>): IO<E, A> {
-  return applySecond(shifted, io);
+    return applySecond(shifted, io);
 }
 
 export const shiftedAsync: IO<never, void> =
   uninterruptible(chain(accessRuntime, (runtime) =>
-    asyncTotal<void>((callback) => {
-      return runtime.dispatchLater(() => callback(undefined), 0);
-    })
+      asyncTotal<void>((callback) => {
+          return runtime.dispatchLater(() => callback(undefined), 0);
+      })
   ));
 
 export function shiftAsync<E, A>(io: IO<E, A>): IO<E, A> {
-  return applySecond(shiftedAsync, io);
+    return applySecond(shiftedAsync, io);
 }
 
 export const never: IO<never, never> = asyncTotal((callback) => {
-  // tslint:disable-next-line:no-empty
-  const handle = setInterval(() => { }, 60000);
-  return () => {
-    clearInterval(handle);
-  };
+    // tslint:disable-next-line:no-empty
+    const handle = setInterval(() => { }, 60000);
+    return () => {
+        clearInterval(handle);
+    };
 });
 
 export function delay<E, A>(inner: IO<E, A>, ms: number): IO<E, A> {
-  return applySecond(after(ms), inner);
+    return applySecond(after(ms), inner);
 }
 
 export function liftDelay(ms: number): <E, A>(io: IO<E, A>) => IO<E, A> {
-  return (io) => delay(io, ms);
+    return (io) => delay(io, ms);
 }
 
 export function fork<E, A>(io: IO<E, A>, name?: string): IO<never, Fiber<E, A>> {
-  return withRuntime((runtime) => shift(makeFiber(io, runtime, name)));
+    return withRuntime((runtime) => shift(makeFiber(io, runtime, name)));
 }
 
 export function raceFold<E1, E2, A, B, C>(first: IO<E1, A>, second: IO<E1, B>,
-                                          onFirstWon: FunctionN<[Exit<E1, A>, Fiber<E1, B>], IO<E2, C>>,
-                                          onSecondWon: FunctionN<[Exit<E1, B>, Fiber<E1, A>], IO<E2, C>>): IO<E2, C> {
-  return uninterruptibleMask((cutout) =>
-    chain(makeRef<E2>()(false),
-      (latch) => chain(makeDeferred<E2, C>(),
-        (channel) => chain(fork(first),
-          (fiber1) => chain(fork(second),
-            (fiber2) => chain(fork(chain(fiber1.wait, completeLatched(latch, channel, onFirstWon, fiber2))),
-              (f1_) => chain(fork(chain(fiber2.wait, completeLatched(latch, channel, onSecondWon, fiber1))),
-                (f2_) => onInterrupted(cutout(channel.wait), applySecond(fiber1.interrupt, fiber2.interrupt))
-              )
+    onFirstWon: FunctionN<[Exit<E1, A>, Fiber<E1, B>], IO<E2, C>>,
+    onSecondWon: FunctionN<[Exit<E1, B>, Fiber<E1, A>], IO<E2, C>>): IO<E2, C> {
+    return uninterruptibleMask((cutout) =>
+        chain(makeRef<E2>()(false),
+            (latch) => chain(makeDeferred<E2, C>(),
+                (channel) => chain(fork(first),
+                    (fiber1) => chain(fork(second),
+                        (fiber2) => chain(fork(chain(fiber1.wait, completeLatched(latch, channel, onFirstWon, fiber2))),
+                            (f1_) => chain(fork(chain(fiber2.wait, completeLatched(latch, channel, onSecondWon, fiber1))),
+                                (f2_) => onInterrupted(cutout(channel.wait), applySecond(fiber1.interrupt, fiber2.interrupt))
+                            )
+                        )
+                    )
+                )
             )
-          )
         )
-      )
-    )
-  );
-}
-
-function completeLatched<E1, E2, A, B, C>(latch: Ref<boolean>,
-                                          channel: Deferred<E2, C>,
-                                          combine: FunctionN<[Exit<E1, A>, Fiber<E1, B>], IO<E2, C>>,
-                                          other: Fiber<E1, B>): FunctionN<[Exit<E1, A>], IO<never, void>> {
-  return (exit) =>
-    flatten(
-      latch.modify((flag) => flag ?
-        [unit, flag] as const :
-        [channel.from(combine(exit, other)), true] as const)
     );
 }
 
+function completeLatched<E1, E2, A, B, C>(latch: Ref<boolean>,
+    channel: Deferred<E2, C>,
+    combine: FunctionN<[Exit<E1, A>, Fiber<E1, B>], IO<E2, C>>,
+    other: Fiber<E1, B>): FunctionN<[Exit<E1, A>], IO<never, void>> {
+    return (exit) =>
+        flatten(
+            latch.modify((flag) => flag ?
+                [unit, flag] as const :
+                [channel.from(combine(exit, other)), true] as const)
+        );
+}
+
 export function timeoutFold<E1, E2, A, B>(source: IO<E1, A>,
-                                          ms: number,
-                                          onTimeout: FunctionN<[Fiber<E1, A>], IO<E2, B>>,
-                                          onCompleted: FunctionN<[Exit<E1, A>], IO<E2, B>>): IO<E2, B> {
-  return raceFold(
-    source,
-    after(ms),
-    (exit, delayFiber) => applySecond(delayFiber.interrupt, onCompleted(exit)),
-    (_, fiber) => onTimeout(fiber)
-  );
+    ms: number,
+    onTimeout: FunctionN<[Fiber<E1, A>], IO<E2, B>>,
+    onCompleted: FunctionN<[Exit<E1, A>], IO<E2, B>>): IO<E2, B> {
+    return raceFold(
+        source,
+        after(ms),
+        (exit, delayFiber) => applySecond(delayFiber.interrupt, onCompleted(exit)),
+        (_, fiber) => onTimeout(fiber)
+    );
 }
 
 export function raceFirst<E, A>(io1: IO<E, A>, io2: IO<E, A>): IO<E, A> {
-  return raceFold(io1, io2, interruptLoser, interruptLoser);
+    return raceFold(io1, io2, interruptLoser, interruptLoser);
 }
 
 function interruptLoser<E, A>(exit: Exit<E, A>, loser: Fiber<E, A>): IO<E, A> {
-  return applySecond(loser.interrupt, completed(exit));
+    return applySecond(loser.interrupt, completed(exit));
 }
 
 export function race<E, A>(io1: IO<E, A>, io2: IO<E, A>): IO<E, A> {
-  return raceFold(io1, io2, fallbackToLoser, fallbackToLoser);
+    return raceFold(io1, io2, fallbackToLoser, fallbackToLoser);
 }
 
 export function parZipWith<E, A, B, C>(ioa: IO<E, A>, iob: IO<E, B>, f: FunctionN<[A, B], C>): IO<E, C> {
-  return raceFold(ioa, iob,
-    (aExit, bFiber) => zipWith(completed(aExit), bFiber.join, f),
-    (bExit, aFiber) => zipWith(aFiber.join, completed(bExit), f)
-  );
+    return raceFold(ioa, iob,
+        (aExit, bFiber) => zipWith(completed(aExit), bFiber.join, f),
+        (bExit, aFiber) => zipWith(aFiber.join, completed(bExit), f)
+    );
 }
 
 export function parZip<E, A, B>(ioa: IO<E, A>, iob: IO<E, B>): IO<E, readonly [A, B]> {
-  return parZipWith(ioa, iob, tuple2);
+    return parZipWith(ioa, iob, tuple2);
 }
 
 export function parApplyFirst<E, A, B>(ioa: IO<E, A>, iob: IO<E, B>): IO<E, A> {
-  return parZipWith(ioa, iob, fst);
+    return parZipWith(ioa, iob, fst);
 }
 
 export function parApplySecond<E, A, B>(ioa: IO<E, A>, iob: IO<E, B>): IO<E, B> {
-  return parZipWith(ioa, iob, snd);
+    return parZipWith(ioa, iob, snd);
 }
 
 export function parAp<E, A, B>(ioa: IO<E, A>, iof: IO<E, FunctionN<[A], B>>): IO<E, B> {
-  return parZipWith(ioa, iof, (a, f) => f(a));
+    return parZipWith(ioa, iof, (a, f) => f(a));
 }
 
 export function parAp_<E, A, B>(iof: IO<E, FunctionN<[A], B>>, ioa: IO<E, A>): IO<E, B> {
-  return parZipWith(iof, ioa, (f, a) => f(a));
+    return parZipWith(iof, ioa, (f, a) => f(a));
 }
 
 function fallbackToLoser<E, A>(exit: Exit<E, A>, loser: Fiber<E, A>): IO<E, A> {
-  return exit._tag === "value" ?
-    applySecond(loser.interrupt, completed(exit)) :
-    loser.join;
+    return exit._tag === "value" ?
+        applySecond(loser.interrupt, completed(exit)) :
+        loser.join;
 }
 
 export function timeoutOption<E, A>(source: IO<E, A>, ms: number) {
-  return timeoutFold(
-    source,
-    ms,
-    (actionFiber) => applySecond(actionFiber.interrupt, pure(none)),
-    (exit) => map(completed(exit), some)
-  );
+    return timeoutFold(
+        source,
+        ms,
+        (actionFiber) => applySecond(actionFiber.interrupt, pure(none)),
+        (exit) => map(completed(exit), some)
+    );
 }
 
 export function fromPromise<A>(thunk: Lazy<Promise<A>>): IO<unknown, A> {
-  return uninterruptible(async<unknown, A>((callback) => {
-    thunk().then((v) => callback(right(v))).catch((e) => callback(left(e)));
-    // tslint:disable-next-line
-    return () => { };
-  }));
+    return uninterruptible(async<unknown, A>((callback) => {
+        thunk().then((v) => callback(right(v))).catch((e) => callback(left(e)));
+        // tslint:disable-next-line
+        return () => { };
+    }));
 }
 
 export function run<E, A>(io: IO<E, A>, callback: FunctionN<[Exit<E, A>], void>): Lazy<void> {
-  const driver = makeDriver(io);
-  driver.onExit(callback);
-  driver.start();
-  return driver.interrupt;
+    const driver = makeDriver(io);
+    driver.onExit(callback);
+    driver.start();
+    return driver.interrupt;
 }
 
 /**
@@ -717,19 +717,19 @@ export function run<E, A>(io: IO<E, A>, callback: FunctionN<[Exit<E, A>], void>)
  * @param io
  */
 export function runToPromise<E, A>(io: IO<E, A>): Promise<A> {
-  return new Promise((resolve, reject) =>
-    run(io, (exit) => {
-      if (exit._tag === "value") {
-        resolve(exit.value);
-      } else if (exit._tag === "abort") {
-        reject(exit.abortedWith);
-      } else if (exit._tag === "raise") {
-        reject(exit.error);
-      } else if (exit._tag === "interrupt") {
-        reject();
-      }
-    })
-  );
+    return new Promise((resolve, reject) =>
+        run(io, (exit) => {
+            if (exit._tag === "value") {
+                resolve(exit.value);
+            } else if (exit._tag === "abort") {
+                reject(exit.abortedWith);
+            } else if (exit._tag === "raise") {
+                reject(exit.error);
+            } else if (exit._tag === "interrupt") {
+                reject();
+            }
+        })
+    );
 }
 
 /**
@@ -739,39 +739,40 @@ export function runToPromise<E, A>(io: IO<E, A>): Promise<A> {
  * @param io
  */
 export function runToPromiseExit<E, A>(io: IO<E, A>): Promise<Exit<E, A>> {
-  return new Promise((resolve) => run(io, resolve));
+    return new Promise((resolve) => run(io, resolve));
 }
 
 function tuple2<A, B>(a: A, b: B): readonly [A, B] {
-  return [a, b] as const;
+    return [a, b] as const;
 }
 
 function fst<A, B>(a: A, _: B): A {
-  return a;
+    return a;
 }
 
 function snd<A, B>(_: A, b: B): B {
-  return b;
+    return b;
 }
 
 export const URI = "IO";
 export type URI = typeof URI;
-declare module "fp-ts/lib/HKT" {
-  interface URI2HKT2<L, A> {
-    IO: IO<L, A>;
-  }
+declare module 'fp-ts/lib/HKT' {
+    interface URItoKind2<E, A> {
+        IO: IO<E, A>;
+    }
 }
+
 export const instances: Monad2<URI> = {
-  URI,
-  map,
-  of: pure,
-  ap: ap_,
-  chain
+    URI,
+    map,
+    of: pure,
+    ap: ap_,
+    chain
 } as const;
 
 export const parInstances: Applicative2<URI> = {
-  URI,
-  map,
-  of: pure,
-  ap: parAp_
+    URI,
+    map,
+    of: pure,
+    ap: parAp_
 } as const;

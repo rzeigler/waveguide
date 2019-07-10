@@ -1,5 +1,7 @@
 {
   
   "licenser.author": "Ryan Zeigler",
-  "typescript.tsdk": "node_modules/typescript/lib"
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "eslint.enable": true,
+  "eslint.provideLintTask": true
 }

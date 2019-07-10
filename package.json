@@ -11,8 +11,8 @@
     "test-build": "tsc -p tsconfig.test.json",
     "test": "tsc -p tsconfig.test.json && mocha --recursive build/**/*.spec.js",
     "test-watch": "nodemon -w src -w test -e .ts -x 'tsc -p tsconfig.test.json && mocha --recursive --reporter min build/**/*.spec.js'",
-    "lint": "tslint --project tsconfig.test.json",
-    "lint-fix": "tslint --project tsconfig.test.json --fix",
+    "lint": "eslint . --ext .ts,.tsx",
+    "lint-fix": "eslint . --fix --ext .ts,.tsx",
     "docs": "docs-ts",
     "prepublishOnly": "npm run clean && npm run lint && npm run build && npm run test"
   },
@@ -37,28 +37,27 @@
     "@types/deep-equal": "^1.0.1",
     "@types/mocha": "^5.2.5",
     "@types/node": "^12.0.2",
+    "@typescript-eslint/eslint-plugin": "^1.11.0",
+    "@typescript-eslint/parser": "^1.11.0",
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
     "deep-equal": "^1.0.1",
-    "docs-ts": "github:gcanti/docs-ts",
+    "docs-ts": "0.1.0",
     "doctoc": "^1.4.0",
+    "eslint": "^6.0.1",
     "esm": "^3.2.5",
     "fast-check": "^1.14.0",
-    "fp-ts": "^2.0.0-rc.4",
-    "fp-ts-laws": "^0.1.0",
+    "fp-ts": "^2.0.0",
+    "fp-ts-contrib": "^0.1.2",
     "mocha": "^5.2.0",
     "nodemon": "^1.18.10",
     "np": "^4.0.2",
     "rimraf": "^2.6.3",
     "source-map-support": "^0.5.10",
     "ts-node": "^8.1.0",
-    "tslint": "^5.12.1",
-    "typescript": "^3.4.5"
-  },
-  "dependencies": {
-    "fp-ts-contrib": "github:gcanti/fp-ts-contrib#fp-ts-v2"
+    "typescript": "^3.5.2"
   },
   "peerDependencies": {
-    "fp-ts": "^2.0.0-rc.4"
+    "fp-ts": "^2.0.0"
   }
 }

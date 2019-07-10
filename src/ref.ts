@@ -13,13 +13,13 @@
 // limitations under the License.
 
 import { FunctionN } from "fp-ts/lib/function";
-import { IO, sync } from "./io";
+import { IO, sync, never } from "./io";
 
 export interface Ref<A> {
-  readonly get: IO<never, A>;
-  set(a: A): IO<never, A>;
-  update(f: FunctionN<[A], A>): IO<never, A>;
-  modify<B>(f: FunctionN<[A], readonly [B, A]>): IO<never, B>;
+    readonly get: IO<never, A>;
+    set(a: A): IO<never, A>;
+    update(f: FunctionN<[A], A>): IO<never, A>;
+    modify<B>(f: FunctionN<[A], readonly [B, A]>): IO<never, B>;
 }
 
 /**
@@ -27,35 +27,35 @@ export interface Ref<A> {
  * Curried form of makeRef_ to allow for inference on the initial type
  */
 export const makeRef = <E = never>() => <A>(initial: A): IO<E, Ref<A>> =>
-  sync(() => {
-      let value = initial;
+    sync(() => {
+        let value = initial;
 
-      const get = sync(() => value);
+        const get = sync(() => value);
 
-      const set = (a: A) => sync(() => {
-        const prev = value;
-        value = a;
-        return prev;
-      });
+        const set = (a: A): IO<never, A> => sync(() => {
+            const prev = value;
+            value = a;
+            return prev;
+        });
 
-      const update = (f: FunctionN<[A], A>) => sync(() => {
-        return value = f(value);
-      });
+        const update = (f: FunctionN<[A], A>): IO<never, A> => sync(() => {
+            return value = f(value);
+        });
 
-      const modify = <B>(f: FunctionN<[A], readonly [B, A]>) => sync(() => {
-        const [b, a] = f(value);
-        value = a;
-        return b;
-      });
+        const modify = <B>(f: FunctionN<[A], readonly [B, A]>): IO<never, B> => sync(() => {
+            const [b, a] = f(value);
+            value = a;
+            return b;
+        });
 
-      return {
-        get,
-        set,
-        update,
-        modify
-      } as Ref<A>;
+        return {
+            get,
+            set,
+            update,
+            modify
+        } as Ref<A>;
     });
 
 export function makeRef_<E, A>(initial: A): IO<E, Ref<A>> {
-  return makeRef<E>()(initial);
+    return makeRef<E>()(initial);
 }

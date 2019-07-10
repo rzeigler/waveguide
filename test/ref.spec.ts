@@ -19,70 +19,70 @@ import { makeRef } from "../src/ref";
 import { eqvIO } from "./tools.spec";
 
 describe("Ref", function() {
-  this.timeout(5000);
-  it("should be initialized with a value", () =>
-    eqvIO(
-      io.chain(makeRef()(42), (r) => r.get),
-      io.pure(42)
-    )
-  );
-  describe("properties", () => {
-    it("- last set wins", () =>
-      fc.assert(
-        fc.asyncProperty(
-          fc.nat(),
-          fc.array(fc.nat(), 1, 10),
-          (initial, sets) =>
-            eqvIO(
-             io.chain(makeRef()(initial),
-                (r) => io.applySecond(array.traverse(io.instances)(sets, (v) => r.set(v)), r.get)),
-                io.chain(makeRef()(initial),
-                  (r) => io.applySecond(r.set(sets[sets.length - 1]), r.get))
-            )
+    this.timeout(5000);
+    it("should be initialized with a value", () =>
+        eqvIO(
+            io.chain(makeRef()(42), (r) => r.get),
+            io.pure(42)
         )
-      )
     );
-    function repeat<A>(v: A, count: number): A[] {
-      const as = [];
-      for (let i = 0; i < count; i++) {
-        as.push(v);
-      }
-      return as;
-    }
-    it("- duplicated sets are equivalent", () =>
-      fc.assert(
-        fc.asyncProperty(
-          fc.nat(),
-          fc.nat(),
-          fc.nat(1000),
-          (initial, value, count) =>
-            eqvIO(
-              io.chain(makeRef()(initial),
-                (cell) => io.applySecond(cell.set(value), cell.get)),
-              io.chain(makeRef()(initial),
-                (cell) =>
-                  io.applySecond(
-                    array.traverse(io.instances)(repeat(value, count + 1), (v) => cell.set(v)),
-                    cell.get)
-                  )
+    describe("properties", () => {
+        it("- last set wins", () =>
+            fc.assert(
+                fc.asyncProperty(
+                    fc.nat(),
+                    fc.array(fc.nat(), 1, 10),
+                    (initial, sets) =>
+                        eqvIO(
+                            io.chain(makeRef()(initial),
+                                (r) => io.applySecond(array.traverse(io.instances)(sets, (v) => r.set(v)), r.get)),
+                            io.chain(makeRef()(initial),
+                                (r) => io.applySecond(r.set(sets[sets.length - 1]), r.get))
+                        )
+                )
             )
-        )
-      )
-    );
-    it("- set returns the previous value", () =>
-      fc.assert(
-        fc.asyncProperty(
-          fc.nat(),
-          fc.nat(),
-          (before, after) =>
-            eqvIO(
-              io.chain(makeRef()(before),
-                (cell) => cell.set(after)),
-              io.chain(makeRef()(before),
-                (cell) => cell.get)
+        );
+        function repeat<A>(v: A, count: number): A[] {
+            const as = [];
+            for (let i = 0; i < count; i++) {
+                as.push(v);
+            }
+            return as;
+        }
+        it("- duplicated sets are equivalent", () =>
+            fc.assert(
+                fc.asyncProperty(
+                    fc.nat(),
+                    fc.nat(),
+                    fc.nat(1000),
+                    (initial, value, count) =>
+                        eqvIO(
+                            io.chain(makeRef()(initial),
+                                (cell) => io.applySecond(cell.set(value), cell.get)),
+                            io.chain(makeRef()(initial),
+                                (cell) =>
+                                    io.applySecond(
+                                        array.traverse(io.instances)(repeat(value, count + 1), (v) => cell.set(v)),
+                                        cell.get)
+                            )
+                        )
+                )
             )
-        )
-      )
-    );
-  });
+        );
+        it("- set returns the previous value", () =>
+            fc.assert(
+                fc.asyncProperty(
+                    fc.nat(),
+                    fc.nat(),
+                    (before, after) =>
+                        eqvIO(
+                            io.chain(makeRef()(before),
+                                (cell) => cell.set(after)),
+                            io.chain(makeRef()(before),
+                                (cell) => cell.get)
+                        )
+                )
+            )
+        );
+    });
 });

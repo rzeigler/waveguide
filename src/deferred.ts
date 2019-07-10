@@ -18,39 +18,39 @@ import * as io from "./io";
 import { Completable, completable} from "./support/completable";
 
 export interface Deferred<E, A> {
-  readonly wait: IO<E, A>;
-  interrupt: IO<never, void>;
-  done(a: A): IO<never, void>;
-  error(e: E): IO<never, void>;
-  from(source: IO<E, A>): IO<never, void>;
+    readonly wait: IO<E, A>;
+    interrupt: IO<never, void>;
+    done(a: A): IO<never, void>;
+    error(e: E): IO<never, void>;
+    from(source: IO<E, A>): IO<never, void>;
 }
 
 export function makeDeferred<E, A, E2 = never>(): IO<E2, Deferred<E, A>> {
-  return io.sync(() => {
-    const c: Completable<IO<E, A>> = completable();
-    const wait = io.flatten(io.asyncTotal<IO<E, A>>((callback) =>
-      c.listen(callback)
-    ));
-    const interrupt = io.sync(() => {
-      c.complete(io.raiseInterrupt);
+    return io.sync(() => {
+        const c: Completable<IO<E, A>> = completable();
+        const wait = io.flatten(io.asyncTotal<IO<E, A>>((callback) =>
+            c.listen(callback)
+        ));
+        const interrupt = io.sync(() => {
+            c.complete(io.raiseInterrupt);
+        });
+        const done = (a: A): IO<never, void> => io.sync(() => {
+            c.complete(io.pure(a));
+        });
+        const error = (e: E): IO<never, void> => io.sync(() => {
+            c.complete(io.raiseError(e));
+        });
+        const complete = (exit: Exit<E, A>): IO<never, void> => io.sync(() => {
+            c.complete(io.completed(exit));
+        });
+        const from = (source: IO<E, A>): IO<never, void> =>
+            io.onInterrupted(io.chain(io.result(source), complete), interrupt);
+        return {
+            wait,
+            interrupt,
+            done,
+            error,
+            from
+        } as Deferred<E, A>;
     });
-    const done = (a: A): IO<never, void> => io.sync(() => {
-      c.complete(io.pure(a));
-    });
-    const error = (e: E): IO<never, void> => io.sync(() => {
-      c.complete(io.raiseError(e));
-    });
-    const complete = (exit: Exit<E, A>): IO<never, void> => io.sync(() => {
-      c.complete(io.completed(exit));
-    });
-    const from = (source: IO<E, A>): IO<never, void> =>
-      io.onInterrupted(io.chain(io.result(source), complete), interrupt);
-    return {
-      wait,
-      interrupt,
-      done,
-      error,
-      from
-    } as Deferred<E, A>;
-  });
 }

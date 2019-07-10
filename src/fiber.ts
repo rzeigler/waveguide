@@ -20,63 +20,63 @@ import * as io from "./io";
 import { Runtime } from "./runtime";
 
 export interface Fiber<E, A> {
-  /**
+    /**
    * The name of the fiber
    */
-  readonly name: Option<string>;
-  /**
+    readonly name: Option<string>;
+    /**
    * Send an interrupt signal to this fiber.
    *
    * The this will complete execution once the target fiber has halted.
    * Does nothing if the target fiber is already complete
    */
-  readonly interrupt: IO<never, void>;
-  /**
+    readonly interrupt: IO<never, void>;
+    /**
    * Await the result of this fiber
    */
-  readonly wait: IO<never, Exit<E, A>>;
-  /**
+    readonly wait: IO<never, Exit<E, A>>;
+    /**
    * Join with this fiber.
    * This is equivalent to fiber.wait.chain(io.completeWith)
    */
-  readonly join: IO<E, A>;
-  /**
+    readonly join: IO<E, A>;
+    /**
    * Poll for a fiber result
    */
-  readonly result: IO<E, Option<A>>;
-  /**
+    readonly result: IO<E, Option<A>>;
+    /**
    * Determine if the fiber is complete
    */
-  readonly isComplete: IO<never, boolean>;
+    readonly isComplete: IO<never, boolean>;
 }
 
 function createFiber<E, A>(driver: Driver<E, A>, n?: string): Fiber<E, A> {
-  const name = fromNullable(n);
-  const sendInterrupt = io.sync(() => {
-    driver.interrupt();
-  });
-  const wait = io.asyncTotal(driver.onExit);
-  const interrupt = io.applySecond(sendInterrupt, io.asUnit(wait));
-  const join = io.chain(wait, (exit) => io.completed(exit));
-  const result =
+    const name = fromNullable(n);
+    const sendInterrupt = io.sync(() => {
+        driver.interrupt();
+    });
+    const wait = io.asyncTotal(driver.onExit);
+    const interrupt = io.applySecond(sendInterrupt, io.asUnit(wait));
+    const join = io.chain(wait, (exit) => io.completed(exit));
+    const result =
     io.chain(io.sync(() => driver.exit()),
-      (opt) => foldOption(() => io.pure(none), (exit: Exit<E, A>) => io.map(io.completed(exit), some))(opt));
-  const isComplete = io.sync(() => isSome(driver.exit()));
-  return {
-    name,
-    wait,
-    interrupt,
-    join,
-    result,
-    isComplete
-  };
+        (opt) => foldOption(() => io.pure(none), (exit: Exit<E, A>) => io.map(io.completed(exit), some))(opt));
+    const isComplete = io.sync(() => isSome(driver.exit()));
+    return {
+        name,
+        wait,
+        interrupt,
+        join,
+        result,
+        isComplete
+    };
 }
 
 export function makeFiber<E, A>(init: IO<E, A>, runtime: Runtime, name?: string): IO<never, Fiber<E, A>> {
-  return io.sync(() => {
-    const driver = makeDriver(init, runtime);
-    const fiber = createFiber(driver, name);
-    driver.start();
-    return fiber;
-  });
+    return io.sync(() => {
+        const driver = makeDriver(init, runtime);
+        const fiber = createFiber(driver, name);
+        driver.start();
+        return fiber;
+    });
 }

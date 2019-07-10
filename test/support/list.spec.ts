@@ -16,41 +16,41 @@ import { expect } from "chai";
 import { none, some } from "fp-ts/lib/Option";
 import { concat, cons, filter, find, flatten, fromArray, nil, of } from "../../src/support/list";
 
-function isEven(n: number) {
-  return n % 2 === 0;
+function isEven(n: number): boolean {
+    return n % 2 === 0;
 }
 
 describe("List", () => {
-  describe("fromArray", () => {
-    it("should convert from arrays", () => {
-      expect(fromArray([1, 2, 3])).to.deep.equal(cons(1, cons(2, cons(3, nil))));
+    describe("fromArray", () => {
+        it("should convert from arrays", () => {
+            expect(fromArray([1, 2, 3])).to.deep.equal(cons(1, cons(2, cons(3, nil))));
+        });
     });
-  });
-  describe("concat", () => {
-    it("should concat", () => {
-      const test = concat(fromArray([1, 2]), fromArray([3, 4]));
-      const result = fromArray([1, 2, 3, 4]);
-      expect(test).to.deep.equal(result);
+    describe("concat", () => {
+        it("should concat", () => {
+            const test = concat(fromArray([1, 2]), fromArray([3, 4]));
+            const result = fromArray([1, 2, 3, 4]);
+            expect(test).to.deep.equal(result);
+        });
     });
-  });
-  describe("flatten", () => {
-    it("should flatten", () => {
-      const test = flatten(fromArray([fromArray([1]), fromArray([3])]));
-      const result = fromArray([1, 3]);
-      expect(test).to.deep.equal(result);
+    describe("flatten", () => {
+        it("should flatten", () => {
+            const test = flatten(fromArray([fromArray([1]), fromArray([3])]));
+            const result = fromArray([1, 3]);
+            expect(test).to.deep.equal(result);
+        });
     });
-  });
-  describe("filter", () => {
-    it("should filter", () => {
-      expect(filter(fromArray([1, 2, 3]), isEven)).to.deep.equal(of(2));
+    describe("filter", () => {
+        it("should filter", () => {
+            expect(filter(fromArray([1, 2, 3]), isEven)).to.deep.equal(of(2));
+        });
     });
-  });
-  describe("find", () => {
-    it("should find", () => {
-      expect(find(fromArray([1, 2, 3]), isEven)).to.deep.equal(some(2));
+    describe("find", () => {
+        it("should find", () => {
+            expect(find(fromArray([1, 2, 3]), isEven)).to.deep.equal(some(2));
+        });
+        it("should not find something not there", () => {
+            expect(find(fromArray([1, 3, 5]), isEven)).to.deep.equal(none);
+        });
     });
-    it("should not find something not there", () => {
-      expect(find(fromArray([1, 3, 5]), isEven)).to.deep.equal(none);
-    });
-  });
 });

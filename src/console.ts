@@ -19,10 +19,10 @@ import { IO, sync } from "./io";
  * @param msg
  */
 export function log(msg: string): IO<never, void> {
-  return sync(() => {
+    return sync(() => {
     // tslint:disable-next-line
-    console.log(msg);
-  });
+        console.log(msg);
+    });
 }
 
 /**
@@ -30,10 +30,10 @@ export function log(msg: string): IO<never, void> {
  * @param msg
  */
 export function warn(msg: string): IO<never, void> {
-  return sync(() => {
+    return sync(() => {
     // tslint:disable-next-line
-    console.warn(msg);
-  });
+        console.warn(msg);
+    });
 }
 
 /**
@@ -41,8 +41,8 @@ export function warn(msg: string): IO<never, void> {
  * @param msg
  */
 export function error(msg: string): IO<never, void> {
-  return sync(() => {
+    return sync(() => {
     // tslint:disable-next-line
-    console.error(msg);
-  });
+        console.error(msg);
+    });
 }

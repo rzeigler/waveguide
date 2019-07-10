@@ -15,4 +15,4 @@
 import { IO, raiseAbort, unit } from "./io";
 
 export const natNumber = (msg: unknown) => (n: number): IO<never, void> =>
-  n < 0 || Math.round(n) !== n ? raiseAbort(msg) : unit;
+    n < 0 || Math.round(n) !== n ? raiseAbort(msg) : unit;

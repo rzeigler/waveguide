@@ -13,35 +13,35 @@
 // limitations under the License.
 
 export interface MutableQueue<A> {
-  enqueue(a: A): void;
-  dequeue(): A | undefined;
-  peek(): A | undefined;
-  isEmpty(): boolean;
-  size(): number;
+    enqueue(a: A): void;
+    dequeue(): A | undefined;
+    peek(): A | undefined;
+    isEmpty(): boolean;
+    size(): number;
 }
 
 export function mutableQueue<A>(): MutableQueue<A> {
-  const array: A[] = [];
-  function enqueue(a: A): void {
-    array.push(a);
-  }
-  function dequeue(): A |  undefined {
-    return array.shift();
-  }
-  function peek(): A | undefined {
-    return isEmpty() ? undefined : array[0];
-  }
-  function isEmpty(): boolean {
-    return array.length === 0;
-  }
-  function size(): number {
-    return array.length;
-  }
-  return {
-    enqueue,
-    dequeue,
-    peek,
-    isEmpty,
-    size
-  };
+    const array: A[] = [];
+    function enqueue(a: A): void {
+        array.push(a);
+    }
+    function dequeue(): A |  undefined {
+        return array.shift();
+    }
+    function isEmpty(): boolean {
+        return array.length === 0;
+    }
+    function peek(): A | undefined {
+        return isEmpty() ? undefined : array[0];
+    }
+    function size(): number {
+        return array.length;
+    }
+    return {
+        enqueue,
+        dequeue,
+        peek,
+        isEmpty,
+        size
+    };
 }

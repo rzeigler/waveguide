@@ -17,19 +17,19 @@ import * as io from "./io";
 import { makeSemaphore } from "./semaphore";
 
 export interface Mutex {
-  readonly acquire: IO<never, void>;
-  readonly release: IO<never, void>;
-  readonly available: IO<never, boolean>;
-  withExclusion<E, A>(inner: IO<E, A>): IO<E, A>;
+    readonly acquire: IO<never, void>;
+    readonly release: IO<never, void>;
+    readonly available: IO<never, boolean>;
+    withExclusion<E, A>(inner: IO<E, A>): IO<E, A>;
 }
 
 export const makeMutex: IO<never, Mutex> =
   io.map(makeSemaphore(1),
-  (sem) => ({
-    acquire: sem.acquire,
-    release: sem.release,
-    available: io.map(sem.available, (n) => n > 0),
-    withExclusion<E, A>(inner: IO<E, A>): IO<E, A> {
-      return sem.withPermit(inner);
-    }
-  }));
+      (sem) => ({
+          acquire: sem.acquire,
+          release: sem.release,
+          available: io.map(sem.available, (n) => n > 0),
+          withExclusion<E, A>(inner: IO<E, A>): IO<E, A> {
+              return sem.withPermit(inner);
+          }
+      }));

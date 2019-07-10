@@ -15,47 +15,47 @@
 export type Exit<E, A> = Done<A> | Cause<E>;
 
 export interface Done<A> {
-  readonly _tag: "value";
-  readonly value: A;
+    readonly _tag: "value";
+    readonly value: A;
 }
 
 export function done<A>(v: A): Done<A> {
-  return {
-    _tag: "value",
-    value: v
-  };
+    return {
+        _tag: "value",
+        value: v
+    };
 }
 
 export type Cause<E> = Raise<E> | Abort | Interrupt;
 
 export interface Raise<E> {
-  readonly _tag: "raise";
-  readonly error: E;
+    readonly _tag: "raise";
+    readonly error: E;
 }
 
 export function raise<E>(e: E): Raise<E> {
-  return {
-    _tag: "raise",
-    error: e
-  };
+    return {
+        _tag: "raise",
+        error: e
+    };
 }
 
 export interface Abort {
-  readonly _tag: "abort";
-  readonly abortedWith: unknown;
+    readonly _tag: "abort";
+    readonly abortedWith: unknown;
 }
 
 export function abort(a: unknown): Abort {
-  return {
-    _tag: "abort",
-    abortedWith: a
-  };
+    return {
+        _tag: "abort",
+        abortedWith: a
+    };
 }
 
 export interface Interrupt {
-  readonly _tag: "interrupt";
+    readonly _tag: "interrupt";
 }
 
 export const interrupt: Interrupt = {
-  _tag: "interrupt"
+    _tag: "interrupt"
 };

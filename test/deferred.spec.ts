@@ -19,46 +19,46 @@ import * as io from "../src/io";
 import { eqvIO, expectExit, expectExitIn } from "./tools.spec";
 
 describe("Deferred", () => {
-  it("can bet set", () =>
-    eqvIO(
-      io.chain(makeDeferred<never, number>(),
-        (def) =>
-          io.applySecond(def.done(42), def.wait)
-        ),
-      io.pure(42)
-    )
-  );
-  it("multiple sets fail", () =>
-      expectExitIn(
-        io.chain(makeDeferred<never, number>(),
-          (def) => {
-            const c42 = def.done(42);
-            return io.applySecond(c42, c42);
-          }),
-        (exit) => exit._tag === "abort" ? (exit.abortedWith as Error).message : undefined,
-        "Die: Completable is already completed"
-      )
-  );
-  describe("properties", function() {
-    this.timeout(5000);
-    it("allows for multiple fibers to coordinate", () =>
-      fc.assert(
-        fc.asyncProperty(
-          fc.nat(50),
-          (delay) =>
-            expectExit(
-              io.chain(makeDeferred<never, number>(),
+    it("can bet set", () =>
+        eqvIO(
+            io.chain(makeDeferred<never, number>(),
                 (def) =>
-                  io.applySecond(
-                    io.fork(io.delay(def.done(42), delay)),
-                    def.wait
-                  )
-                ),
-              done(42)
-            )
-
+                    io.applySecond(def.done(42), def.wait)
+            ),
+            io.pure(42)
         )
-      )
     );
-  });
+    it("multiple sets fail", () =>
+        expectExitIn(
+            io.chain(makeDeferred<never, number>(),
+                (def) => {
+                    const c42 = def.done(42);
+                    return io.applySecond(c42, c42);
+                }),
+            (exit) => exit._tag === "abort" ? (exit.abortedWith as Error).message : undefined,
+            "Die: Completable is already completed"
+        )
+    );
+    describe("properties", function() {
+        this.timeout(5000);
+        it("allows for multiple fibers to coordinate", () =>
+            fc.assert(
+                fc.asyncProperty(
+                    fc.nat(50),
+                    (delay) =>
+                        expectExit(
+                            io.chain(makeDeferred<never, number>(),
+                                (def) =>
+                                    io.applySecond(
+                                        io.fork(io.delay(def.done(42), delay)),
+                                        def.wait
+                                    )
+                            ),
+                            done(42)
+                        )
+
+                )
+            )
+        );
+    });
 });
