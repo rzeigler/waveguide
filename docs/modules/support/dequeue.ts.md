@@ -8,112 +8,28 @@ parent: Modules
 
 <h2 class="text-delta">Table of contents</h2>
 
-- [Dequeue (class)](#dequeue-class)
-  - [take (method)](#take-method)
-  - [offer (method)](#offer-method)
-  - [pull (method)](#pull-method)
-  - [push (method)](#push-method)
-  - [peek (method)](#peek-method)
-  - [isEmpty (method)](#isempty-method)
-  - [size (method)](#size-method)
-  - [find (method)](#find-method)
-  - [filter (method)](#filter-method)
+- [Dequeue (interface)](#dequeue-interface)
 - [empty (function)](#empty-function)
+- [from (function)](#from-function)
 - [of (function)](#of-function)
 
 ---
 
-# Dequeue (class)
+# Dequeue (interface)
 
 **Signature**
 
 ```ts
-export class Dequeue<A> {
-  constructor(public readonly front: List<A>, public readonly back: List<A>) { ... }
-  ...
+export interface Dequeue<A> {
+  take(): Option<readonly [A, Dequeue<A>]>
+  offer(a: A): Dequeue<A>
+  pull(): Option<readonly [A, Dequeue<A>]>
+  push(a: A): Dequeue<A>
+  filter(f: Predicate<A>): Dequeue<A>
+  find(p: Predicate<A>): Option<A>
+  size(): number
+  isEmpty(): boolean
 }
-```
-
-## take (method)
-
-Take an item from the front of this queue
-
-**Signature**
-
-```ts
-public take(): Option<readonly [A, Dequeue<A>]> { ... }
-```
-
-## offer (method)
-
-Enqueue an item to the back of this queue
-
-**Signature**
-
-```ts
-public offer(a: A): Dequeue<A> { ... }
-```
-
-## pull (method)
-
-Take an item from the back of this queue
-
-**Signature**
-
-```ts
-public pull(): Option<readonly [A, Dequeue<A>]> { ... }
-```
-
-## push (method)
-
-Enqueue an item to the front of this queue
-
-**Signature**
-
-```ts
-public push(a: A): Dequeue<A> { ... }
-```
-
-## peek (method)
-
-Observe the next item that would be removed by take
-
-**Signature**
-
-```ts
-public peek(): Option<A> { ... }
-```
-
-## isEmpty (method)
-
-**Signature**
-
-```ts
-public isEmpty(): boolean { ... }
-```
-
-## size (method)
-
-**Signature**
-
-```ts
-public size(): number { ... }
-```
-
-## find (method)
-
-**Signature**
-
-```ts
-public find(f: Predicate<A>): Option<A> { ... }
-```
-
-## filter (method)
-
-**Signature**
-
-```ts
-public filter(f: Predicate<A>): Dequeue<A> { ... }
 ```
 
 # empty (function)
@@ -124,10 +40,18 @@ public filter(f: Predicate<A>): Dequeue<A> { ... }
 export function empty<A>(): Dequeue<A> { ... }
 ```
 
+# from (function)
+
+**Signature**
+
+```ts
+export function from<A>(front: List<A>, back: List<A>): Dequeue<A> { ... }
+```
+
 # of (function)
 
 **Signature**
 
 ```ts
-export function of<A>(item: A): Dequeue<A> { ... }
+export function of<A>(a: A): Dequeue<A> { ... }
 ```

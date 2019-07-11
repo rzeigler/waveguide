@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { effect, IO } from "./io";
+import { IO, sync } from "./io";
 
 
 /**
@@ -20,10 +20,10 @@ import { effect, IO } from "./io";
  * @param msg
  */
 export function log(msg: string): IO<never, void> {
-  return effect(() => {
+    return sync(() => {
     // tslint:disable-next-line
-    console.log(msg);
-  });
+        console.log(msg);
+    });
 }
 
 /**
@@ -31,10 +31,10 @@ export function log(msg: string): IO<never, void> {
  * @param msg
  */
 export function warn(msg: string): IO<never, void> {
-  return effect(() => {
+    return sync(() => {
     // tslint:disable-next-line
-    console.warn(msg);
-  });
+        console.warn(msg);
+    });
 }
 
 /**
@@ -42,8 +42,8 @@ export function warn(msg: string): IO<never, void> {
  * @param msg
  */
 export function error(msg: string): IO<never, void> {
-  return effect(() => {
+    return sync(() => {
     // tslint:disable-next-line
-    console.error(msg);
-  });
+        console.error(msg);
+    });
 }

@@ -12,26 +12,44 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { IO, succeed } from "../src/io";
+/* eslint-disable */
+import { IO } from "../src/io";
+import * as m from "../src/io";
 
-function promise() {
-  const unfold = (max: number) => (cur: number): Promise<number> =>
-  max === cur ? Promise.resolve(max) : Promise.resolve(max).then((n) => unfold(max)(cur + 1).then((m) => m + n));
+function promise(log: boolean) {
+    const unfold = (max: number) => (cur: number): Promise<number> =>
+        max === cur ? Promise.resolve(max) : Promise.resolve(max).then((n) => unfold(max)(cur + 1).then((v) => v + n));
 
-  const start = process.hrtime.bigint();
-  // tslint:disable-next-line
-  return unfold(1000000)(0).then((result) => console.log(process.hrtime.bigint() - start, result));
+    const start = process.hrtime.bigint();
+    return unfold(1000000)(0).then((result) => {
+        if (log) {
+            // tslint:disable-next-line
+            console.log(process.hrtime.bigint() - start, result)
+        }
+    });
 
 }
 
-function io() {
-  const unfold = (max: number) => (cur: number): IO<never, number> =>
-  max === cur ? succeed(max) : succeed(max).chain((n) => unfold(max)(cur + 1).map((m) => m + n));
+function io(log: boolean) {
+    const unfold = (max: number) => (cur: number): IO<never, number> =>
+        max === cur ? m.pure(max) : m.chain(m.pure(max), (n) => m.map(unfold(max)(cur + 1), (v) => v + n));
 
-  const start = process.hrtime.bigint();
-  // tslint:disable-next-line
-  return unfold(1000000)(0).unsafeRunToPromise().then((result) => console.log(process.hrtime.bigint() - start, result));
+    const start = process.hrtime.bigint();
+    return m.runToPromise(unfold(1000000)(0)).then((result) => {
+        if (log) {
+            // tslint:disable-next-line
+            console.log(process.hrtime.bigint() - start, result)
+        }
+    });
 }
 
-promise()
-  .then(() => io());
+let op: Promise<unknown> = Promise.resolve();
+for (let i = 0; i < 20; i++) {
+    op = op.then(() => promise(false));
+}
+op = op.then(() => promise(true));
+
+for (let i = 0; i < 20; i++) {
+    op = op.then(() => io(false));
+}
+op = op.then(() => io(true));

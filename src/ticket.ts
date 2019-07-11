@@ -15,25 +15,25 @@
 import { Exit } from "./exit";
 import { IO, unit } from "./io";
 
-export function ticketExit(ticket: Ticket<unknown>, exit: Exit<never, unknown>): IO<never, void> {
-  if (exit._tag === "interrupted") {
-    return ticket.cleanup;
-  }
-  return unit;
+export function ticketExit<A>(ticket: Ticket<A>, exit: Exit<never, A>): IO<never, void> {
+    if (exit._tag === "interrupt") {
+        return ticket.cleanup;
+    }
+    return unit;
 }
 
 export function ticketUse<A>(ticket: Ticket<A>): IO<never, A> {
-  return ticket.acquire;
+    return ticket.acquire;
 }
 
 export interface Ticket<A> {
-  readonly acquire: IO<never, A>;
-  readonly cleanup: IO<never, void>;
+    readonly acquire: IO<never, A>;
+    readonly cleanup: IO<never, void>;
 }
 
 export function makeTicket<A>(acquire: IO<never, A>, cleanup: IO<never, void>): Ticket<A> {
-  return {
-    acquire,
-    cleanup
-  };
+    return {
+        acquire,
+        cleanup
+    };
 }

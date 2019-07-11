@@ -15,66 +15,81 @@
 import * as fc from "fast-check";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { array } from "fp-ts/lib/Array";
-import {setoidString} from "fp-ts/lib/Setoid";
-import { io } from "../src/io";
+import { eqString } from "fp-ts/lib/Eq";
+import { pipe } from "fp-ts/lib/pipeable";
+import * as io from "../src/io";
 import { boundedQueue, unboundedQueue } from "../src/queue";
 import { assertEq } from "./tools.spec";
 
-const assertStringEq = assertEq(setoidString);
+const assertStringEq = assertEq(eqString);
 
 describe("ConcurrentQueue", function() {
-  this.timeout(60000);
-  it("elements are always consumed completely in the order they are produced", () =>
-    fc.assert(
-      fc.asyncProperty(
-        fc.array(fc.tuple(fc.string(), fc.nat(20), fc.nat(20))),
-        fc.nat(100),
-        fc.nat(100),
-        (ops, delayWrite, delayRead) =>
-          Do(io)
-            .bind("q", unboundedQueue<string>())
-            .bindL("writeFiber",
-              ({q}) => array.traverse(io)(ops, ([v, d]) =>
-                                          q.offer(v).delay(d))
-                  .delay(delayWrite)
-                  .fork())
-            .bindL("readFiber",
-              ({q}) => array.traverse(io)(ops,
-                                          ([v, _, d]) => q.take.chain(assertStringEq(v)).delay(d))
-                .delay(delayRead)
-                .fork())
-            .doL(({writeFiber}) => writeFiber.wait)
-            .doL(({readFiber}) => readFiber.join)
-            .return(() => undefined)
-            .unsafeRunToPromise()
-      )
-    )
-  );
-  it("elements are always consumed completely in the order they are produced -- blocking", () =>
-    fc.assert(
-      fc.asyncProperty(
-        fc.array(fc.tuple(fc.string(), fc.nat(20), fc.nat(20))),
-        fc.nat(5),
-        fc.nat(100),
-        fc.nat(100),
-        (ops, queueSize, delayWrite, delayRead) =>
-          Do(io)
-            .bind("q", boundedQueue<string>(queueSize))
-            .bindL("writeFiber",
-              ({q}) => array.traverse(io)(ops, ([v, d]) =>
-                                          q.offer(v).delay(d))
-                  .delay(delayWrite)
-                  .fork())
-            .bindL("readFiber",
-              ({q}) => array.traverse(io)(ops,
-                                          ([v, _, d]) => q.take.chain(assertStringEq(v)).delay(d))
-                .delay(delayRead)
-                .fork())
-            .doL(({writeFiber}) => writeFiber.wait)
-            .doL(({readFiber}) => readFiber.join)
-            .return(() => undefined)
-            .unsafeRunToPromise()
-      )
-    )
-  );
+    this.timeout(60000);
+    it("elements are always consumed completely in the order they are produced", () =>
+        fc.assert(
+            fc.asyncProperty(
+                fc.array(fc.tuple(fc.string(), fc.nat(20), fc.nat(20))),
+                fc.nat(100),
+                fc.nat(100),
+                (ops, delayWrite, delayRead) =>
+                    io.runToPromise(Do(io.instances)
+                        .bind("q", unboundedQueue<string>())
+                        .bindL("writeFiber",
+                            ({q}) =>
+                                pipe(
+                                    array.traverse(io.instances)(ops, ([v, d]) =>
+                                        io.delay(q.offer(v), d)),
+                                    io.liftDelay(delayWrite),
+                                    io.fork
+                                )
+                        )
+                        .bindL("readFiber",
+                            ({q}) =>
+                                pipe(
+                                    array.traverse(io.instances)(ops,
+                                        ([v, _, d]) => io.delay(io.chain(q.take, assertStringEq(v)), d)),
+                                    io.liftDelay(delayRead),
+                                    io.fork
+                                )
+                        )
+                        .doL(({writeFiber}) => writeFiber.wait)
+                        .doL(({readFiber}) => readFiber.join)
+                        .return(() => undefined)
+                    )
+            )
+        )
+    );
+    it("elements are always consumed completely in the order they are produced -- blocking", () =>
+        fc.assert(
+            fc.asyncProperty(
+                fc.array(fc.tuple(fc.string(), fc.nat(20), fc.nat(20))),
+                fc.nat(5),
+                fc.nat(100),
+                fc.nat(100),
+                (ops, queueSize, delayWrite, delayRead) =>
+                    io.runToPromise(Do(io.instances)
+                        .bind("q", boundedQueue<string>(queueSize))
+                        .bindL("writeFiber",
+                            ({q}) =>
+                                pipe(
+                                    array.traverse(io.instances)(ops, ([v, d]) =>
+                                        io.delay(q.offer(v), d)),
+                                    io.liftDelay(delayWrite),
+                                    io.fork
+                                )
+                        )
+                        .bindL("readFiber",
+                            ({q}) =>
+                                pipe(
+                                    array.traverse(io.instances)(ops,
+                                        ([v, _, d]) => io.delay(io.chain(q.take, assertStringEq(v)), d)),
+                                    io.liftDelay(delayRead),
+                                    io.fork))
+                        .doL(({writeFiber}) => writeFiber.wait)
+                        .doL(({readFiber}) => readFiber.join)
+                        .return(() => undefined))
+            )
+        )
+    );
 });
+                    

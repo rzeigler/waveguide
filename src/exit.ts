@@ -12,26 +12,50 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export type Exit<E, A> = Value<A> | Cause<E>;
+export type Exit<E, A> = Done<A> | Cause<E>;
 
-export class Value<A> {
-  public readonly _tag: "value" = "value";
-  constructor(public readonly value: A) { }
+export interface Done<A> {
+    readonly _tag: "value";
+    readonly value: A;
 }
 
-export type Cause<E> = Failed<E> | Aborted | Interrupted;
-export class Failed<E> {
-  public readonly _tag: "failed" = "failed";
-  constructor(public readonly error: E) { }
+export function done<A>(v: A): Done<A> {
+    return {
+        _tag: "value",
+        value: v
+    };
 }
 
-export class Aborted {
-  public readonly _tag: "aborted" = "aborted";
-  constructor(public readonly error: unknown) { }
+export type Cause<E> = Raise<E> | Abort | Interrupt;
+
+export interface Raise<E> {
+    readonly _tag: "raise";
+    readonly error: E;
 }
 
-export class Interrupted {
-  public readonly _tag: "interrupted" = "interrupted";
+export function raise<E>(e: E): Raise<E> {
+    return {
+        _tag: "raise",
+        error: e
+    };
 }
 
-// TODO: Monad and Bifunctor interface for Exit<E,A>
+export interface Abort {
+    readonly _tag: "abort";
+    readonly abortedWith: unknown;
+}
+
+export function abort(a: unknown): Abort {
+    return {
+        _tag: "abort",
+        abortedWith: a
+    };
+}
+
+export interface Interrupt {
+    readonly _tag: "interrupt";
+}
+
+export const interrupt: Interrupt = {
+    _tag: "interrupt"
+};

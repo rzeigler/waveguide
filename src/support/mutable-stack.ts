@@ -12,26 +12,36 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export class MutableStack<A> {
-  constructor(private readonly array: A[] = []) { }
+export interface MutableStack<A> {
+    push(a: A): void;
+    pop(): A | undefined;
+    peek(): A | undefined;
+    isEmpty(): boolean;
+    size(): number;
+}
 
-  public push(a: A): void {
-    this.array.push(a);
-  }
-
-  public pop(): A | undefined {
-    return this.array.pop();
-  }
-
-  public peek(): A | undefined {
-    return this.array.length > 0 ? this.array[this.array.length - 1] : undefined;
-  }
-
-  public isEmpty(): boolean {
-    return this.array.length === 0;
-  }
-
-  public size(): number {
-    return this.array.length;
-  }
+export function mutableStack<A>(): MutableStack<A> {
+    const array: A[] = [];
+    function push(a: A): void {
+        array.push(a);
+    }
+    function pop(): A | undefined {
+        return array.pop();
+    }
+    function peek(): A | undefined {
+        return array.length > 0 ? array[array.length - 1] : undefined;
+    }
+    function isEmpty(): boolean {
+        return array.length === 0;
+    }
+    function size(): number {
+        return array.length;
+    }
+    return {
+        push,
+        pop,
+        peek,
+        isEmpty,
+        size
+    };
 }

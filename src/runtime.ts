@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import { Lazy } from "fp-ts/lib/function";
-import { makeTrampoline, Trampoline } from "./trampoline";
+import { makeTrampoline } from "./trampoline";
 
 /**
  * An interface for the IO system runtime.
@@ -21,15 +21,15 @@ import { makeTrampoline, Trampoline } from "./trampoline";
  * Allows dispatching arbitrary blocks of code immediately or after some delay
  */
 export interface Runtime {
-  /**
+    /**
    * Dispatch a thunk immediately.
    *
    * The default runtime trampolines this dispatch to for stack safety.
    * @param thunk the action to execute
    */
-  dispatch(thunk: Lazy<void>): void;
+    dispatch(thunk: Lazy<void>): void;
 
-  /**
+    /**
    * Dispatch a thunk after some amount of time has elapsed.
    *
    * Returns an actions that may be used to cancel execution.
@@ -37,22 +37,27 @@ export interface Runtime {
    * @param thunk the action to execute
    * @param ms delay in milliseconds
    */
-  dispatchLater(thunk: Lazy<void>, ms: number): Lazy<void>;
+    dispatchLater(thunk: Lazy<void>, ms: number): Lazy<void>;
 }
 
-class JsRuntime implements Runtime {
-  private readonly trampoline: Trampoline = makeTrampoline();
+function jsRuntime(): Runtime {
+    const trampoline = makeTrampoline();
 
-  public dispatch(thunk: Lazy<void>): void {
-    this.trampoline.dispatch(thunk);
-  }
-
-  public dispatchLater(thunk: Lazy<void>, ms: number): Lazy<void> {
-    const handle = setTimeout(() => this.dispatch(thunk), ms);
-    return () => {
-      clearTimeout(handle);
+    const dispatch = (thunk: Lazy<void>): void => {
+        trampoline.dispatch(thunk);
     };
-  }
+
+    const dispatchLater = (thunk: Lazy<void>, ms: number): Lazy<void> => {
+        const handle = setTimeout(() => dispatch(thunk), ms);
+        return () => {
+            clearTimeout(handle);
+        };
+    };
+
+    return {
+        dispatch,
+        dispatchLater
+    };
 }
 
-export const defaultRuntime: Runtime = new JsRuntime();
+export const defaultRuntime: Runtime = jsRuntime();

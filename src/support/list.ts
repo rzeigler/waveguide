@@ -12,175 +12,211 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { array } from "fp-ts/lib/Array";
-import { Function2, Lazy, Predicate } from "fp-ts/lib/function";
+import { flip, FunctionN, Lazy, not, Predicate } from "fp-ts/lib/function";
+import { Monad1 } from "fp-ts/lib/Monad";
 import { none, Option, some } from "fp-ts/lib/Option";
+import { pipe } from "fp-ts/lib/pipeable";
 
-export type List<A> = Cons<A> | Nil<A>;
+export type List<A> = Cons<A> | Nil;
 
-export class Cons<A> {
-  public readonly _tag: "cons" = "cons";
-  constructor(public readonly a: A, public readonly rest: List<A>) { }
-
-  public prepend(a: A): List<A> {
-    return new Cons(a, this);
-  }
-
-  public cata<B>(ifNil: B, ifCons: Function2<A, List<A>, B>): B {
-    return ifCons(this.a, this.rest);
-  }
-
-  public cataL<B>(ifNil: Lazy<B>, ifCons: Function2<A, List<A>, B>): B {
-    return ifCons(this.a, this.rest);
-  }
-
-  public head(): Option<A> {
-    return some(this.a);
-  }
-
-  public tail(): Option<List<A>> {
-    return some(this.rest);
-  }
-
-  public foldl<B>(b: B, f: Function2<B, A, B>): B {
-    let current: List<A> = this;
-    while (current._tag === "cons") {
-      b = f(b, current.a);
-      current = current.rest;
-    }
-    return b;
-  }
-
-  public reverse(): List<A> {
-    return this.foldl<List<A>>(nil, (tail, head) => tail.prepend(head));
-  }
-
-  public drop(n: number): List<A> {
-    let current: List<A> = this;
-    while (n > 0 && current._tag === "cons") {
-      current = this.rest;
-    }
-    return current;
-  }
-
-  public init(): Option<List<A>> {
-    return some(this.reverse()
-      .drop(1)
-      .reverse());
-  }
-
-  public last(): Option<A> {
-    let head: A = this.a;
-    let tail: List<A> = this.rest;
-    while (tail._tag !== "nil") {
-      head = tail.a;
-      tail = tail.rest;
-    }
-    return some(head);
-  }
-
-  public filter(f: Predicate<A>): List<A> {
-    return this.foldl<List<A>>(nil, (tail, head) => f(head) ? tail.prepend(head) : tail);
-  }
-
-  public find(f: Predicate<A>): Option<A> {
-    let current: List<A> = this;
-    while (current._tag === "cons") {
-      if (f(current.a)) {
-        return some(current.a);
-      }
-      current = current.rest;
-    }
-    return none;
-  }
-
-  public isEmpty(): this is Nil<A> {
-    return false;
-  }
-
-  public size(): number {
-    let current: List<A> = this;
-    let size = 0;
-    while (current._tag !== "nil") {
-      size++;
-      current = current.rest;
-    }
-    return size;
-  }
+export interface Cons<A> {
+    readonly _tag: "cons";
+    readonly head: A;
+    readonly tail: List<A>;
 }
 
-export class Nil<A> {
-  public readonly _tag: "nil" = "nil";
+export interface Nil {
+    readonly _tag: "nil";
+}
 
-  public prepend(a: A): List<A> {
-    return new Cons(a, this);
-  }
+export function isCons<A>(list: List<A>): list is Cons<A> {
+    return list._tag === "cons";
+}
 
-  public cata<B>(ifNil: B, ifCons: Function2<A, List<A>, B>): B {
-    return ifNil;
-  }
+export function isNil<A>(list: List<A>): list is Nil {
+    return list._tag === "nil";
+}
 
-  public cataL<B>(ifNil: Lazy<B>, ifCons: Function2<A, List<A>, B>): B {
+export const nil: List<never> = { _tag: "nil" };
+
+export function cons<A>(h: A, t: List<A>): List<A> {
+    return {
+        _tag: "cons",
+        head: h,
+        tail: t
+    };
+}
+
+export function of<A>(a: A): List<A> {
+    return cons(a, nil);
+}
+
+export function foldl<A, B>(list: List<A>, b: B, f: FunctionN<[B, A], B>): B {
+    let iter = list;
+    let seed = b;
+    while (isCons(iter)) {
+        seed = f(seed, iter.head);
+        iter = iter.tail;
+    }
+    return seed;
+}
+
+export function foldlc<A, B>(b: B, f: FunctionN<[B, A], B>): FunctionN<[List<A>], B> {
+    return (list) => foldl(list, b, f);
+}
+
+export function reverse<A>(list: List<A>): List<A> {
+    return foldl(list, nil as List<A>, (t, h) => cons(h, t));
+}
+
+export function foldr<A, B>(list: List<A>, b: B, f: FunctionN<[A, B], B>): B {
+    return pipe(
+        list,
+        reverse,
+        foldlc(b, flip(f))
+    );
+}
+
+export function snoc<A>(append: A, list: List<A>): List<A> {
+    return foldr(list, of(append), cons);
+}
+
+export function cata<A, B>(list: List<A>, ifCons: FunctionN<[A, List<A>], B>, ifNil: Lazy<B>): B {
+    if (isCons(list)) {
+        return ifCons(list.head, list.tail);
+    }
     return ifNil();
-  }
-
-  public head(): Option<A> {
-    return none;
-  }
-
-  public tail(): Option<List<A>> {
-    return none;
-  }
-
-  public foldl<B>(b: B, f: Function2<B, A, B>): B {
-    return b;
-  }
-
-  public reverse(): List<A> {
-    return this;
-  }
-
-  public filter(): List<A> {
-    return this;
-  }
-
-  public drop(n: number): List<A> {
-    return this;
-  }
-
-  public init(): Option<List<A>> {
-    return none;
-  }
-
-  public last(): Option<A> {
-    return none;
-  }
-
-  public isEmpty(): this is Nil<A> {
-    return true;
-  }
-
-  public find(f: Predicate<A>): Option<A> {
-    return none;
-  }
-
-  public size(): number {
-    return 0;
-  }
 }
 
-const nil: Nil<never> = new Nil();
-
-function prepend<A>(a: A, rest: List<A>): List<A> {
-  return rest.prepend(a);
+export function catac<A, B>(ifCons: FunctionN<[A, List<A>], B>, ifNil: Lazy<B>): FunctionN<[List<A>], B> {
+    return (list) => cata(list, ifCons, ifNil);
 }
 
-function fromArray<A>(as: A[]): List<A> {
-  return array.foldr(as, nil as List<A>, prepend);
+export function head<A>(list: List<A>): Option<A> {
+    return cata(list, (a, _) => some(a), () => none);
 }
 
-export const list = {
-  nil,
-  prepend,
-  fromArray
+export function tail<A>(list: List<A>): Option<List<A>> {
+    return cata(list, (_, rest) => some(rest), () => none);
+}
+
+export function last<A>(list: List<A>): Option<A> {
+    if (isNil(list)) {
+        return none;
+    }
+    let iter = list;
+    while (isCons(iter.tail)) {
+        iter = iter.tail;
+    }
+    return some(iter.head);
+}
+
+export const isEmpty = isNil;
+
+export const nonEmpty = not(isNil);
+
+export function find<A>(list: List<A>, f: Predicate<A>): Option<A> {
+    let iter = list;
+    while (isCons(iter)) {
+        if (f(iter.head)) {
+            return some(iter.head);
+        }
+        iter = iter.tail;
+    }
+    return none;
+}
+
+export function findc<A>(f: Predicate<A>): FunctionN<[List<A>], Option<A>> {
+    return (list) => find(list, f);
+}
+
+export function foldrc<A, B>(b: B, f: FunctionN<[A, B], B>): FunctionN<[List<A>], B> {
+    return (list) => foldr(list, b, f);
+}
+
+export function map<A, B>(list: List<A>, f: FunctionN<[A], B>): List<B> {
+    return pipe(
+        list,
+        foldlc(nil as List<B>, (t, a) => cons(f(a), t)),
+        reverse
+    );
+}
+
+export function lift<A, B>(f: FunctionN<[A], B>): FunctionN<[List<A>], List<B>> {
+    return (list) => map(list, f);
+}
+
+export function filter<A>(list: List<A>, f: Predicate<A>): List<A> {
+    return foldr(list, nil as List<A>, (a, t) => f(a) ? cons(a, t) : t);
+}
+
+export function filterc<A>(f: Predicate<A>): FunctionN<[List<A>], List<A>> {
+    return (list) => filter(list, f);
+}
+
+export function concat<A>(front: List<A>, back: List<A>): List<A> {
+    return foldr(front, back, cons);
+}
+
+/**
+ * Get the size of a list.
+ *
+ * This has pathologically bad performance.
+ * @param list
+ */
+export function size(list: List<unknown>): number {
+    let ct = 0;
+    let iter = list;
+    while (isCons(iter)) {
+        ct++;
+        iter = iter.tail;
+    }
+    return ct;
+}
+
+export function chain<A, B>(list: List<A>, f: FunctionN<[A], List<B>>): List<B> {
+    return pipe(
+        list,
+        lift(f),
+        foldlc(nil as List<B>, concat)
+    );
+}
+
+export function ap<A, B>(list: List<A>, fns: List<FunctionN<[A], B>>): List<B> {
+    return chain(list, (a) => map(fns, (f) => f(a)));
+}
+
+export function flatten<A>(list: List<List<A>>): List<A> {
+    return foldl(list, nil as List<A>, concat);
+}
+
+export function fromArray<A>(as: readonly A[]): List<A> {
+    return as.reduceRight((t, h) => cons(h, t), nil as List<A>);
+}
+
+export function toArray<A>(as: List<A>): A[] {
+    const out: A[] = [];
+    let iter = as;
+    while (isCons(iter)) {
+        out.push(iter.head);
+        iter = iter.tail;
+    }
+    return out;
+}
+
+export const URI = "List";
+export type URI = typeof URI;
+
+declare module 'fp-ts/lib/HKT' {
+    interface URItoKind<A> {
+        List: List<A>;
+    }
+}
+
+export const instances: Monad1<URI> = {
+    URI,
+    map,
+    of,
+    ap: flip(ap),
+    chain
 };

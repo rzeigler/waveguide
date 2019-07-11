@@ -13,26 +13,26 @@
 // limitations under the License.
 
 import { expect } from "chai";
-import { Completable } from "../src/support/completable";
+import { completable } from "../src/support/completable";
 
 describe("Completable", () => {
-  it("completions should be visible to observers registered after complete", () => {
-    let n: number | undefined;
-    const c = new Completable<number>();
-    c.complete(1);
-    c.listen((v) => n = v);
-    expect(n).to.equal(1);
-  });
-  it("completions should be visible to observers registered before complete", () => {
-    let n: number | undefined;
-    const c = new Completable<number>();
-    c.listen((v) => n = v);
-    c.complete(1);
-    expect(n).to.equal(1);
-  });
-  it("multiple completions should error", () => {
-    const c = new Completable<number>();
-    c.complete(1);
-    expect(() => c.complete(2)).to.throw();
-  });
+    it("completions should be visible to observers registered after complete", () => {
+        let n: number | undefined;
+        const c = completable<number>();
+        c.complete(1);
+        c.listen((v) => n = v);
+        expect(n).to.equal(1);
+    });
+    it("completions should be visible to observers registered before complete", () => {
+        let n: number | undefined;
+        const c = completable<number>();
+        c.listen((v) => n = v);
+        c.complete(1);
+        expect(n).to.equal(1);
+    });
+    it("multiple completions should error", () => {
+        const c = completable<number>();
+        c.complete(1);
+        expect(() => c.complete(2)).to.throw();
+    });
 });

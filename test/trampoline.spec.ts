@@ -16,23 +16,23 @@ import { expect } from "chai";
 import { makeTrampoline } from "../src/trampoline";
 
 describe("trampoline", () => {
-  it("should invoke dispatches immediately", () => {
-    const t = makeTrampoline();
-    let n = 1;
-    t.dispatch(() => n++);
-    expect(n).to.equal(2);
-    expect(t.isRunning()).to.equal(false);
-  });
-  it("should trampoline dispatches that occur while running", () => {
-    const t = makeTrampoline();
-    let n = 1;
-    t.dispatch(() => {
-      n++;
-      t.dispatch(() => {
-        n *= 2;
-      });
-      n--;
+    it("should invoke dispatches immediately", () => {
+        const t = makeTrampoline();
+        let n = 1;
+        t.dispatch(() => n++);
+        expect(n).to.equal(2);
+        expect(t.isRunning()).to.equal(false);
     });
-    expect(n).to.equal(2);
-  });
+    it("should trampoline dispatches that occur while running", () => {
+        const t = makeTrampoline();
+        let n = 1;
+        t.dispatch(() => {
+            n++;
+            t.dispatch(() => {
+                n *= 2;
+            });
+            n--;
+        });
+        expect(n).to.equal(2);
+    });
 });

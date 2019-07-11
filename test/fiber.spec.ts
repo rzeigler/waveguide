@@ -14,92 +14,114 @@
 
 import fc from "fast-check";
 import { Do } from "fp-ts-contrib/lib/Do";
+import { pipe } from "fp-ts/lib/pipeable";
 import { makeDeferred } from "../src/deferred";
-import { Interrupted, Value } from "../src/exit";
-import { io, never, succeed } from "../src/io";
+import { done, interrupt } from "../src/exit";
+import { IO } from "../src/io";
+import * as io from "../src/io";
 import { makeRef } from "../src/ref";
 import { arbEitherIO, eqvIO, expectExit } from "./tools.spec";
 
 describe("fiber", () => {
-  it("fibers are joinable", () =>
-    expectExit(
-      succeed(42).delay(10)
-        .fork().chain((fiber) => fiber.join),
-      new Value(42)
-    )
-  );
-  it("fibers are interruptible", () =>
-    expectExit(
-      never.fork()
-        .chain((fiber) =>
-          fiber.interrupt.delay(10)
-            .applySecond(fiber.wait)),
-      new Value(new Interrupted())
-    )
-  );
-  describe("properties", function() {
-    this.timeout(5000);
-    it("fork/join is the same result as initial", () =>
-      fc.assert(
-        fc.asyncProperty(
-          arbEitherIO(fc.string(), fc.integer()),
-          (inner) => eqvIO(
-            inner.result(),
-            inner.fork().chain((fiber) => fiber.wait)
-          )
-        ),
-        { verbose: true }
-      )
+    it("fibers are joinable", () =>
+        expectExit(
+            pipe(
+                io.delay(io.pure(42), 10),
+                io.fork,
+                io.chainWith((fiber) => fiber.join)
+            ),
+            done(42)
+        )
     );
-    // Fuzz timing effects
-    it("uninterruptible fibers are not interruptible", () =>
-      fc.assert(
-        fc.asyncProperty(
-          fc.nat(50),
-          (delay) =>
-            expectExit(
-              Do(io)
-                .bind("latch", makeDeferred<never, void>())
-                .bind("cell", makeRef(false))
-                .bindL("child", ({latch, cell}) =>
-                  latch.wait.applySecond(cell.set(true)).uninterruptible().fork()
+    it("fibers are interruptible", () =>
+        expectExit(
+            pipe(
+                io.never,
+                io.fork,
+                io.chainWith((fiber) =>
+                    io.applySecond(
+                        io.delay(fiber.interrupt, 10),
+                        fiber.wait
+                    )
                 )
-                .bindL("result", ({latch, cell, child}) =>
-                  // Interrupt the child first, this always happens before latch release
-                  child.interrupt.shiftAsync().fork()
-                  // Then release the latch
-                  .applySecond(latch.succeed(undefined).delay(delay))
-                  // Then wait for the child to complete
-                  .applySecond(child.wait)
-                  // Then ensure child ran to completion
-                  .applySecond(cell.get))
-                .return(({result}) => result),
-              new Value(true)
-            )
-        ),
-        {verbose: true}
-      )
+            ),
+            done(interrupt)
+        )
     );
-    // Counter-example from above
-    it("interruptible fibers are interruptible", () =>
-      fc.assert(
-        fc.asyncProperty(
-          fc.integer(0, 50),
-          (delay) =>
-            expectExit(
-              makeDeferred<never, void>()
-                .chain((latch) =>
-                  latch.wait.as(42).fork()
-                    .chain((child) =>
-                      child.interrupt.fork()
-                        .applySecond(latch.succeed(undefined).delay(delay))
-                        .applySecond(child.wait)
+    describe("properties", function() {
+        this.timeout(5000);
+        it("fork/join is the same result as initial", () =>
+            fc.assert(
+                fc.asyncProperty(
+                    arbEitherIO(fc.string(), fc.integer()),
+                    (inner) => eqvIO(
+                        io.result(inner),
+                        io.chain(io.fork(inner), (fiber) => fiber.wait)
                     )
                 ),
-              new Value(new Interrupted())
+                { verbose: true }
             )
-        )
-      )
-    );
-  });
+        );
+        // Fuzz timing effects
+        it("uninterruptible fibers are not interruptible", () =>
+            fc.assert(
+                fc.asyncProperty(
+                    fc.nat(50),
+                    (delay) =>
+                        expectExit(
+                            io.chain(
+                                makeDeferred<never, void>(),
+                                (latch) =>
+                                    io.chain(makeRef()(false),
+                                        (cell) =>
+                                            io.chain(
+                                                io.fork(
+                                                    io.uninterruptible(io.applySecond(latch.wait, cell.set(true)))
+                                                ),
+                                                (child) =>
+                                                    io.applySecond(
+                                                        io.fork(io.shiftAsync(child.interrupt)),
+                                                        io.applySecond(
+                                                            io.delay(latch.done(undefined), delay),
+                                                            io.applySecond(
+                                                                child.wait,
+                                                                cell.get
+                                                            )
+                                                        )
+                                                    )
+                                            )
+                                    )
+                            ),
+                            done(true)
+                        )
+                ),
+                {verbose: true}
+            )
+        );
+        // Counter-example from above
+        it("interruptible fibers are interruptible", () =>
+            fc.assert(
+                fc.asyncProperty(
+                    fc.integer(0, 50),
+                    (delay) =>
+                        expectExit(
+                            io.chain(makeDeferred<never, void>(),
+                                (latch) =>
+                                    io.chain(io.fork(io.as(latch.wait, 42)),
+                                        (child) =>
+                                            io.applySecond(
+                                                io.shiftAsync(child.interrupt),
+                                                io.applySecond(
+                                                    io.delay(latch.done(undefined), delay),
+                                                    child.wait
+                                                )
+                                            )
+                                    )
+                            ),
+                            done(interrupt)
+                        )
+                )
+            )
+        );
+    });
 });
