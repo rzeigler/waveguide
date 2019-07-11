@@ -39,7 +39,7 @@ export function makeTicket<A>(acquire: IO<never, A>, cleanup: IO<never, void>): 
 **Signature**
 
 ```ts
-export function ticketExit(ticket: Ticket<unknown>, exit: Exit<never, unknown>): IO<never, void> { ... }
+export function ticketExit<A>(ticket: Ticket<A>, exit: Exit<never, A>): IO<never, void> { ... }
 ```
 
 # ticketUse (function)

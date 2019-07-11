@@ -463,8 +463,8 @@ Map over either the error or value produced by an IO
 
 ```ts
 export function bimap<E1, E2, A, B>(io: IO<E1, A>,
-                                    leftMap: FunctionN<[E1], E2>,
-                                    rightMap: FunctionN<[A], B>): IO<E2, B> { ... }
+    leftMap: FunctionN<[E1], E2>,
+    rightMap: FunctionN<[A], B>): IO<E2, B> { ... }
 ```
 
 # bimapWith (function)
@@ -475,7 +475,7 @@ Data last form of bimap
 
 ```ts
 export function bimapWith<E1, E2, A, B>(leftMap: FunctionN<[E1], E2>,
-                                        rightMap: FunctionN<[A], B>): FunctionN<[IO<E1, A>], IO<E2, B>> { ... }
+    rightMap: FunctionN<[A], B>): FunctionN<[IO<E1, A>], IO<E2, B>> { ... }
 ```
 
 # bracket (function)
@@ -484,8 +484,8 @@ export function bimapWith<E1, E2, A, B>(leftMap: FunctionN<[E1], E2>,
 
 ```ts
 export function bracket<E, A, B>(acquire: IO<E, A>,
-                                 release: FunctionN<[A], IO<E, unknown>>,
-                                 use: FunctionN<[A], IO<E, B>>): IO<E, B> { ... }
+    release: FunctionN<[A], IO<E, unknown>>,
+    use: FunctionN<[A], IO<E, B>>): IO<E, B> { ... }
 ```
 
 # bracketExit (function)
@@ -494,8 +494,8 @@ export function bracket<E, A, B>(acquire: IO<E, A>,
 
 ```ts
 export function bracketExit<E, A, B>(acquire: IO<E, A>,
-                                     release: FunctionN<[A, Exit<E, B>], IO<E, unknown>>,
-                                     use: FunctionN<[A], IO<E, B>>): IO<E, B> { ... }
+    release: FunctionN<[A, Exit<E, B>], IO<E, unknown>>,
+    use: FunctionN<[A], IO<E, B>>): IO<E, B> { ... }
 ```
 
 # chain (function)
@@ -578,8 +578,8 @@ export function flip<E, A>(io: IO<E, A>): IO<A, E> { ... }
 
 ```ts
 export function foldExit<E1, E2, A1, A2>(inner: IO<E1, A1>,
-                                         failure: FunctionN<[Cause<E1>], IO<E2, A2>>,
-                                         success: FunctionN<[A1], IO<E2, A2>>): Collapse<E1, E2, A1, A2> { ... }
+    failure: FunctionN<[Cause<E1>], IO<E2, A2>>,
+    success: FunctionN<[A1], IO<E2, A2>>): Collapse<E1, E2, A1, A2> { ... }
 ```
 
 # foldExitWith (function)
@@ -588,8 +588,8 @@ export function foldExit<E1, E2, A1, A2>(inner: IO<E1, A1>,
 
 ```ts
 export function foldExitWith<E1, E2, A1, A2>(failure: FunctionN<[Cause<E1>], IO<E2, A2>>,
-                                             success: FunctionN<[A1], IO<E2, A2>>):
-                                             FunctionN<[IO<E1, A1>], Collapse<E1, E2, A1, A2>> { ... }
+    success: FunctionN<[A1], IO<E2, A2>>):
+    FunctionN<[IO<E1, A1>], Collapse<E1, E2, A1, A2>> { ... }
 ```
 
 # fork (function)
@@ -786,8 +786,8 @@ export function raceFirst<E, A>(io1: IO<E, A>, io2: IO<E, A>): IO<E, A> { ... }
 
 ```ts
 export function raceFold<E1, E2, A, B, C>(first: IO<E1, A>, second: IO<E1, B>,
-                                          onFirstWon: FunctionN<[Exit<E1, A>, Fiber<E1, B>], IO<E2, C>>,
-                                          onSecondWon: FunctionN<[Exit<E1, B>, Fiber<E1, A>], IO<E2, C>>): IO<E2, C> { ... }
+    onFirstWon: FunctionN<[Exit<E1, A>, Fiber<E1, B>], IO<E2, C>>,
+    onSecondWon: FunctionN<[Exit<E1, B>, Fiber<E1, A>], IO<E2, C>>): IO<E2, C> { ... }
 ```
 
 # raiseAbort (function)
@@ -917,9 +917,9 @@ export function sync<A>(thunk: Lazy<A>): Suspended<never, A> { ... }
 
 ```ts
 export function timeoutFold<E1, E2, A, B>(source: IO<E1, A>,
-                                          ms: number,
-                                          onTimeout: FunctionN<[Fiber<E1, A>], IO<E2, B>>,
-                                          onCompleted: FunctionN<[Exit<E1, A>], IO<E2, B>>): IO<E2, B> { ... }
+    ms: number,
+    onTimeout: FunctionN<[Fiber<E1, A>], IO<E2, B>>,
+    onCompleted: FunctionN<[Exit<E1, A>], IO<E2, B>>): IO<E2, B> { ... }
 ```
 
 # timeoutOption (function)
@@ -927,7 +927,7 @@ export function timeoutFold<E1, E2, A, B>(source: IO<E1, A>,
 **Signature**
 
 ```ts
-export function timeoutOption<E, A>(source: IO<E, A>, ms: number) { ... }
+export function timeoutOption<E, A>(source: IO<E, A>, ms: number): IO<E, Option<A>> { ... }
 ```
 
 # uninterruptible (function)

@@ -36,7 +36,7 @@ Curried form of makeRef\_ to allow for inference on the initial type
 
 ```ts
 export const makeRef = <E = never>() => <A>(initial: A): IO<E, Ref<A>> =>
-  sync(() => ...
+    sync(() => ...
 ```
 
 # makeRef\_ (function)

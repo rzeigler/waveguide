@@ -198,6 +198,6 @@ export function zip<E, A, B>(resa: Resource<E, A>, resb: Resource<E, B>): Resour
 
 ```ts
 export function zipWith<E, A, B, C>(resa: Resource<E, A>,
-                                    resb: Resource<E, B>,
-                                    f: FunctionN<[A, B], C>): Resource<E, C> { ... }
+    resb: Resource<E, B>,
+    f: FunctionN<[A, B], C>): Resource<E, C> { ... }
 ```

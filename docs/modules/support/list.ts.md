@@ -251,7 +251,7 @@ export function foldrc<A, B>(b: B, f: FunctionN<[A, B], B>): FunctionN<[List<A>]
 **Signature**
 
 ```ts
-export function fromArray<A>(as: ReadonlyArray<A>): List<A> { ... }
+export function fromArray<A>(as: readonly A[]): List<A> { ... }
 ```
 
 # head (function)
