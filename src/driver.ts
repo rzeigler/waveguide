@@ -81,24 +81,6 @@ export function makeDriver<E, A>(run: IO<E, A>, runtime: Runtime = defaultRuntim
     const interruptRegionStack: MutableStack<boolean> = mutableStack();
     let cancelAsync: Lazy<void> | undefined;
 
-    function start(): void {
-        if (started) {
-            throw new Error("Bug: Runtime may not be started multiple times");
-        }
-        started = true;
-        runtime.dispatch(() => loop(run));
-    }
-
-    function interrupt(): void {
-        if (interrupted) {
-            return;
-        }
-        interrupted = true;
-        if (cancelAsync && isInterruptible()) {
-            cancelAsync();
-            resumeInterrupt();
-        }
-    }
 
     function onExit(f: FunctionN<[Exit<E, A>], void>): Lazy<void> {
         return result.listen(f);
@@ -106,6 +88,97 @@ export function makeDriver<E, A>(run: IO<E, A>, runtime: Runtime = defaultRuntim
 
     function exit(): Option<Exit<E, A>> {
         return result.value();
+    }
+
+    
+    function isInterruptible(): boolean {
+        const flag =  interruptRegionStack.peek();
+        if (flag === undefined) {
+            return true;
+        }
+        return flag;
+    }
+
+    function canRecover(cause: Cause<unknown>): boolean {
+    // It is only possible to recovery from interrupts in an uninterruptible region
+        if (cause._tag === "interrupt") {
+            return !isInterruptible();
+        }
+        return true;
+    }
+
+    function handle(e: Cause<unknown>): IO<unknown, unknown> | undefined {
+        let frame = frameStack.pop();
+        while (frame) {
+            if (frame._tag === "fold-frame" && canRecover(e)) {
+                return frame.recover(e);
+            }
+            // We need to make sure we leave an interrupt region while unwinding on errors
+            if (frame._tag === "interrupt-frame") {
+                frame.exitRegion();
+            }
+            frame = frameStack.pop();
+        }
+        // At the end... so we have failed
+        result.complete(e as Cause<E>);
+        return;
+    }
+
+
+    function resumeInterrupt(): void {
+        runtime.dispatch(() => {
+            const go = handle(interruptExit);
+            if (go) {
+                // eslint-disable-next-line
+                loop(go);
+            }
+        });
+    }
+
+    function next(value: unknown): IO<unknown, unknown> | undefined {
+        const frame = frameStack.pop();
+        if (frame) {
+            return frame.apply(value);
+        }
+        result.complete(done(value) as Done<A>);
+        return;
+    }
+
+    function resume(status: Either<unknown, unknown>): void {
+        cancelAsync = undefined;
+        runtime.dispatch(() => {
+            foldEither(
+                (cause: unknown) => {
+                    const go = handle(raise(cause));
+                    if (go) {
+                        /* eslint-disable-next-line */
+                        loop(go);
+                    }
+                },
+                (value: unknown) => {
+                    const go = next(value);
+                    if (go) {
+                        /* eslint-disable-next-line */
+                        loop(go);
+                    }
+                }
+            )(status);
+        });
+    }
+
+    function contextSwitch(op: FunctionN<[FunctionN<[Either<unknown, unknown>], void>], Lazy<void>>): void {
+        let complete = false;
+        const wrappedCancel = op((status) => {
+            if (complete) {
+                return;
+            }
+            complete = true;
+            resume(status);
+        });
+        cancelAsync = () => {
+            complete = true;
+            wrappedCancel();
+        };
     }
 
     function loop(go: IO<unknown, unknown>): void {
@@ -159,91 +232,26 @@ export function makeDriver<E, A>(run: IO<E, A>, runtime: Runtime = defaultRuntim
         }
     }
 
-    function resumeInterrupt(): void {
-        runtime.dispatch(() => {
-            const go = handle(interruptExit);
-            if (go) {
-                loop(go);
-            }
-        });
-    }
-
-    function isInterruptible(): boolean {
-        const flag =  interruptRegionStack.peek();
-        if (flag === undefined) {
-            return true;
+    function start(): void {
+        if (started) {
+            throw new Error("Bug: Runtime may not be started multiple times");
         }
-        return flag;
+        started = true;
+        runtime.dispatch(() => loop(run));
     }
 
-    function canRecover(cause: Cause<unknown>): boolean {
-    // It is only possible to recovery from interrupts in an uninterruptible region
-        if (cause._tag === "interrupt") {
-            return !isInterruptible();
+    function interrupt(): void {
+        if (interrupted) {
+            return;
         }
-        return true;
-    }
-
-    function next(value: unknown): IO<unknown, unknown> | undefined {
-        const frame = frameStack.pop();
-        if (frame) {
-            return frame.apply(value);
+        interrupted = true;
+        if (cancelAsync && isInterruptible()) {
+            cancelAsync();
+            resumeInterrupt();
         }
-        result.complete(done(value) as Done<A>);
-        return;
     }
 
-    function handle(e: Cause<unknown>): IO<unknown, unknown> | undefined {
-        let frame = frameStack.pop();
-        while (frame) {
-            if (frame._tag === "fold-frame" && canRecover(e)) {
-                return frame.recover(e);
-            }
-            // We need to make sure we leave an interrupt region while unwinding on errors
-            if (frame._tag === "interrupt-frame") {
-                frame.exitRegion();
-            }
-            frame = frameStack.pop();
-        }
-        // At the end... so we have failed
-        result.complete(e as Cause<E>);
-        return;
-    }
-
-    function contextSwitch(op: FunctionN<[FunctionN<[Either<unknown, unknown>], void>], Lazy<void>>): void {
-        let complete = false;
-        const wrappedCancel = op((status) => {
-            if (complete) {
-                return;
-            }
-            complete = true;
-            resume(status);
-        });
-        cancelAsync = () => {
-            complete = true;
-            wrappedCancel();
-        };
-    }
-
-    function resume(status: Either<unknown, unknown>): void {
-        cancelAsync = undefined;
-        runtime.dispatch(() => {
-            foldEither(
-                (cause: unknown) => {
-                    const go = handle(raise(cause));
-                    if (go) {
-                        loop(go);
-                    }
-                },
-                (value: unknown) => {
-                    const go = next(value);
-                    if (go) {
-                        loop(go);
-                    }
-                }
-            )(status);
-        });
-    }
+    
 
     return {
         start,

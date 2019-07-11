@@ -53,7 +53,7 @@ export const makeRef = <E = never>() => <A>(initial: A): IO<E, Ref<A>> =>
             set,
             update,
             modify
-        } as Ref<A>;
+        };
     });
 
 export function makeRef_<E, A>(initial: A): IO<E, Ref<A>> {

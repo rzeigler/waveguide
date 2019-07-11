@@ -1,0 +1,25 @@
+{
+    "compilerOptions": {
+      "target": "es2015",
+      "module": "commonjs",
+      "lib": ["dom", "es2015"],
+      "declaration": true,
+      "outDir": "./lib",
+      "strict": true,
+      "noImplicitAny": true,
+      "strictNullChecks": true,
+      "strictFunctionTypes": true,
+      "strictBindCallApply": true,
+      "strictPropertyInitialization": true,
+      "noImplicitThis": true,
+      "alwaysStrict": true,
+      "types": ["mocha"],
+      "esModuleInterop": true,
+      "experimentalDecorators": true,
+      "sourceMap": true
+    },
+    "include": [
+      "./src/**/*"
+    ]
+  }
+  

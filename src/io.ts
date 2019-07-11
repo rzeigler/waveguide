@@ -16,7 +16,7 @@ import { Applicative2 } from "fp-ts/lib/Applicative";
 import { Either, left, right } from "fp-ts/lib/Either";
 import { constant, flow, FunctionN, identity, Lazy } from "fp-ts/lib/function";
 import { Monad2 } from "fp-ts/lib/Monad";
-import { none, some } from "fp-ts/lib/Option";
+import { none, some, Option } from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
 import { Deferred, makeDeferred } from "./deferred";
 import { makeDriver } from "./driver";
@@ -25,6 +25,19 @@ import * as ex from "./exit";
 import { Fiber, makeFiber } from "./fiber";
 import { makeRef, Ref } from "./ref";
 import { Runtime } from "./runtime";
+
+// Some utilities
+function tuple2<A, B>(a: A, b: B): readonly [A, B] {
+    return [a, b] as const;
+}
+
+function fst<A, B>(a: A, _: B): A {
+    return a;
+}
+
+function snd<A, B>(_: A, b: B): B {
+    return b;
+}
 
 /**
  * A description of an effect to perform
@@ -480,20 +493,6 @@ export function interruptibleMask<E, A>(f: FunctionN<[InterruptMaskCutout<E, A>]
     );
 }
 
-export function bracketExit<E, A, B>(acquire: IO<E, A>,
-    release: FunctionN<[A, Exit<E, B>], IO<E, unknown>>,
-    use: FunctionN<[A], IO<E, B>>): IO<E, B> {
-    return uninterruptibleMask<E, B>((cutout) =>
-        chain(acquire,
-            (a) => pipe(a, use, cutout, result, chainWith(
-                (exit) => pipe(release(a, exit), result, chainWith(
-                    (finalize) => completed(combineFinalizerExit(exit, finalize))
-                ))
-            ))
-        )
-    );
-}
-
 function combineFinalizerExit<E, A>(fiberExit: Exit<E, A>, releaseExit: Exit<E, unknown>): Exit<E, A> {
     if (fiberExit._tag === "value" && releaseExit._tag === "value") {
         return fiberExit;
@@ -506,6 +505,20 @@ function combineFinalizerExit<E, A>(fiberExit: Exit<E, A>, releaseExit: Exit<E, 
     // This would affect chainError (i.e. assume multiples are actually an abort condition that happens to be typed)
         return fiberExit;
     }
+}
+
+export function bracketExit<E, A, B>(acquire: IO<E, A>,
+    release: FunctionN<[A, Exit<E, B>], IO<E, unknown>>,
+    use: FunctionN<[A], IO<E, B>>): IO<E, B> {
+    return uninterruptibleMask<E, B>((cutout) =>
+        chain(acquire,
+            (a) => pipe(a, use, cutout, result, chainWith(
+                (exit) => pipe(release(a, exit), result, chainWith(
+                    (finalize) => completed(combineFinalizerExit(exit, finalize))
+                ))
+            ))
+        )
+    );
 }
 
 export function bracket<E, A, B>(acquire: IO<E, A>,
@@ -594,6 +607,18 @@ export function fork<E, A>(io: IO<E, A>, name?: string): IO<never, Fiber<E, A>> 
     return withRuntime((runtime) => shift(makeFiber(io, runtime, name)));
 }
 
+function completeLatched<E1, E2, A, B, C>(latch: Ref<boolean>,
+    channel: Deferred<E2, C>,
+    combine: FunctionN<[Exit<E1, A>, Fiber<E1, B>], IO<E2, C>>,
+    other: Fiber<E1, B>): FunctionN<[Exit<E1, A>], IO<never, void>> {
+    return (exit) =>
+        flatten(
+            latch.modify((flag) => flag ?
+                [unit, flag] as const :
+                [channel.from(combine(exit, other)), true] as const)
+        );
+}
+
 export function raceFold<E1, E2, A, B, C>(first: IO<E1, A>, second: IO<E1, B>,
     onFirstWon: FunctionN<[Exit<E1, A>, Fiber<E1, B>], IO<E2, C>>,
     onSecondWon: FunctionN<[Exit<E1, B>, Fiber<E1, A>], IO<E2, C>>): IO<E2, C> {
@@ -614,18 +639,6 @@ export function raceFold<E1, E2, A, B, C>(first: IO<E1, A>, second: IO<E1, B>,
     );
 }
 
-function completeLatched<E1, E2, A, B, C>(latch: Ref<boolean>,
-    channel: Deferred<E2, C>,
-    combine: FunctionN<[Exit<E1, A>, Fiber<E1, B>], IO<E2, C>>,
-    other: Fiber<E1, B>): FunctionN<[Exit<E1, A>], IO<never, void>> {
-    return (exit) =>
-        flatten(
-            latch.modify((flag) => flag ?
-                [unit, flag] as const :
-                [channel.from(combine(exit, other)), true] as const)
-        );
-}
-
 export function timeoutFold<E1, E2, A, B>(source: IO<E1, A>,
     ms: number,
     onTimeout: FunctionN<[Fiber<E1, A>], IO<E2, B>>,
@@ -638,12 +651,19 @@ export function timeoutFold<E1, E2, A, B>(source: IO<E1, A>,
     );
 }
 
+function interruptLoser<E, A>(exit: Exit<E, A>, loser: Fiber<E, A>): IO<E, A> {
+    return applySecond(loser.interrupt, completed(exit));
+}
+
 export function raceFirst<E, A>(io1: IO<E, A>, io2: IO<E, A>): IO<E, A> {
     return raceFold(io1, io2, interruptLoser, interruptLoser);
 }
 
-function interruptLoser<E, A>(exit: Exit<E, A>, loser: Fiber<E, A>): IO<E, A> {
-    return applySecond(loser.interrupt, completed(exit));
+
+function fallbackToLoser<E, A>(exit: Exit<E, A>, loser: Fiber<E, A>): IO<E, A> {
+    return exit._tag === "value" ?
+        applySecond(loser.interrupt, completed(exit)) :
+        loser.join;
 }
 
 export function race<E, A>(io1: IO<E, A>, io2: IO<E, A>): IO<E, A> {
@@ -677,13 +697,7 @@ export function parAp_<E, A, B>(iof: IO<E, FunctionN<[A], B>>, ioa: IO<E, A>): I
     return parZipWith(iof, ioa, (f, a) => f(a));
 }
 
-function fallbackToLoser<E, A>(exit: Exit<E, A>, loser: Fiber<E, A>): IO<E, A> {
-    return exit._tag === "value" ?
-        applySecond(loser.interrupt, completed(exit)) :
-        loser.join;
-}
-
-export function timeoutOption<E, A>(source: IO<E, A>, ms: number) {
+export function timeoutOption<E, A>(source: IO<E, A>, ms: number): IO<E, Option<A>> {
     return timeoutFold(
         source,
         ms,
@@ -740,18 +754,6 @@ export function runToPromise<E, A>(io: IO<E, A>): Promise<A> {
  */
 export function runToPromiseExit<E, A>(io: IO<E, A>): Promise<Exit<E, A>> {
     return new Promise((resolve) => run(io, resolve));
-}
-
-function tuple2<A, B>(a: A, b: B): readonly [A, B] {
-    return [a, b] as const;
-}
-
-function fst<A, B>(a: A, _: B): A {
-    return a;
-}
-
-function snd<A, B>(_: A, b: B): B {
-    return b;
 }
 
 export const URI = "IO";

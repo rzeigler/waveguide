@@ -51,6 +51,85 @@ const slidingOffer = (n: number) => <A>(queue: Dequeue<A>, a: A): Dequeue<A> =>
 const droppingOffer = (n: number) => <A>(queue: Dequeue<A>, a: A): Dequeue<A> =>
     queue.size() >= n ? queue : queue.offer(a);
 
+function makeConcurrentQueueImpl<A>(state: Ref<State<A>>,
+    factory: IO<never, Deferred<never, A>>,
+    overflowStrategy: FunctionN<[Dequeue<A>, A], Dequeue<A>>,
+    // This is effect that precedes offering
+    // in the case of a boudned queue it is responsible for acquiring the semaphore
+    offerGate: IO<never, void>,
+    // This is the function that wraps the constructed take IO action
+    // In the case of a bounded queue, it is responsible for releasing the
+    // semaphore and re-acquiring it on interrupt
+    takeGate: FunctionN<[IO<never, A>], IO<never, A>>): ConcurrentQueue<A> {
+    function cleanupLatch(latch: Deferred<never, A>): IO<never, void> {
+        return io.asUnit(state.update((current) =>
+            pipe(
+                current,
+                fold(
+                    (waiting) => left(waiting.filter((item) => item !== latch)),
+                    (available) => right(available) as State<A>
+                )
+            )
+        ));
+    }
+    
+    const take = takeGate(
+        io.bracketExit(
+            io.chain(factory,
+                (latch) =>
+                    state.modify((current) =>
+                        pipe(
+                            current,
+                            fold(
+                                (waiting) => [
+                                    makeTicket(latch.wait, cleanupLatch(latch)),
+                                    left(waiting.offer(latch)) as State<A>
+                                ] as const,
+                                (ready) =>
+                                    pipe(
+                                        ready.take(),
+                                        poption.map(([next, q]) =>
+                                            [makeTicket(io.pure(next), io.unit), right(q) as State<A>] as const),
+                                        getOrElse(() => [
+                                            makeTicket(latch.wait, cleanupLatch(latch)),
+                                            left(of(latch)) as State<A>
+                                        ] as const)
+                                    )
+                            )
+                        )
+                    )
+            ), ticketExit, ticketUse)
+    );
+    
+    const offer = (a: A): IO<never, void> =>
+        io.applySecond(
+            offerGate,
+            io.uninterruptible(
+                io.flatten(
+                    state.modify((current) =>
+                        pipe(
+                            current,
+                            fold(
+                                (waiting) =>
+                                    pipe(
+                                        waiting.take(),
+                                        poption.map(([next, q]) => [next.done(a), left(q) as State<A>] as const),
+                                        getOrElse(() => [io.unit, right(overflowStrategy(empty(), a)) as State<A>] as const)
+                                    ),
+                                (available) => [io.unit, right(overflowStrategy(available, a)) as State<A>] as const
+                            )
+                        )
+                    )
+                )
+            )
+        );
+    return {
+        take,
+        offer
+    };
+}
+    
+
 export function unboundedQueue<A>(): IO<never, ConcurrentQueue<A>> {
     return io.map(makeRef()(initial<A>()),
         (ref) => makeConcurrentQueueImpl(ref, makeDeferred<never, A>(), unboundedOffer, io.unit, identity));
@@ -94,82 +173,4 @@ export function boundedQueue<A>(capacity: number): IO<never, ConcurrentQueue<A>>
                 )
         )
     );
-}
-
-function makeConcurrentQueueImpl<A>(state: Ref<State<A>>,
-    factory: IO<never, Deferred<never, A>>,
-    overflowStrategy: FunctionN<[Dequeue<A>, A], Dequeue<A>>,
-    // This is effect that precedes offering
-    // in the case of a boudned queue it is responsible for acquiring the semaphore
-    offerGate: IO<never, void>,
-    // This is the function that wraps the constructed take IO action
-    // In the case of a bounded queue, it is responsible for releasing the
-    // semaphore and re-acquiring it on interrupt
-    takeGate: FunctionN<[IO<never, A>], IO<never, A>>): ConcurrentQueue<A> {
-    function cleanupLatch(latch: Deferred<never, A>): IO<never, void> {
-        return io.asUnit(state.update((current) =>
-            pipe(
-                current,
-                fold(
-                    (waiting) => left(waiting.filter((item) => item !== latch)),
-                    (available) => right(available) as State<A>
-                )
-            )
-        ));
-    }
-
-    const take = takeGate(
-        io.bracketExit(
-            io.chain(factory,
-                (latch) =>
-                    state.modify((current) =>
-                        pipe(
-                            current,
-                            fold(
-                                (waiting) => [
-                                    makeTicket(latch.wait, cleanupLatch(latch)),
-                                    left(waiting.offer(latch)) as State<A>
-                                ] as const,
-                                (ready) =>
-                                    pipe(
-                                        ready.take(),
-                                        poption.map(([next, q]) =>
-                                            [makeTicket(io.pure(next), io.unit), right(q) as State<A>] as const),
-                                        getOrElse(() => [
-                                            makeTicket(latch.wait, cleanupLatch(latch)),
-                                            left(of(latch)) as State<A>
-                                        ] as const)
-                                    )
-                            )
-                        )
-                    )
-            ), ticketExit, ticketUse)
-    );
-
-    const offer = (a: A): IO<never, void> =>
-        io.applySecond(
-            offerGate,
-            io.uninterruptible(
-                io.flatten(
-                    state.modify((current) =>
-                        pipe(
-                            current,
-                            fold(
-                                (waiting) =>
-                                    pipe(
-                                        waiting.take(),
-                                        poption.map(([next, q]) => [next.done(a), left(q) as State<A>] as const),
-                                        getOrElse(() => [io.unit, right(overflowStrategy(empty(), a)) as State<A>] as const)
-                                    ),
-                                (available) => [io.unit, right(overflowStrategy(available, a)) as State<A>] as const
-                            )
-                        )
-                    )
-                )
-            )
-        );
-    return {
-        take,
-        offer
-    };
 }

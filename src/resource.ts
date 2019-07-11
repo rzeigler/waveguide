@@ -103,6 +103,12 @@ export function ap_<E, A, B>(resfab: Resource<E, FunctionN<[A], B>>, resa: Resou
     return zipWith(resfab, resa, (f, a) => f(a));
 }
 
+
+export function consume<E, A, B>(f: FunctionN<[A], IO<E, B>>): FunctionN<[Resource<E, A>], IO<E, B>> {
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define
+    return (r) => use(r, f);
+}
+
 export function use<E, A, B>(res: Resource<E, A>, f: FunctionN<[A], IO<E, B>>): IO<E, B> {
     if (res._tag === "pure") {
         return f(res.value);
@@ -115,9 +121,6 @@ export function use<E, A, B>(res: Resource<E, A>, f: FunctionN<[A], IO<E, B>>): 
     }
 }
 
-export function consume<E, A, B>(f: FunctionN<[A], IO<E, B>>): FunctionN<[Resource<E, A>], IO<E, B>> {
-    return (r) => use(r, f);
-}
 
 export const URI = "Resource";
 export type URI = typeof URI;

@@ -51,6 +51,6 @@ export function makeDeferred<E, A, E2 = never>(): IO<E2, Deferred<E, A>> {
             done,
             error,
             from
-        } as Deferred<E, A>;
+        };
     });
 }
