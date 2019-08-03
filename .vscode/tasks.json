@@ -8,7 +8,16 @@
             "script": "lint",
             "problemMatcher": [
                 "$eslint-stylish"
-            ]
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "type": "npm",
+            "script": "build",
+            "problemMatcher": []
         }
     ]
 }

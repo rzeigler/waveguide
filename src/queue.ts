@@ -169,7 +169,7 @@ export function boundedQueue<A>(capacity: number): IO<never, ConcurrentQueue<A>>
                     sem.acquire,
                     (inner) =>
                     // Before take, we must release the semaphore. If we are interrupted we should re-acquire the item
-                        io.bracketExit(sem.release, (_, exit) => exit._tag === "interrupt" ? sem.acquire : io.unit, (_) => inner)
+                        io.bracketExit(sem.release, (_, exit) => exit._tag === "interrupt" ? sem.acquire : io.unit, () => inner)
                 )
         )
     );

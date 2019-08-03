@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import { FunctionN } from "fp-ts/lib/function";
-import { IO, sync, never } from "./io";
+import { IO, sync } from "./io";
 
 export interface Ref<A> {
     readonly get: IO<never, A>;

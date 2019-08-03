@@ -31,7 +31,7 @@ function tuple2<A, B>(a: A, b: B): readonly [A, B] {
     return [a, b] as const;
 }
 
-function fst<A, B>(a: A, _: B): A {
+function fst<A>(a: A): A { // eslint-disable-line no-unused-vars
     return a;
 }
 
@@ -48,8 +48,8 @@ export type IO<E, A> =
   Completed<E, A> |
   Suspended<E, A> |
   Async<E, A> |
-  Chain<E, any, A> |
-  Collapse<any, E, any, A> |
+  Chain<E, any, A> | // eslint-disable-line @typescript-eslint/no-explicit-any
+  Collapse<any, E, any, A> | // eslint-disable-line @typescript-eslint/no-explicit-any
   InterruptibleRegion<E, A> |
   (boolean extends A ? AccessInterruptible : never) |
   (Runtime extends A ? AccessRuntime : never);
@@ -524,7 +524,7 @@ export function bracketExit<E, A, B>(acquire: IO<E, A>,
 export function bracket<E, A, B>(acquire: IO<E, A>,
     release: FunctionN<[A], IO<E, unknown>>,
     use: FunctionN<[A], IO<E, B>>): IO<E, B> {
-    return bracketExit(acquire, (e, _) => release(e), use);
+    return bracketExit(acquire, (e) => release(e), use);
 }
 
 export function onComplete<E, A>(ioa: IO<E, A>, finalizer: IO<E, unknown>): IO<E, A> {
@@ -587,7 +587,7 @@ export function shiftAsync<E, A>(io: IO<E, A>): IO<E, A> {
     return applySecond(shiftedAsync, io);
 }
 
-export const never: IO<never, never> = asyncTotal((callback) => {
+export const never: IO<never, never> = asyncTotal(() => {
     // tslint:disable-next-line:no-empty
     const handle = setInterval(() => { }, 60000);
     return () => {
@@ -628,8 +628,8 @@ export function raceFold<E1, E2, A, B, C>(first: IO<E1, A>, second: IO<E1, B>,
                 (channel) => chain(fork(first),
                     (fiber1) => chain(fork(second),
                         (fiber2) => chain(fork(chain(fiber1.wait, completeLatched(latch, channel, onFirstWon, fiber2))),
-                            (f1_) => chain(fork(chain(fiber2.wait, completeLatched(latch, channel, onSecondWon, fiber1))),
-                                (f2_) => onInterrupted(cutout(channel.wait), applySecond(fiber1.interrupt, fiber2.interrupt))
+                            () => chain(fork(chain(fiber2.wait, completeLatched(latch, channel, onSecondWon, fiber1))),
+                                () => onInterrupted(cutout(channel.wait), applySecond(fiber1.interrupt, fiber2.interrupt))
                             )
                         )
                     )

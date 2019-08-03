@@ -143,7 +143,7 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
 
     const withPermitsN = <E, A>(n: number, inner: IO<E, A>): IO<E, A> =>
     // hrm... why downcast necessary?
-        io.bracket(io.interruptible(acquireN<E>(n)), constant(releaseN(n) as IO<E, unknown>), (_) => inner);
+        io.bracket(io.interruptible(acquireN<E>(n)), constant(releaseN(n) as IO<E, unknown>), () => inner);
 
     const available = io.map(ref.get, e.fold((q) => -1 * q.size(), identity));
 

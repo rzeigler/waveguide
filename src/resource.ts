@@ -16,7 +16,6 @@ import { FunctionN } from "fp-ts/lib/function";
 import { Monad2 } from "fp-ts/lib/Monad";
 import { IO } from "./io";
 import * as io from "./io";
-import { MutableStack } from "./support/mutable-stack";
 
 /**
  * A Resource<E, A> is a type that encapsulates the safe acquisition and release of a resource.
@@ -27,7 +26,7 @@ export type Resource<E, A> =
   Pure<A> |
   Bracket<E, A> |
   Suspended<E, A>  |
-  Chain<E, any, A>;
+  Chain<E, any, A>; // eslint-disable-line @typescript-eslint/no-explicit-any
 
 export interface Pure<A> {
     readonly _tag: "pure";

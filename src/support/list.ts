@@ -93,7 +93,7 @@ export function catac<A, B>(ifCons: FunctionN<[A, List<A>], B>, ifNil: Lazy<B>):
 }
 
 export function head<A>(list: List<A>): Option<A> {
-    return cata(list, (a, _) => some(a), () => none);
+    return cata(list, (a) => some(a), () => none);
 }
 
 export function tail<A>(list: List<A>): Option<List<A>> {
