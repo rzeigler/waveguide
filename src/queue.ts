@@ -18,7 +18,7 @@ import { getOrElse, option } from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
 import { pipeable } from "fp-ts/lib/pipeable";
 import { Deferred, makeDeferred } from "./deferred";
-import { IO } from "./io";
+import { IO, DefaultR } from "./io";
 import * as io from "./io";
 import { makeRef, Ref } from "./ref";
 import { natNumber } from "./sanity";
@@ -27,8 +27,8 @@ import { Dequeue, empty, of } from "./support/dequeue";
 import { makeTicket, ticketExit, ticketUse } from "./ticket";
 
 export interface ConcurrentQueue<A> {
-    readonly take: IO<never, A>;
-    offer(a: A): IO<never, void>;
+    readonly take: IO<DefaultR, never, A>;
+    offer(a: A): IO<DefaultR, never, void>;
 }
 
 type State<A> = Either<Dequeue<Deferred<never, A>>, Dequeue<A>>;
