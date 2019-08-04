@@ -61,6 +61,8 @@ export type RIO<R, E, A> =
   (boolean extends A ? AccessInterruptible : never) |
   (Runtime extends A ? AccessRuntime : never);
 
+export type IO<E, A> = RIO<DefaultR, E, A>;
+
 export interface Pure<A> {
     readonly _tag: "pure";
     readonly value: A;
@@ -978,6 +980,14 @@ export function fromPromise<A>(thunk: Lazy<Promise<A>>): RIO<DefaultR, unknown, 
         // tslint:disable-next-line
         return () => { };
     }));
+}
+
+/**
+ * Lift a function from R => IO<E, A> to a RIO<R, E, A>
+ * @param f 
+ */
+export function encaseRIO<R, E, A>(f: FunctionN<[R], IO<E, A>>): RIO<R, E, A> {
+    return chain(accessEnv<R>(), f);
 }
 
 /**
