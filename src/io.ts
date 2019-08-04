@@ -26,7 +26,7 @@ import { Fiber, makeFiber } from "./fiber";
 import { makeRef, Ref } from "./ref";
 import { Runtime } from "./runtime";
 
-export type DefaultR = {}
+export type DefaultR = {}; // eslint-disable-line @typescript-eslint/prefer-interface
 
 // Some utilities
 function tuple2<A, B>(a: A, b: B): readonly [A, B] {
@@ -231,7 +231,7 @@ export function accessEnv<R>(): IO<R, never, R> {
 export interface ProvideEnv<R, E, A> {
     readonly _tag: "provide";
     readonly r: R;
-    readonly inner: IO<R, E, A>
+    readonly inner: IO<R, E, A>;
 }
 
 export function provideEnv<R, E, A>(r: R, io: IO<R, E, A>): IO<DefaultR, E, A> {
@@ -239,7 +239,7 @@ export function provideEnv<R, E, A>(r: R, io: IO<R, E, A>): IO<DefaultR, E, A> {
         _tag: "provide",
         r,
         inner: io
-    } as ProvideEnv<R, E, A>;
+    };
 }
 
 /**

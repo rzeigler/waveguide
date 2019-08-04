@@ -73,10 +73,10 @@ const makeInterruptFrame = (interruptStatus: MutableStack<boolean>): InterruptFr
 interface EnvironmentFrame {
     readonly _tag: "environment-frame";
     apply(u: unknown): UnkIO;
-    exitRegion(): void
+    exitRegion(): void;
 }
 
-const makeEnvironmentFrame = (environmentStack: MutableStack<any>): EnvironmentFrame => {
+const makeEnvironmentFrame = (environmentStack: MutableStack<any>): EnvironmentFrame => { // eslint-disable-line @typescript-eslint/no-explicit-any
     return {
         _tag: "environment-frame",
         apply(u: unknown) {
@@ -102,7 +102,7 @@ export function makeDriver<R, E, A>(runtime: Runtime = defaultRuntime): Driver<R
     const result: Completable<Exit<E, A>> = completable();
     const frameStack: MutableStack<FrameType> = mutableStack();
     const interruptRegionStack: MutableStack<boolean> = mutableStack();
-    const environmentStack: MutableStack<any> = mutableStack();
+    const environmentStack: MutableStack<any> = mutableStack(); // eslint-disable-line @typescript-eslint/no-explicit-any
     let cancelAsync: Lazy<void> | undefined;
 
 

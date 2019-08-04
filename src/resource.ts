@@ -14,7 +14,7 @@
 
 import { FunctionN } from "fp-ts/lib/function";
 import { Monad3 } from "fp-ts/lib/Monad";
-import { IO, DefaultR } from "./io";
+import { IO } from "./io";
 import * as io from "./io";
 
 /**
