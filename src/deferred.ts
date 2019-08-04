@@ -13,37 +13,37 @@
 // limitations under the License.
 
 import { Exit } from "./exit";
-import { IO } from "./io";
+import { IO, DefaultR } from "./io";
 import * as io from "./io";
 import { Completable, completable} from "./support/completable";
 
 export interface Deferred<E, A> {
-    readonly wait: IO<E, A>;
-    interrupt: IO<never, void>;
-    done(a: A): IO<never, void>;
-    error(e: E): IO<never, void>;
-    from(source: IO<E, A>): IO<never, void>;
+    readonly wait: IO<DefaultR, E, A>;
+    interrupt: IO<DefaultR, never, void>;
+    done(a: A): IO<DefaultR, never, void>;
+    error(e: E): IO<DefaultR, never, void>;
+    from(source: IO<DefaultR, E, A>): IO<DefaultR, never, void>;
 }
 
-export function makeDeferred<E, A, E2 = never>(): IO<E2, Deferred<E, A>> {
+export function makeDeferred<E, A, E2 = never>(): IO<DefaultR, E2, Deferred<E, A>> {
     return io.sync(() => {
-        const c: Completable<IO<E, A>> = completable();
-        const wait = io.flatten(io.asyncTotal<IO<E, A>>((callback) =>
+        const c: Completable<IO<DefaultR, E, A>> = completable();
+        const wait = io.flatten(io.asyncTotal<IO<DefaultR, E, A>>((callback) =>
             c.listen(callback)
         ));
         const interrupt = io.sync(() => {
             c.complete(io.raiseInterrupt);
         });
-        const done = (a: A): IO<never, void> => io.sync(() => {
+        const done = (a: A): IO<DefaultR, never, void> => io.sync(() => {
             c.complete(io.pure(a));
         });
-        const error = (e: E): IO<never, void> => io.sync(() => {
+        const error = (e: E): IO<DefaultR, never, void> => io.sync(() => {
             c.complete(io.raiseError(e));
         });
-        const complete = (exit: Exit<E, A>): IO<never, void> => io.sync(() => {
+        const complete = (exit: Exit<E, A>): IO<DefaultR, never, void> => io.sync(() => {
             c.complete(io.completed(exit));
         });
-        const from = (source: IO<E, A>): IO<never, void> =>
+        const from = (source: IO<DefaultR, E, A>): IO<DefaultR, never, void> =>
             io.onInterrupted(io.chain(io.result(source), complete), interrupt);
         return {
             wait,

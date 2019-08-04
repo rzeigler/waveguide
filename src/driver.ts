@@ -22,26 +22,29 @@ import { defaultRuntime, Runtime } from "./runtime";
 import { Completable, completable } from "./support/completable";
 import { MutableStack, mutableStack } from "./support/mutable-stack";
 
+// It turns out th is is used quite often
+type UnkIO = IO<unknown, unknown, unknown>
+
 export type FrameType = Frame | FoldFrame | InterruptFrame;
 
 interface Frame {
     readonly _tag: "frame";
-    apply(u: unknown): IO<unknown, unknown>;
+    apply(u: unknown): UnkIO;
 }
 
-const makeFrame = (f: FunctionN<[unknown], IO<unknown, unknown>>): Frame => ({
+const makeFrame = (f: FunctionN<[unknown], UnkIO>): Frame => ({
     _tag: "frame",
     apply: f
 });
 
 interface FoldFrame {
     readonly _tag: "fold-frame";
-    apply(u: unknown): IO<unknown, unknown>;
-    recover(cause: Cause<unknown>): IO<unknown, unknown>;
+    apply(u: unknown): UnkIO;
+    recover(cause: Cause<unknown>): UnkIO;
 }
 
-const makeFoldFrame = (f: FunctionN<[unknown], IO<unknown, unknown>>,
-    r: FunctionN<[Cause<unknown>], IO<unknown, unknown>>): FoldFrame => ({
+const makeFoldFrame = (f: FunctionN<[unknown], UnkIO>,
+    r: FunctionN<[Cause<unknown>], UnkIO>): FoldFrame => ({
     _tag: "fold-frame",
     apply: f,
     recover: r
@@ -49,7 +52,7 @@ const makeFoldFrame = (f: FunctionN<[unknown], IO<unknown, unknown>>,
 
 interface InterruptFrame {
     readonly _tag: "interrupt-frame";
-    apply(u: unknown): IO<unknown, unknown>;
+    apply(u: unknown): UnkIO;
     exitRegion(): void;
 }
 
@@ -73,7 +76,7 @@ export interface Driver<E, A> {
     exit(): Option<Exit<E, A>>;
 }
 
-export function makeDriver<E, A>(run: IO<E, A>, runtime: Runtime = defaultRuntime): Driver<E, A> {
+export function makeDriver<R, E, A>(run: IO<R, E, A>, runtime: Runtime = defaultRuntime): Driver<E, A> {
     let started = false;
     let interrupted = false;
     const result: Completable<Exit<E, A>> = completable();
@@ -107,7 +110,7 @@ export function makeDriver<E, A>(run: IO<E, A>, runtime: Runtime = defaultRuntim
         return true;
     }
 
-    function handle(e: Cause<unknown>): IO<unknown, unknown> | undefined {
+    function handle(e: Cause<unknown>): IO<unknown, unknown, unknown> | undefined {
         let frame = frameStack.pop();
         while (frame) {
             if (frame._tag === "fold-frame" && canRecover(e)) {
@@ -135,7 +138,7 @@ export function makeDriver<E, A>(run: IO<E, A>, runtime: Runtime = defaultRuntim
         });
     }
 
-    function next(value: unknown): IO<unknown, unknown> | undefined {
+    function next(value: unknown): UnkIO | undefined {
         const frame = frameStack.pop();
         if (frame) {
             return frame.apply(value);
@@ -181,8 +184,8 @@ export function makeDriver<E, A>(run: IO<E, A>, runtime: Runtime = defaultRuntim
         };
     }
 
-    function loop(go: IO<unknown, unknown>): void {
-        let current: IO<unknown, unknown> | undefined = go;
+    function loop(go: UnkIO): void {
+        let current: UnkIO | undefined = go;
         while (current && (!isInterruptible() || !interrupted)) {
             try {
                 if (current._tag === "pure") {

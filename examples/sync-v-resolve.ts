@@ -13,7 +13,7 @@
 // limitations under the License.
 
 /* eslint-disable */
-import { IO } from "../src/io";
+import { IO, DefaultR } from "../src/io";
 import * as m from "../src/io";
 
 function promise(log: boolean) {
@@ -31,7 +31,7 @@ function promise(log: boolean) {
 }
 
 function io(log: boolean) {
-    const unfold = (max: number) => (cur: number): IO<never, number> =>
+    const unfold = (max: number) => (cur: number): IO<DefaultR, never, number> =>
         max === cur ? m.pure(max) : m.chain(m.pure(max), (n) => m.map(unfold(max)(cur + 1), (v) => v + n));
 
     const start = process.hrtime.bigint();
