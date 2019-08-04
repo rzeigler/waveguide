@@ -21,7 +21,7 @@ Suspend console.error in an IO
 **Signature**
 
 ```ts
-export function error(msg: string): IO<DefaultR, never, void> { ... }
+export function error(msg: string): RIO<DefaultR, never, void> { ... }
 ```
 
 # log (function)
@@ -31,7 +31,7 @@ Suspend console.log in an IO
 **Signature**
 
 ```ts
-export function log(msg: string): IO<DefaultR, never, void> { ... }
+export function log(msg: string): RIO<DefaultR, never, void> { ... }
 ```
 
 # warn (function)
@@ -41,5 +41,5 @@ Suspend console.warn in an IO
 **Signature**
 
 ```ts
-export function warn(msg: string): IO<DefaultR, never, void> { ... }
+export function warn(msg: string): RIO<DefaultR, never, void> { ... }
 ```

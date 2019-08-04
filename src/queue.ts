@@ -18,7 +18,7 @@ import { getOrElse, option } from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
 import { pipeable } from "fp-ts/lib/pipeable";
 import { Deferred, makeDeferred } from "./deferred";
-import { IO, DefaultR } from "./io";
+import { RIO, DefaultR } from "./io";
 import * as io from "./io";
 import { makeRef, Ref } from "./ref";
 import { natNumber } from "./sanity";
@@ -27,8 +27,8 @@ import { Dequeue, empty, of } from "./support/dequeue";
 import { makeTicket, ticketExit, ticketUse } from "./ticket";
 
 export interface ConcurrentQueue<A> {
-    readonly take: IO<DefaultR, never, A>;
-    offer(a: A): IO<DefaultR, never, void>;
+    readonly take: RIO<DefaultR, never, A>;
+    offer(a: A): RIO<DefaultR, never, void>;
 }
 
 type State<A> = Either<Dequeue<Deferred<never, A>>, Dequeue<A>>;
@@ -52,16 +52,16 @@ const droppingOffer = (n: number) => <A>(queue: Dequeue<A>, a: A): Dequeue<A> =>
     queue.size() >= n ? queue : queue.offer(a);
 
 function makeConcurrentQueueImpl<A>(state: Ref<State<A>>,
-    factory: IO<DefaultR, never, Deferred<never, A>>,
+    factory: RIO<DefaultR, never, Deferred<never, A>>,
     overflowStrategy: FunctionN<[Dequeue<A>, A], Dequeue<A>>,
     // This is effect that precedes offering
     // in the case of a boudned queue it is responsible for acquiring the semaphore
-    offerGate: IO<DefaultR, never, void>,
+    offerGate: RIO<DefaultR, never, void>,
     // This is the function that wraps the constructed take IO action
     // In the case of a bounded queue, it is responsible for releasing the
     // semaphore and re-acquiring it on interrupt
-    takeGate: FunctionN<[IO<DefaultR, never, A>], IO<DefaultR, never, A>>): ConcurrentQueue<A> {
-    function cleanupLatch(latch: Deferred<never, A>): IO<DefaultR, never, void> {
+    takeGate: FunctionN<[RIO<DefaultR, never, A>], RIO<DefaultR, never, A>>): ConcurrentQueue<A> {
+    function cleanupLatch(latch: Deferred<never, A>): RIO<DefaultR, never, void> {
         return io.asUnit(state.update((current) =>
             pipe(
                 current,
@@ -101,7 +101,7 @@ function makeConcurrentQueueImpl<A>(state: Ref<State<A>>,
             ), ticketExit, ticketUse)
     );
     
-    const offer = (a: A): IO<DefaultR, never, void> =>
+    const offer = (a: A): RIO<DefaultR, never, void> =>
         io.applySecond(
             offerGate,
             io.uninterruptible(
@@ -130,14 +130,14 @@ function makeConcurrentQueueImpl<A>(state: Ref<State<A>>,
 }
     
 
-export function unboundedQueue<A>(): IO<DefaultR, never, ConcurrentQueue<A>> {
+export function unboundedQueue<A>(): RIO<DefaultR, never, ConcurrentQueue<A>> {
     return io.map(makeRef()(initial<A>()),
         (ref) => makeConcurrentQueueImpl(ref, makeDeferred<never, A>(), unboundedOffer, io.unit, identity));
 }
 
 const natCapacity = natNumber(new Error("Die: capacity must be a natural number"));
 
-export function slidingQueue<A>(capacity: number): IO<DefaultR, never, ConcurrentQueue<A>> {
+export function slidingQueue<A>(capacity: number): RIO<DefaultR, never, ConcurrentQueue<A>> {
     return io.applySecond(
         natCapacity(capacity),
         io.map(makeRef()(initial<A>()),
@@ -146,7 +146,7 @@ export function slidingQueue<A>(capacity: number): IO<DefaultR, never, Concurren
     );
 }
 
-export function droppingQueue<A>(capacity: number): IO<DefaultR, never, ConcurrentQueue<A>> {
+export function droppingQueue<A>(capacity: number): RIO<DefaultR, never, ConcurrentQueue<A>> {
     return io.applySecond(
         natCapacity(capacity),
         io.map(makeRef()(initial<A>()),
@@ -155,7 +155,7 @@ export function droppingQueue<A>(capacity: number): IO<DefaultR, never, Concurre
     );
 }
 
-export function boundedQueue<A>(capacity: number): IO<DefaultR, never, ConcurrentQueue<A>> {
+export function boundedQueue<A>(capacity: number): RIO<DefaultR, never, ConcurrentQueue<A>> {
     return io.applySecond(
         natCapacity(capacity),
         io.zipWith(

@@ -12,24 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { IO, DefaultR } from "./io";
+import { RIO, DefaultR } from "./io";
 import * as io from "./io";
 import { makeSemaphore } from "./semaphore";
 
 export interface Mutex {
-    readonly acquire: IO<DefaultR, never, void>;
-    readonly release: IO<DefaultR, never, void>;
-    readonly available: IO<DefaultR, never, boolean>;
-    withExclusion<E, A>(inner: IO<DefaultR, E, A>): IO<DefaultR, E, A>;
+    readonly acquire: RIO<DefaultR, never, void>;
+    readonly release: RIO<DefaultR, never, void>;
+    readonly available: RIO<DefaultR, never, boolean>;
+    withExclusion<E, A>(inner: RIO<DefaultR, E, A>): RIO<DefaultR, E, A>;
 }
 
-export const makeMutex: IO<DefaultR, never, Mutex> =
+export const makeMutex: RIO<DefaultR, never, Mutex> =
   io.map(makeSemaphore(1),
       (sem) => ({
           acquire: sem.acquire,
           release: sem.release,
           available: io.map(sem.available, (n) => n > 0),
-          withExclusion<E, A>(inner: IO<DefaultR, E, A>): IO<DefaultR, E, A> {
+          withExclusion<E, A>(inner: RIO<DefaultR, E, A>): RIO<DefaultR, E, A> {
               return sem.withPermit(inner);
           }
       }));

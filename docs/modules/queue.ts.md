@@ -22,8 +22,8 @@ parent: Modules
 
 ```ts
 export interface ConcurrentQueue<A> {
-  readonly take: IO<DefaultR, never, A>
-  offer(a: A): IO<DefaultR, never, void>
+  readonly take: RIO<DefaultR, never, A>
+  offer(a: A): RIO<DefaultR, never, void>
 }
 ```
 
@@ -32,7 +32,7 @@ export interface ConcurrentQueue<A> {
 **Signature**
 
 ```ts
-export function boundedQueue<A>(capacity: number): IO<DefaultR, never, ConcurrentQueue<A>> { ... }
+export function boundedQueue<A>(capacity: number): RIO<DefaultR, never, ConcurrentQueue<A>> { ... }
 ```
 
 # droppingQueue (function)
@@ -40,7 +40,7 @@ export function boundedQueue<A>(capacity: number): IO<DefaultR, never, Concurren
 **Signature**
 
 ```ts
-export function droppingQueue<A>(capacity: number): IO<DefaultR, never, ConcurrentQueue<A>> { ... }
+export function droppingQueue<A>(capacity: number): RIO<DefaultR, never, ConcurrentQueue<A>> { ... }
 ```
 
 # slidingQueue (function)
@@ -48,7 +48,7 @@ export function droppingQueue<A>(capacity: number): IO<DefaultR, never, Concurre
 **Signature**
 
 ```ts
-export function slidingQueue<A>(capacity: number): IO<DefaultR, never, ConcurrentQueue<A>> { ... }
+export function slidingQueue<A>(capacity: number): RIO<DefaultR, never, ConcurrentQueue<A>> { ... }
 ```
 
 # unboundedQueue (function)
@@ -56,5 +56,5 @@ export function slidingQueue<A>(capacity: number): IO<DefaultR, never, Concurren
 **Signature**
 
 ```ts
-export function unboundedQueue<A>(): IO<DefaultR, never, ConcurrentQueue<A>> { ... }
+export function unboundedQueue<A>(): RIO<DefaultR, never, ConcurrentQueue<A>> { ... }
 ```

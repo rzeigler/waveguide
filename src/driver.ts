@@ -16,14 +16,14 @@ import { Either, fold as foldEither } from "fp-ts/lib/Either";
 import { FunctionN, Lazy } from "fp-ts/lib/function";
 import { Option } from "fp-ts/lib/Option";
 import { Cause, Done, done, Exit, interrupt as interruptExit, raise } from "./exit";
-import { IO } from "./io";
+import { RIO } from "./io";
 import * as io from "./io";
 import { defaultRuntime, Runtime } from "./runtime";
 import { Completable, completable } from "./support/completable";
 import { MutableStack, mutableStack } from "./support/mutable-stack";
 
 // It turns out th is is used quite often
-type UnkIO = IO<unknown, unknown, unknown>
+type UnkIO = RIO<unknown, unknown, unknown>
 
 export type RegionFrameType = InterruptFrame | EnvironmentFrame
 export type FrameType = Frame | FoldFrame | RegionFrameType;
@@ -90,7 +90,7 @@ const makeEnvironmentFrame = (environmentStack: MutableStack<any>): EnvironmentF
 }
 
 export interface Driver<R, E, A> {
-    start(r: R, run: IO<R, E, A>): void;
+    start(r: R, run: RIO<R, E, A>): void;
     interrupt(): void;
     onExit(f: FunctionN<[Exit<E, A>], void>): Lazy<void>;
     exit(): Option<Exit<E, A>>;
@@ -131,7 +131,7 @@ export function makeDriver<R, E, A>(runtime: Runtime = defaultRuntime): Driver<R
         return true;
     }
 
-    function handle(e: Cause<unknown>): IO<unknown, unknown, unknown> | undefined {
+    function handle(e: Cause<unknown>): RIO<unknown, unknown, unknown> | undefined {
         let frame = frameStack.pop();
         while (frame) {
             if (frame._tag === "fold-frame" && canRecover(e)) {
@@ -262,7 +262,7 @@ export function makeDriver<R, E, A>(runtime: Runtime = defaultRuntime): Driver<R
         }
     }
 
-    function start(r: R, run: IO<R, E, A>): void {
+    function start(r: R, run: RIO<R, E, A>): void {
         if (started) {
             throw new Error("Bug: Runtime may not be started multiple times");
         }

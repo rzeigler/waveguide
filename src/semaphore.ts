@@ -19,20 +19,20 @@ import * as o from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
 import { Deferred, makeDeferred } from "./deferred";
 import * as io from "./io";
-import { IO, DefaultR } from "./io";
+import { RIO, DefaultR } from "./io";
 import { makeRef, Ref } from "./ref";
 import { Dequeue, empty } from "./support/dequeue";
 import { makeTicket, Ticket, ticketExit, ticketUse } from "./ticket";
 
 export interface Semaphore {
-    readonly acquire: IO<DefaultR, never, void>;
-    readonly release: IO<DefaultR, never, void>;
-    readonly available: IO<DefaultR, never, number>;
+    readonly acquire: RIO<DefaultR, never, void>;
+    readonly release: RIO<DefaultR, never, void>;
+    readonly available: RIO<DefaultR, never, number>;
 
-    acquireN(n: number): IO<DefaultR, never, void>;
-    releaseN(n: number): IO<DefaultR, never, void>;
-    withPermitsN<E, A>(n: number, io: IO<DefaultR, E, A>): IO<DefaultR, E, A>;
-    withPermit<E, A>(n: IO<DefaultR, E, A>): IO<DefaultR, E, A>;
+    acquireN(n: number): RIO<DefaultR, never, void>;
+    releaseN(n: number): RIO<DefaultR, never, void>;
+    withPermitsN<E, A>(n: number, io: RIO<DefaultR, E, A>): RIO<DefaultR, E, A>;
+    withPermit<E, A>(n: RIO<DefaultR, E, A>): RIO<DefaultR, E, A>;
 }
 
 type Reservation = readonly [number, Deferred<never, void>];
@@ -41,7 +41,7 @@ type State = Either<Dequeue<Reservation>, number>;
 const isReservationFor = (latch: Deferred<never, void>) => (rsv: readonly [number, Deferred<never, void>]): boolean =>
     rsv[1] === latch;
 
-function sanityCheck(n: number): IO<DefaultR, never, void> {
+function sanityCheck(n: number): RIO<DefaultR, never, void> {
     if (n < 0) {
         return io.raiseAbort(new Error("Die: semaphore permits must be non negative"));
     }
@@ -52,7 +52,7 @@ function sanityCheck(n: number): IO<DefaultR, never, void> {
 }
 
 function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
-    const releaseN = <E = never>(n: number): IO<DefaultR, E, void> =>
+    const releaseN = <E = never>(n: number): RIO<DefaultR, E, void> =>
         io.applySecond(
             sanityCheck(n),
             io.uninterruptible(
@@ -85,7 +85,7 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
             ));
 
 
-    const cancelWait = (n: number, latch: Deferred<never, void>): IO<DefaultR, never, void> =>
+    const cancelWait = (n: number, latch: Deferred<never, void>): RIO<DefaultR, never, void> =>
         io.uninterruptible(io.flatten(
             ref.modify(
                 (current) =>
@@ -109,7 +109,7 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
             )
         ));
 
-    const ticketN = (n: number): IO<DefaultR, never, Ticket<void>> =>
+    const ticketN = (n: number): RIO<DefaultR, never, Ticket<void>> =>
         io.chain(makeDeferred<never, void>(),
             (latch) =>
                 ref.modify(
@@ -135,15 +135,15 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
                 )
         );
 
-    const acquireN = <E = never>(n: number): IO<DefaultR, E, void> =>
+    const acquireN = <E = never>(n: number): RIO<DefaultR, E, void> =>
         io.applySecond(
             sanityCheck(n),
             n === 0 ? io.unit : io.bracketExit(ticketN(n), ticketExit, ticketUse)
         );
 
-    const withPermitsN = <E, A>(n: number, inner: IO<DefaultR, E, A>): IO<DefaultR, E, A> =>
+    const withPermitsN = <E, A>(n: number, inner: RIO<DefaultR, E, A>): RIO<DefaultR, E, A> =>
     // hrm... why downcast necessary?
-        io.bracket(io.interruptible(acquireN<E>(n)), constant(releaseN(n) as IO<DefaultR, E, unknown>), () => inner);
+        io.bracket(io.interruptible(acquireN<E>(n)), constant(releaseN(n) as RIO<DefaultR, E, unknown>), () => inner);
 
     const available = io.map(ref.get, e.fold((q) => -1 * q.size(), identity));
 
@@ -164,7 +164,7 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
  * @param n the number of permits
  * This must be non-negative
  */
-export function makeSemaphore(n: number): IO<DefaultR, never, Semaphore> {
+export function makeSemaphore(n: number): RIO<DefaultR, never, Semaphore> {
     return io.applySecond(
         sanityCheck(n),
         io.map(makeRef()<State>(right(n)), makeSemaphoreImpl)

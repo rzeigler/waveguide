@@ -14,7 +14,7 @@
 
 import { FunctionN } from "fp-ts/lib/function";
 import { Monad3 } from "fp-ts/lib/Monad";
-import { IO } from "./io";
+import { RIO } from "./io";
 import * as io from "./io";
 
 /**
@@ -42,11 +42,11 @@ export function pure<A>(value: A): Pure<A> {
 
 export interface Bracket<R, E, A> {
     readonly _tag: "bracket";
-    readonly acquire: IO<R, E, A>;
-    readonly release: FunctionN<[A], IO<R, E, unknown>>;
+    readonly acquire: RIO<R, E, A>;
+    readonly release: FunctionN<[A], RIO<R, E, unknown>>;
 }
 
-export function bracket<R, E, A>(acquire: IO<R, E, A>, release: FunctionN<[A], IO<R, E, unknown>>): Bracket<R, E, A> {
+export function bracket<R, E, A>(acquire: RIO<R, E, A>, release: FunctionN<[A], RIO<R, E, unknown>>): Bracket<R, E, A> {
     return {
         _tag: "bracket",
         acquire,
@@ -56,10 +56,10 @@ export function bracket<R, E, A>(acquire: IO<R, E, A>, release: FunctionN<[A], I
 
 export interface Suspended<R, E, A> {
     readonly _tag: "suspend";
-    readonly suspended: IO<R, E, Resource<R, E, A>>;
+    readonly suspended: RIO<R, E, Resource<R, E, A>>;
 }
 
-export function suspend<R, E, A>(suspended: IO<R, E, Resource<R, E, A>>): Suspended<R, E, A> {
+export function suspend<R, E, A>(suspended: RIO<R, E, Resource<R, E, A>>): Suspended<R, E, A> {
     return {
         _tag: "suspend",
         suspended
@@ -103,12 +103,12 @@ export function ap_<R, E, A, B>(resfab: Resource<R, E, FunctionN<[A], B>>, resa:
 }
 
 
-export function consume<R, E, A, B>(f: FunctionN<[A], IO<R, E, B>>): FunctionN<[Resource<R, E, A>], IO<R, E, B>> {
+export function consume<R, E, A, B>(f: FunctionN<[A], RIO<R, E, B>>): FunctionN<[Resource<R, E, A>], RIO<R, E, B>> {
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
     return (r) => use(r, f);
 }
 
-export function use<R, E, A, B>(res: Resource<R, E, A>, f: FunctionN<[A], IO<R, E, B>>): IO<R, E, B> {
+export function use<R, E, A, B>(res: Resource<R, E, A>, f: FunctionN<[A], RIO<R, E, B>>): RIO<R, E, B> {
     if (res._tag === "pure") {
         return f(res.value);
     } else if (res._tag === "bracket") {

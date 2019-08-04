@@ -37,8 +37,8 @@ parent: Modules
 ```ts
 export interface Bracket<R, E, A> {
   readonly _tag: 'bracket'
-  readonly acquire: IO<R, E, A>
-  readonly release: FunctionN<[A], IO<R, E, unknown>>
+  readonly acquire: RIO<R, E, A>
+  readonly release: FunctionN<[A], RIO<R, E, unknown>>
 }
 ```
 
@@ -72,7 +72,7 @@ export interface Pure<A> {
 ```ts
 export interface Suspended<R, E, A> {
   readonly _tag: 'suspend'
-  readonly suspended: IO<R, E, Resource<R, E, A>>
+  readonly suspended: RIO<R, E, Resource<R, E, A>>
 }
 ```
 
@@ -133,7 +133,7 @@ export function ap_<R, E, A, B>(resfab: Resource<R, E, FunctionN<[A], B>>, resa:
 **Signature**
 
 ```ts
-export function bracket<R, E, A>(acquire: IO<R, E, A>, release: FunctionN<[A], IO<R, E, unknown>>): Bracket<R, E, A> { ... }
+export function bracket<R, E, A>(acquire: RIO<R, E, A>, release: FunctionN<[A], RIO<R, E, unknown>>): Bracket<R, E, A> { ... }
 ```
 
 # chain (function)
@@ -149,7 +149,7 @@ export function chain<R, E, L, A>(left: Resource<R, E, L>, bind: FunctionN<[L], 
 **Signature**
 
 ```ts
-export function consume<R, E, A, B>(f: FunctionN<[A], IO<R, E, B>>): FunctionN<[Resource<R, E, A>], IO<R, E, B>> { ... }
+export function consume<R, E, A, B>(f: FunctionN<[A], RIO<R, E, B>>): FunctionN<[Resource<R, E, A>], RIO<R, E, B>> { ... }
 ```
 
 # map (function)
@@ -173,7 +173,7 @@ export function pure<A>(value: A): Pure<A> { ... }
 **Signature**
 
 ```ts
-export function suspend<R, E, A>(suspended: IO<R, E, Resource<R, E, A>>): Suspended<R, E, A> { ... }
+export function suspend<R, E, A>(suspended: RIO<R, E, Resource<R, E, A>>): Suspended<R, E, A> { ... }
 ```
 
 # use (function)
@@ -181,7 +181,7 @@ export function suspend<R, E, A>(suspended: IO<R, E, Resource<R, E, A>>): Suspen
 **Signature**
 
 ```ts
-export function use<R, E, A, B>(res: Resource<R, E, A>, f: FunctionN<[A], IO<R, E, B>>): IO<R, E, B> { ... }
+export function use<R, E, A, B>(res: Resource<R, E, A>, f: FunctionN<[A], RIO<R, E, B>>): RIO<R, E, B> { ... }
 ```
 
 # zip (function)

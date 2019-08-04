@@ -21,7 +21,7 @@ parent: Modules
 
 ```ts
 export interface Driver<R, E, A> {
-  start(r: R, run: IO<R, E, A>): void
+  start(r: R, run: RIO<R, E, A>): void
   interrupt(): void
   onExit(f: FunctionN<[Exit<E, A>], void>): Lazy<void>
   exit(): Option<Exit<E, A>>

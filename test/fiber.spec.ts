@@ -17,7 +17,7 @@ import { Do } from "fp-ts-contrib/lib/Do";
 import { pipe } from "fp-ts/lib/pipeable";
 import { makeDeferred } from "../src/deferred";
 import { done, interrupt } from "../src/exit";
-import { IO } from "../src/io";
+import { RIO } from "../src/io";
 import * as io from "../src/io";
 import { makeRef } from "../src/ref";
 import { arbEitherIO, eqvIO, expectExit } from "./tools.spec";

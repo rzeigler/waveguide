@@ -19,20 +19,20 @@ They include
 There are also a number of functions to construct IOs from Promises and fp-ts tasks
 
 ## Using an IO
-`IO<E, A>` is a monad and exposes the relevant functions in a naming scheme similar to [fp-ts](https://github.com/gcanti/fp-ts/) along with typeclass instances for Monad and parallel Applicative.
+`RIO<E, A>` is a monad and exposes the relevant functions in a naming scheme similar to [fp-ts](https://github.com/gcanti/fp-ts/) along with typeclass instances for Monad and parallel Applicative.
 These instances are the exports io and par respectively from /lib/io
 Furthermore, there are a several resource acquisition functions such as `bracket` and `onComplete` which guarantee IO actions happen in the fact of errors or interuption.
 These respect interruptible state
 
 ## Resources
-Any IO<E, A> may be safely used as a resource acquisition using the `bracket` or `bracketExit` combinators.
+Any RIO<E, A> may be safely used as a resource acquisition using the `bracket` or `bracketExit` combinators.
 Once the resource is acquired, the release action will always happen. 
 `bracketExit` is a more powerful form of `bracket` where the `Exit` of the resource use action is also available.
 If all you need is to ensure that an acquired resource is cleaned up, there is also the Resource data type which forms a Monad for nesting resource scopes.
 
 ## Fibers
-An `IO<E, A>` may be converted to a fiber using `fork()`.
-The result being an `IO<never, Fiber<E, A>>`.
+An `RIO<E, A>` may be converted to a fiber using `fork()`.
+The result being an `RIO<never, Fiber<E, A>>`.
 The IO action is now running in the background and can be interrupted, waited, or joined.
 `interrupt` sends an interrupt to a fiber causing it to halt once it leaves any critical sections it may be in.
 `join` will halt the progress of the current fiber until the result of the target fiber is known.

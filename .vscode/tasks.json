@@ -17,7 +17,8 @@
         {
             "type": "npm",
             "script": "build",
-            "problemMatcher": []
+            "problemMatcher": [],
+            "group": "build"
         }
     ]
 }

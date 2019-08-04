@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { IO, DefaultR, raiseAbort, unit } from "./io";
+import { RIO, DefaultR, raiseAbort, unit } from "./io";
 
-export const natNumber = (msg: unknown) => (n: number): IO<DefaultR, never, void> =>
+export const natNumber = (msg: unknown) => (n: number): RIO<DefaultR, never, void> =>
     n < 0 || Math.round(n) !== n ? raiseAbort(msg) : unit;
