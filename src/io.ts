@@ -12,13 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { Alt, Alt3 } from "fp-ts/lib/Alt";
 import { Semigroup } from "fp-ts/lib/Semigroup"
 import { Monoid } from "fp-ts/lib/Monoid";
 import { Applicative3 } from "fp-ts/lib/Applicative";
 import { Either, left, right } from "fp-ts/lib/Either";
+import * as either from "fp-ts/lib/Either";
 import { constant, flow, FunctionN, identity, Lazy } from "fp-ts/lib/function";
 import { Monad3 } from "fp-ts/lib/Monad";
 import { none, some, Option } from "fp-ts/lib/Option";
+import * as option from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
 import { Deferred, makeDeferred } from "./deferred";
 import { makeDriver } from "./driver";
@@ -28,6 +31,7 @@ import { Fiber, makeFiber } from "./fiber";
 import { makeRef, Ref } from "./ref";
 import { Runtime } from "./runtime";
 import { MonadThrow3 } from "fp-ts/lib/MonadThrow";
+import { HKT } from "fp-ts/lib/HKT";
 
 export type DefaultR = {}; // eslint-disable-line @typescript-eslint/prefer-interface
 
@@ -48,18 +52,18 @@ function snd<A, B>(_: A, b: B): B {
  * A description of an effect to perform
  */
 export type RIO<R, E, A> =
-  Pure<A> |
-  Raised<E> |
-  Completed<E, A> |
-  Suspended<R, E, A> |
-  Async<E, A> |
-  Chain<R, E, any, A> | // eslint-disable-line @typescript-eslint/no-explicit-any
-  AccessEnv<R> |
-  ProvideEnv<any, E, A> | // eslint-disable-line @typescript-eslint/no-explicit-any
-  Collapse<R, any, E, any, A> | // eslint-disable-line @typescript-eslint/no-explicit-any
-  InterruptibleRegion<R, E, A> |
-  (boolean extends A ? AccessInterruptible : never) |
-  (Runtime extends A ? AccessRuntime : never);
+    Pure<A> |
+    Raised<E> |
+    Completed<E, A> |
+    Suspended<R, E, A> |
+    Async<E, A> |
+    Chain<R, E, any, A> | // eslint-disable-line @typescript-eslint/no-explicit-any
+    AccessEnv<R> |
+    ProvideEnv<any, E, A> | // eslint-disable-line @typescript-eslint/no-explicit-any
+    Collapse<R, any, E, any, A> | // eslint-disable-line @typescript-eslint/no-explicit-any
+    InterruptibleRegion<R, E, A> |
+    (boolean extends A ? AccessInterruptible : never) |
+    (Runtime extends A ? AccessRuntime : never);
 
 export type IO<E, A> = RIO<DefaultR, E, A>;
 
@@ -91,7 +95,7 @@ export interface Raised<E> {
  * @param e
  */
 export function raised<E>(e: Cause<E>): Raised<E> {
-    return {_tag: "raised", error: e};
+    return { _tag: "raised", error: e };
 }
 
 /**
@@ -258,6 +262,24 @@ export function provideEnv<R, E, A>(r: R, io: RIO<R, E, A>): RIO<DefaultR, E, A>
         r,
         inner: io
     };
+}
+
+/**
+ * Manipulate an IO with by producing its environment from a different one
+ * @param f 
+ * @param io 
+ */
+export function contramapEnv<R1, R2, E, A>(f: FunctionN<[R1], R2>, io: RIO<R2, E, A>): RIO<R1, E, A> {
+    return contramapEnvM(encaseRIO((r1) => pure(f(r1))), io);
+}
+
+/**
+ * Manipulate an IO by producing its environment from an IO in different environment such that it may execute in that other environment
+ * @param contra 
+ * @param io 
+ */
+export function contramapEnvM<R1, R2, E, A>(contra: RIO<R1, E, R2>, io: RIO<R2, E, A>): RIO<R1, E, A> {
+    return chain(contra, (r2) => provideEnv(r2, io));
 }
 
 /**
@@ -637,8 +659,8 @@ function combineFinalizerExit<E, A>(fiberExit: Exit<E, A>, releaseExit: Exit<E, 
     } else if (releaseExit._tag === "value") {
         return fiberExit;
     } else {
-    // TODO: Figure out how to sanely report both of these, we swallow them currently
-    // This would affect chainError (i.e. assume multiples are actually an abort condition that happens to be typed)
+        // TODO: Figure out how to sanely report both of these, we swallow them currently
+        // This would affect chainError (i.e. assume multiples are actually an abort condition that happens to be typed)
         return fiberExit;
     }
 }
@@ -729,13 +751,13 @@ export function onInterrupted<R, E, A>(ioa: RIO<R, E, A>, finalizer: RIO<R, E, u
  * Introduce a gap in executing to allow other fibers to execute (if any are pending)
  */
 export const shifted: RIO<DefaultR, never, void> =
-  uninterruptible(chain(accessRuntime, (runtime: Runtime) => // why does this not trigger noImplicitAny
-      asyncTotal<void>((callback) => {
-          runtime.dispatch(() => callback(undefined));
-          // tslint:disable-next-line
-          return () => { };
-      })
-  ));
+    uninterruptible(chain(accessRuntime, (runtime: Runtime) => // why does this not trigger noImplicitAny
+        asyncTotal<void>((callback) => {
+            runtime.dispatch(() => callback(undefined));
+            // tslint:disable-next-line
+            return () => { };
+        })
+    ));
 
 /**
  * Introduce a synchronous gap before io that will allow other fibers to execute (if any are pending)
@@ -749,11 +771,11 @@ export function shift<R, E, A>(io: RIO<R, E, A>): RIO<R, E, A> {
  * Introduce an asynchronous gap that will suspend the runloop and return control to the javascript vm
  */
 export const shiftedAsync: RIO<DefaultR, never, void> =
-  uninterruptible(chain(accessRuntime, (runtime) =>
-      asyncTotal<void>((callback) => {
-          return runtime.dispatchLater(() => callback(undefined), 0);
-      })
-  ));
+    uninterruptible(chain(accessRuntime, (runtime) =>
+        asyncTotal<void>((callback) => {
+            return runtime.dispatchLater(() => callback(undefined), 0);
+        })
+    ));
 
 /**
  * Introduce an asynchronous gap before IO
@@ -988,6 +1010,25 @@ export function fromPromise<A>(thunk: Lazy<Promise<A>>): RIO<DefaultR, unknown, 
  */
 export function encaseRIO<R, E, A>(f: FunctionN<[R], IO<E, A>>): RIO<R, E, A> {
     return chain(accessEnv<R>(), f);
+}
+
+/**
+ * Lift an Either into an IO
+ * @param e 
+ */
+export function encaseEither<E, A>(e: Either<E, A>): IO<E, A> {
+    return pipe(e, either.fold<E, A, IO<E, A>>(raiseError, pure));
+}
+
+/**
+ * Lift an Option into an IO
+ * @param o 
+ * @param onError 
+ */
+export function encaseOption<E, A>(o: Option<A>, onError: Lazy<E>): IO<E, A> {
+    return pipe(o, 
+        option.map<A, IO<E, A>>(pure), 
+        option.getOrElse<IO<E, A>>(() => raiseError(onError())));
 }
 
 /**
