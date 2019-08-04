@@ -14,6 +14,8 @@
 
 import { FunctionN } from "fp-ts/lib/function";
 import { Monad3 } from "fp-ts/lib/Monad";
+import { Semigroup } from "fp-ts/lib/Semigroup";
+import { Monoid } from "fp-ts/lib/Monoid";
 import { RIO } from "./io";
 import * as io from "./io";
 
@@ -33,6 +35,10 @@ export interface Pure<A> {
     readonly value: A;
 }
 
+/**
+ * Lift a pure value into a resource
+ * @param value 
+ */
 export function pure<A>(value: A): Pure<A> {
     return {
         _tag: "pure",
@@ -46,6 +52,11 @@ export interface Bracket<R, E, A> {
     readonly release: FunctionN<[A], RIO<R, E, unknown>>;
 }
 
+/**
+ * Create a resource from an acquisition and release function
+ * @param acquire 
+ * @param release 
+ */
 export function bracket<R, E, A>(acquire: RIO<R, E, A>, release: FunctionN<[A], RIO<R, E, unknown>>): Bracket<R, E, A> {
     return {
         _tag: "bracket",
@@ -59,6 +70,10 @@ export interface Suspended<R, E, A> {
     readonly suspended: RIO<R, E, Resource<R, E, A>>;
 }
 
+/**
+ * Lift an IO of a Resource into a resource
+ * @param suspended 
+ */
 export function suspend<R, E, A>(suspended: RIO<R, E, Resource<R, E, A>>): Suspended<R, E, A> {
     return {
         _tag: "suspend",
@@ -72,6 +87,13 @@ export interface Chain<R, E, L, A> {
     readonly bind: FunctionN<[L], Resource<R, E, A>>;
 }
 
+/**
+ * Compose dependent resourcess.
+ * 
+ * The scope of left will enclose the scope of the resource produced by bind
+ * @param left 
+ * @param bind 
+ */
 export function chain<R, E, L, A>(left: Resource<R, E, L>, bind: FunctionN<[L], Resource<R, E, A>>): Chain<R, E, L, A> {
     return {
         _tag: "chain",
@@ -80,16 +102,36 @@ export function chain<R, E, L, A>(left: Resource<R, E, L>, bind: FunctionN<[L], 
     };
 }
 
+/**
+ * Map a resource
+ * @param res 
+ * @param f 
+ */
 export function map<R, E, L, A>(res: Resource<R, E, L>, f: FunctionN<[L], A>): Resource<R, E, A> {
     return chain(res, (r) => pure(f(r)));
 }
 
+/**
+ * Zip two resources together with the given function.
+ * 
+ * The scope of resa will enclose the scope of resb
+ * @param resa 
+ * @param resb 
+ * @param f 
+ */
 export function zipWith<R, E, A, B, C>(resa: Resource<R, E, A>,
     resb: Resource<R, E, B>,
     f: FunctionN<[A, B], C>): Resource<R, E, C> {
     return chain(resa, (a) => map(resb, (b) => f(a, b)));
 }
 
+/**
+ * Zip two resources together as a tuple.
+ * 
+ * The scope of resa will enclose the scope of resb
+ * @param resa 
+ * @param resb 
+ */
 export function zip<R, E, A, B>(resa: Resource<R, E, A>, resb: Resource<R, E, B>): Resource<R, E, readonly [A, B]> {
     return zipWith(resa, resb, (a, b) => [a, b] as const);
 }
@@ -102,12 +144,20 @@ export function ap_<R, E, A, B>(resfab: Resource<R, E, FunctionN<[A], B>>, resa:
     return zipWith(resfab, resa, (f, a) => f(a));
 }
 
-
+/**
+ * Curried data last form of use
+ * @param f 
+ */
 export function consume<R, E, A, B>(f: FunctionN<[A], RIO<R, E, B>>): FunctionN<[Resource<R, E, A>], RIO<R, E, B>> {
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
     return (r) => use(r, f);
 }
 
+/**
+ * Use a resource to produce a program that can be run.s
+ * @param res 
+ * @param f 
+ */
 export function use<R, E, A, B>(res: Resource<R, E, A>, f: FunctionN<[A], RIO<R, E, B>>): RIO<R, E, B> {
     if (res._tag === "pure") {
         return f(res.value);
@@ -136,3 +186,18 @@ export const instances: Monad3<URI> = {
     ap: ap_,
     chain
 } as const;
+
+export function getSemigroup<R, E, A>(Semigroup: Semigroup<A>): Semigroup<Resource<R, E, A>> {
+    return {
+        concat(x: Resource<R, E, A>, y: Resource<R, E, A>): Resource<R, E, A> {
+            return zipWith(x, y, Semigroup.concat)
+        }
+    };
+}
+
+export function getMonoid<R, E, A>(Monoid: Monoid<A>): Monoid<Resource<R, E, A>> {
+    return {
+        ...getSemigroup(Monoid),
+        empty: pure(Monoid.empty)
+    }
+}

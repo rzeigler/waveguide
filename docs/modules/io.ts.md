@@ -64,6 +64,8 @@ parent: Modules
 - [foldExitWith (function)](#foldexitwith-function)
 - [fork (function)](#fork-function)
 - [fromPromise (function)](#frompromise-function)
+- [getMonoid (function)](#getmonoid-function)
+- [getSemigroup (function)](#getsemigroup-function)
 - [interruptible (function)](#interruptible-function)
 - [interruptibleMask (function)](#interruptiblemask-function)
 - [interruptibleRegion (function)](#interruptibleregion-function)
@@ -90,7 +92,6 @@ parent: Modules
 - [raiseError (function)](#raiseerror-function)
 - [raised (function)](#raised-function)
 - [result (function)](#result-function)
-- [resultE (function)](#resulte-function)
 - [run (function)](#run-function)
 - [runR (function)](#runr-function)
 - [runToPromise (function)](#runtopromise-function)
@@ -255,6 +256,8 @@ export type DefaultR = {}
 
 # InterruptMaskCutout (type alias)
 
+The type of a function that can restore outer interruptible state
+
 **Signature**
 
 ```ts
@@ -324,10 +327,14 @@ export const accessRuntime: RIO<DefaultR, never, Runtime> = ...
 **Signature**
 
 ```ts
-export const instances: Monad3<URI> = ...
+export const instances: Monad3<URI> & MonadThrow3<URI> = ...
 ```
 
 # never (constant)
+
+An IO that never produces a value or an error.
+
+This IO will however prevent a javascript runtime such as node from exiting by scheduling an interval for 60s
 
 **Signature**
 
@@ -355,6 +362,8 @@ export const raiseInterrupt: Raised<never> = ...
 
 # shifted (constant)
 
+Introduce a gap in executing to allow other fibers to execute (if any are pending)
+
 **Signature**
 
 ```ts
@@ -362,6 +371,8 @@ export const  = ...
 ```
 
 # shiftedAsync (constant)
+
+Introduce an asynchronous gap that will suspend the runloop and return control to the javascript vm
 
 **Signature**
 
@@ -391,6 +402,8 @@ export function accessEnv<R>(): RIO<R, never, R> { ... }
 
 # after (function)
 
+Create an IO that produces void after ms milliseconds
+
 **Signature**
 
 ```ts
@@ -419,6 +432,8 @@ export function apWith<R, E, A>(ioa: RIO<R, E, A>): <B>(iof: RIO<R, E, FunctionN
 
 # apWith\_ (function)
 
+Curried form of ap\_
+
 **Signature**
 
 ```ts
@@ -426,6 +441,8 @@ export function apWith_<R, E, A, B>(iof: RIO<R, E, FunctionN<[A], B>>): Function
 ```
 
 # ap\_ (function)
+
+Flipped argument form of ap
 
 **Signature**
 
@@ -445,7 +462,7 @@ export function applyFirst<R, E, A, B>(first: RIO<R, E, A>, second: RIO<R, E, B>
 
 # applyOther (function)
 
-Curried form of @see{@link applySecond}
+Curried form of applySecond
 
 **Signature**
 
@@ -465,7 +482,7 @@ export function applySecond<R, E, A, B>(first: RIO<R, E, A>, second: RIO<R, E, B
 
 # applyThis (function)
 
-Curried form of @see{@link applyFirst}
+Curried form of applyFirst
 
 **Signature**
 
@@ -533,7 +550,7 @@ export function bimap<R, E1, E2, A, B>(io: RIO<R, E1, A>,
 
 # bimapWith (function)
 
-Curried form of @see{@link bimap}
+Curried form of bimap
 
 **Signature**
 
@@ -544,6 +561,8 @@ export function bimapWith<R, E1, E2, A, B>(leftMap: FunctionN<[E1], E2>,
 
 # bracket (function)
 
+Weaker form of bracketExit where release does not receive the exit status of use
+
 **Signature**
 
 ```ts
@@ -553,6 +572,11 @@ export function bracket<R, E, A, B>(acquire: RIO<R, E, A>,
 ```
 
 # bracketExit (function)
+
+Resource acquisition and release construct.
+
+Once acquire completes successfully, release is guaranteed to execute following the evaluation of the IO produced by use.
+Release receives the exit state of use along with the resource.
 
 **Signature**
 
@@ -584,7 +608,7 @@ export function chainError<R, E1, E2, A>(io: RIO<R, E1, A>, f: FunctionN<[E1], R
 
 # chainErrorWith (function)
 
-Curriend form of @see{@link chainError}
+Curriend form of chainError
 
 **Signature**
 
@@ -594,7 +618,7 @@ export function chainErrorWith<R, E1, E2, A>(f: FunctionN<[E1], RIO<R, E2, A>>):
 
 # chainWith (function)
 
-Curried function first form of @see{@link chain}
+Curried function first form of chain
 
 **Signature**
 
@@ -613,6 +637,8 @@ export function completed<E, A>(exit: Exit<E, A>): Completed<E, A> { ... }
 ```
 
 # delay (function)
+
+Delay evaluation of inner by some amount of time
 
 **Signature**
 
@@ -644,7 +670,7 @@ export function flip<R, E, A>(io: RIO<R, E, A>): RIO<R, A, E> { ... }
 
 Fold the result of an IO into a new IO.
 
-This can be thought of as a more powerful form of @see{@link chain}
+This can be thought of as a more powerful form of chain
 where the computation continues with a new IO depending on the result of inner.
 
 **Signature**
@@ -657,7 +683,7 @@ export function foldExit<R, E1, E2, A1, A2>(inner: RIO<R, E1, A1>,
 
 # foldExitWith (function)
 
-Curried form of @see{@link @foldExit}
+Curried form of foldExit
 
 **Signature**
 
@@ -669,6 +695,11 @@ export function foldExitWith<R, E1, E2, A1, A2>(failure: FunctionN<[Cause<E1>], 
 
 # fork (function)
 
+Fork the program described by IO in a separate fiber.
+
+This fiber will begin executing once the current fiber releases control of the runloop.
+If you need to begin the fiber immediately you should use applyFirst(forkIO, shifted)
+
 **Signature**
 
 ```ts
@@ -677,13 +708,33 @@ export function fork<R, E, A>(io: RIO<R, E, A>, name?: string): RIO<R, never, Fi
 
 # fromPromise (function)
 
+Create an IO from a Promise factory.
+
 **Signature**
 
 ```ts
 export function fromPromise<A>(thunk: Lazy<Promise<A>>): RIO<DefaultR, unknown, A> { ... }
 ```
 
+# getMonoid (function)
+
+**Signature**
+
+```ts
+export function getMonoid<R, E, A>(Monoid: Monoid<A>): Monoid<RIO<R, E, A>> { ... }
+```
+
+# getSemigroup (function)
+
+**Signature**
+
+```ts
+export function getSemigroup<R, E, A>(Semigroup: Semigroup<A>): Semigroup<RIO<R, E, A>> { ... }
+```
+
 # interruptible (function)
+
+Create an interruptible region around the evalution of io
 
 **Signature**
 
@@ -692,6 +743,10 @@ export function interruptible<R, E, A>(io: RIO<R, E, A>): RIO<R, E, A> { ... }
 ```
 
 # interruptibleMask (function)
+
+Create an interruptible masked region
+
+Similar to uninterruptibleMask
 
 **Signature**
 
@@ -721,7 +776,7 @@ export function lift<A, B>(f: FunctionN<[A], B>): <R, E>(io: RIO<R, E, A>) => RI
 
 # liftAs (function)
 
-Curried form of @see{@link as}
+Curried form of as
 
 **Signature**
 
@@ -730,6 +785,8 @@ export function liftAs<B>(b: B): <R, E, A>(io: RIO<R, E, A>) => RIO<R, E, B> { .
 ```
 
 # liftDelay (function)
+
+Curried form of delay
 
 **Signature**
 
@@ -759,7 +816,7 @@ export function mapError<R, E1, E2, A>(io: RIO<R, E1, A>, f: FunctionN<[E1], E2>
 
 # mapErrorWith (function)
 
-Curried form of @see{@link mapError}
+Curried form of mapError
 
 **Signature**
 
@@ -769,6 +826,8 @@ export function mapErrorWith<R, E1, E2>(f: FunctionN<[E1], E2>): <A>(io: RIO<R, 
 
 # onComplete (function)
 
+Guarantee that once ioa begins executing the finalizer will execute.
+
 **Signature**
 
 ```ts
@@ -776,6 +835,8 @@ export function onComplete<R, E, A>(ioa: RIO<R, E, A>, finalizer: RIO<R, E, unkn
 ```
 
 # onInterrupted (function)
+
+Guarantee that once ioa begins executing if it is interrupted finalizer will execute
 
 **Signature**
 
@@ -785,6 +846,8 @@ export function onInterrupted<R, E, A>(ioa: RIO<R, E, A>, finalizer: RIO<R, E, u
 
 # parAp (function)
 
+Parallel form of ap
+
 **Signature**
 
 ```ts
@@ -792,6 +855,8 @@ export function parAp<R, E, A, B>(ioa: RIO<R, E, A>, iof: RIO<R, E, FunctionN<[A
 ```
 
 # parAp\_ (function)
+
+Parallel form of ap\_
 
 **Signature**
 
@@ -810,6 +875,8 @@ export function parApplyFirst<R, E, A, B>(ioa: RIO<R, E, A>, iob: RIO<R, E, B>):
 ```
 
 # parApplySecond (function)
+
+Exeute two IOs in parallel and take the result of the second
 
 **Signature**
 
@@ -842,7 +909,7 @@ export function parZipWith<R, E, A, B, C>(ioa: RIO<R, E, A>, iob: RIO<R, E, B>, 
 Provide an environment to an RIO.
 
 This eliminates the dependency on the specific R of the input.
-Instead, the resulting IO has an R parameter of @see{@link DefaultR}
+Instead, the resulting IO has an R parameter of DefaultR
 
 **Signature**
 
@@ -862,6 +929,11 @@ export function pure<A>(a: A): Pure<A> { ... }
 
 # race (function)
 
+Return the result of the first IO to complete successfully.
+
+If an error occurs, fall back to the other IO.
+If both error, then fail with the second errors
+
 **Signature**
 
 ```ts
@@ -870,6 +942,8 @@ export function race<R, E, A>(io1: RIO<R, E, A>, io2: RIO<R, E, A>): RIO<R, E, A
 
 # raceFirst (function)
 
+Return the reuslt of the first IO to complete or error successfully
+
 **Signature**
 
 ```ts
@@ -877,6 +951,10 @@ export function raceFirst<R, E, A>(io1: RIO<R, E, A>, io2: RIO<R, E, A>): RIO<R,
 ```
 
 # raceFold (function)
+
+Race two fibers together and combine their results.
+
+This is the primitive from which all other racing and timeout operators are built and you should favor those unless you have very specific needs.
 
 **Signature**
 
@@ -910,7 +988,7 @@ export function raiseError<E>(e: E): Raised<E> { ... }
 
 An IO that is failed
 
-Prefer @see{@link raiseError} or @see{@link raiseAbort}.
+Prefer raiseError or raiseAbort
 
 **Signature**
 
@@ -920,7 +998,9 @@ export function raised<E>(e: Cause<E>): Raised<E> { ... }
 
 # result (function)
 
-Create an IO that takes does not fail with a checked exception but produces an exit status.
+Create an IO that traps all exit states of io.
+
+Note that interruption will not be caught unless in an uninterruptible region
 
 **Signature**
 
@@ -928,15 +1008,9 @@ Create an IO that takes does not fail with a checked exception but produces an e
 export function result<R, E, A>(io: RIO<R, E, A>): RIO<R, never, Exit<E, A>> { ... }
 ```
 
-# resultE (function)
-
-**Signature**
-
-```ts
-export function resultE<R, E, A>(io: RIO<R, E, A>): RIO<R, E, Exit<E, A>> { ... }
-```
-
 # run (function)
+
+Run the given IO
 
 **Signature**
 
@@ -945,6 +1019,8 @@ export function run<E, A>(io: RIO<DefaultR, E, A>, callback: FunctionN<[Exit<E, 
 ```
 
 # runR (function)
+
+Run the given IO with the provided environment.
 
 **Signature**
 
@@ -1006,6 +1082,8 @@ export function runToPromiseR<R, E, A>(io: RIO<R, E, A>, r: R): Promise<A> { ...
 
 # shift (function)
 
+Introduce a synchronous gap before io that will allow other fibers to execute (if any are pending)
+
 **Signature**
 
 ```ts
@@ -1013,6 +1091,8 @@ export function shift<R, E, A>(io: RIO<R, E, A>): RIO<R, E, A> { ... }
 ```
 
 # shiftAsync (function)
+
+Introduce an asynchronous gap before IO
 
 **Signature**
 
@@ -1046,6 +1126,8 @@ export function sync<A>(thunk: Lazy<A>): Suspended<DefaultR, never, A> { ... }
 
 # timeoutFold (function)
 
+Execute an IO and produce the next IO to run based on whether it completed successfully in the alotted time or not
+
 **Signature**
 
 ```ts
@@ -1057,6 +1139,10 @@ export function timeoutFold<R, E1, E2, A, B>(source: RIO<R, E1, A>,
 
 # timeoutOption (function)
 
+Run source for a maximum amount of ms.
+
+If it completes succesfully produce a some, if not interrupt it and produce none
+
 **Signature**
 
 ```ts
@@ -1065,6 +1151,8 @@ export function timeoutOption<R, E, A>(source: RIO<R, E, A>, ms: number): RIO<R,
 
 # uninterruptible (function)
 
+Create an uninterruptible region around the evaluation of io
+
 **Signature**
 
 ```ts
@@ -1072,6 +1160,11 @@ export function uninterruptible<R, E, A>(io: RIO<R, E, A>): RIO<R, E, A> { ... }
 ```
 
 # uninterruptibleMask (function)
+
+Create an uninterruptible masked region
+
+When the returned IO is evaluated an uninterruptible region will be created and , f will receive an InterruptMaskCutout that can be used to restore the
+interruptible status of the region above the one currently executing (which is uninterruptible)
 
 **Signature**
 

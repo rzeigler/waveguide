@@ -130,6 +130,8 @@ export function ap_<R, E, A, B>(resfab: Resource<R, E, FunctionN<[A], B>>, resa:
 
 # bracket (function)
 
+Create a resource from an acquisition and release function
+
 **Signature**
 
 ```ts
@@ -137,6 +139,10 @@ export function bracket<R, E, A>(acquire: RIO<R, E, A>, release: FunctionN<[A], 
 ```
 
 # chain (function)
+
+Compose dependent resourcess.
+
+The scope of left will enclose the scope of the resource produced by bind
 
 **Signature**
 
@@ -146,6 +152,8 @@ export function chain<R, E, L, A>(left: Resource<R, E, L>, bind: FunctionN<[L], 
 
 # consume (function)
 
+Curried data last form of use
+
 **Signature**
 
 ```ts
@@ -153,6 +161,8 @@ export function consume<R, E, A, B>(f: FunctionN<[A], RIO<R, E, B>>): FunctionN<
 ```
 
 # map (function)
+
+Map a resource
 
 **Signature**
 
@@ -162,6 +172,8 @@ export function map<R, E, L, A>(res: Resource<R, E, L>, f: FunctionN<[L], A>): R
 
 # pure (function)
 
+Lift a pure value into a resource
+
 **Signature**
 
 ```ts
@@ -169,6 +181,8 @@ export function pure<A>(value: A): Pure<A> { ... }
 ```
 
 # suspend (function)
+
+Lift an IO of a Resource into a resource
 
 **Signature**
 
@@ -178,6 +192,8 @@ export function suspend<R, E, A>(suspended: RIO<R, E, Resource<R, E, A>>): Suspe
 
 # use (function)
 
+Use a resource to produce a program that can be run.s
+
 **Signature**
 
 ```ts
@@ -186,6 +202,10 @@ export function use<R, E, A, B>(res: Resource<R, E, A>, f: FunctionN<[A], RIO<R,
 
 # zip (function)
 
+Zip two resources together as a tuple.
+
+The scope of resa will enclose the scope of resb
+
 **Signature**
 
 ```ts
@@ -193,6 +213,10 @@ export function zip<R, E, A, B>(resa: Resource<R, E, A>, resb: Resource<R, E, B>
 ```
 
 # zipWith (function)
+
+Zip two resources together with the given function.
+
+The scope of resa will enclose the scope of resb
 
 **Signature**
 
