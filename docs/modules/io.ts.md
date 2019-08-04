@@ -8,6 +8,7 @@ parent: Modules
 
 <h2 class="text-delta">Table of contents</h2>
 
+- [AccessEnv (interface)](#accessenv-interface)
 - [AccessInterruptible (interface)](#accessinterruptible-interface)
 - [AccessRuntime (interface)](#accessruntime-interface)
 - [Async (interface)](#async-interface)
@@ -15,9 +16,11 @@ parent: Modules
 - [Collapse (interface)](#collapse-interface)
 - [Completed (interface)](#completed-interface)
 - [InterruptibleRegion (interface)](#interruptibleregion-interface)
+- [ProvideEnv (interface)](#provideenv-interface)
 - [Pure (interface)](#pure-interface)
 - [Raised (interface)](#raised-interface)
 - [Suspended (interface)](#suspended-interface)
+- [DefaultR (type alias)](#defaultr-type-alias)
 - [IO (type alias)](#io-type-alias)
 - [InterruptMaskCutout (type alias)](#interruptmaskcutout-type-alias)
 - [URI (type alias)](#uri-type-alias)
@@ -31,6 +34,7 @@ parent: Modules
 - [shifted (constant)](#shifted-constant)
 - [shiftedAsync (constant)](#shiftedasync-constant)
 - [unit (constant)](#unit-constant)
+- [accessEnv (function)](#accessenv-function)
 - [after (function)](#after-function)
 - [ap (function)](#ap-function)
 - [apWith (function)](#apwith-function)
@@ -77,6 +81,7 @@ parent: Modules
 - [parApplySecond (function)](#parapplysecond-function)
 - [parZip (function)](#parzip-function)
 - [parZipWith (function)](#parzipwith-function)
+- [provideEnv (function)](#provideenv-function)
 - [pure (function)](#pure-function)
 - [race (function)](#race-function)
 - [raceFirst (function)](#racefirst-function)
@@ -87,8 +92,11 @@ parent: Modules
 - [result (function)](#result-function)
 - [resultE (function)](#resulte-function)
 - [run (function)](#run-function)
+- [runR (function)](#runr-function)
 - [runToPromise (function)](#runtopromise-function)
 - [runToPromiseExit (function)](#runtopromiseexit-function)
+- [runToPromiseExitR (function)](#runtopromiseexitr-function)
+- [runToPromiseR (function)](#runtopromiser-function)
 - [shift (function)](#shift-function)
 - [shiftAsync (function)](#shiftasync-function)
 - [suspended (function)](#suspended-function)
@@ -102,6 +110,16 @@ parent: Modules
 - [zipWith (function)](#zipwith-function)
 
 ---
+
+# AccessEnv (interface)
+
+**Signature**
+
+```ts
+export interface AccessEnv<R> {
+  readonly _tag: 'read'
+}
+```
 
 # AccessInterruptible (interface)
 
@@ -139,10 +157,10 @@ export interface Async<E, A> {
 **Signature**
 
 ```ts
-export interface Chain<E, Z, A> {
+export interface Chain<R, E, Z, A> {
   readonly _tag: 'chain'
-  readonly inner: IO<E, Z>
-  readonly bind: FunctionN<[Z], IO<E, A>>
+  readonly inner: IO<R, E, Z>
+  readonly bind: FunctionN<[Z], IO<R, E, A>>
 }
 ```
 
@@ -151,11 +169,11 @@ export interface Chain<E, Z, A> {
 **Signature**
 
 ```ts
-export interface Collapse<E1, E2, A1, A2> {
+export interface Collapse<R, E1, E2, A1, A2> {
   readonly _tag: 'collapse'
-  readonly inner: IO<E1, A1>
-  readonly failure: FunctionN<[Cause<E1>], IO<E2, A2>>
-  readonly success: FunctionN<[A1], IO<E2, A2>>
+  readonly inner: IO<R, E1, A1>
+  readonly failure: FunctionN<[Cause<E1>], IO<R, E2, A2>>
+  readonly success: FunctionN<[A1], IO<R, E2, A2>>
 }
 ```
 
@@ -175,10 +193,22 @@ export interface Completed<E, A> {
 **Signature**
 
 ```ts
-export interface InterruptibleRegion<E, A> {
+export interface InterruptibleRegion<R, E, A> {
   readonly _tag: 'interrupt-region'
-  readonly inner: IO<E, A>
+  readonly inner: IO<R, E, A>
   readonly flag: boolean
+}
+```
+
+# ProvideEnv (interface)
+
+**Signature**
+
+```ts
+export interface ProvideEnv<R, E, A> {
+  readonly _tag: 'provide'
+  readonly r: R
+  readonly inner: IO<R, E, A>
 }
 ```
 
@@ -209,10 +239,18 @@ export interface Raised<E> {
 **Signature**
 
 ```ts
-export interface Suspended<E, A> {
+export interface Suspended<R, E, A> {
   readonly _tag: 'suspended'
-  readonly thunk: Lazy<IO<E, A>>
+  readonly thunk: Lazy<IO<R, E, A>>
 }
+```
+
+# DefaultR (type alias)
+
+**Signature**
+
+```ts
+export type DefaultR = {}
 ```
 
 # IO (type alias)
@@ -222,15 +260,17 @@ A description of an effect to perform
 **Signature**
 
 ```ts
-export type IO<E, A> =
+export type IO<R, E, A> =
   | Pure<A>
   | Raised<E>
   | Completed<E, A>
-  | Suspended<E, A>
+  | Suspended<R, E, A>
   | Async<E, A>
-  | Chain<E, any, A>
-  | Collapse<any, E, any, A>
-  | InterruptibleRegion<E, A>
+  | Chain<R, E, any, A> // eslint-disable-line @typescript-eslint/no-explicit-any
+  | AccessEnv<R>
+  | ProvideEnv<any, E, A> // eslint-disable-line @typescript-eslint/no-explicit-any
+  | Collapse<R, any, E, any, A> // eslint-disable-line @typescript-eslint/no-explicit-any
+  | InterruptibleRegion<R, E, A>
   | (boolean extends A ? AccessInterruptible : never)
   | (Runtime extends A ? AccessRuntime : never)
 ```
@@ -240,7 +280,7 @@ export type IO<E, A> =
 **Signature**
 
 ```ts
-export type InterruptMaskCutout<E, A> = FunctionN<[IO<E, A>], IO<E, A>>
+export type InterruptMaskCutout<R, E, A> = FunctionN<[IO<R, E, A>], IO<R, E, A>>
 ```
 
 # URI (type alias)
@@ -264,7 +304,7 @@ export const URI = ...
 **Signature**
 
 ```ts
-export const accessInterruptible: IO<never, boolean> = ...
+export const accessInterruptible: IO<DefaultR, never, boolean> = ...
 ```
 
 # accessRuntime (constant)
@@ -272,7 +312,7 @@ export const accessInterruptible: IO<never, boolean> = ...
 **Signature**
 
 ```ts
-export const accessRuntime: IO<never, Runtime> = ...
+export const accessRuntime: IO<DefaultR, never, Runtime> = ...
 ```
 
 # instances (constant)
@@ -280,7 +320,7 @@ export const accessRuntime: IO<never, Runtime> = ...
 **Signature**
 
 ```ts
-export const instances: Monad2<URI> = ...
+export const instances: Monad3<URI> = ...
 ```
 
 # never (constant)
@@ -288,7 +328,7 @@ export const instances: Monad2<URI> = ...
 **Signature**
 
 ```ts
-export const never: IO<never, never> = ...
+export const never: IO<DefaultR, never, never> = ...
 ```
 
 # parInstances (constant)
@@ -296,7 +336,7 @@ export const never: IO<never, never> = ...
 **Signature**
 
 ```ts
-export const parInstances: Applicative2<URI> = ...
+export const parInstances: Applicative3<URI> = ...
 ```
 
 # raiseInterrupt (constant)
@@ -332,7 +372,15 @@ An IO that succeeds immediately with undefineds
 **Signature**
 
 ```ts
-export const unit: IO<never, void> = ...
+export const unit: IO<DefaultR, never, void> = ...
+```
+
+# accessEnv (function)
+
+**Signature**
+
+```ts
+export function accessEnv<R>(): IO<R, never, R> { ... }
 ```
 
 # after (function)
@@ -340,23 +388,27 @@ export const unit: IO<never, void> = ...
 **Signature**
 
 ```ts
-export function after(ms: number): IO<never, void> { ... }
+export function after(ms: number): IO<DefaultR, never, void> { ... }
 ```
 
 # ap (function)
 
+Applicative ap
+
 **Signature**
 
 ```ts
-export function ap<E, A, B>(ioa: IO<E, A>, iof: IO<E, FunctionN<[A], B>>): IO<E, B> { ... }
+export function ap<R, E, A, B>(ioa: IO<R, E, A>, iof: IO<R, E, FunctionN<[A], B>>): IO<R, E, B> { ... }
 ```
 
 # apWith (function)
 
+Curried form of ap
+
 **Signature**
 
 ```ts
-export function apWith<E, A>(ioa: IO<E, A>): <B>(iof: IO<E, FunctionN<[A], B>>) => IO<E, B> { ... }
+export function apWith<R, E, A>(ioa: IO<R, E, A>): <B>(iof: IO<R, E, FunctionN<[A], B>>) => IO<R, E, B> { ... }
 ```
 
 # apWith\_ (function)
@@ -364,7 +416,7 @@ export function apWith<E, A>(ioa: IO<E, A>): <B>(iof: IO<E, FunctionN<[A], B>>) 
 **Signature**
 
 ```ts
-export function apWith_<E, A, B>(iof: IO<E, FunctionN<[A], B>>): FunctionN<[IO<E, A>], IO<E, B>> { ... }
+export function apWith_<R, E, A, B>(iof: IO<R, E, FunctionN<[A], B>>): FunctionN<[IO<R, E, A>], IO<R, E, B>> { ... }
 ```
 
 # ap\_ (function)
@@ -372,7 +424,7 @@ export function apWith_<E, A, B>(iof: IO<E, FunctionN<[A], B>>): FunctionN<[IO<E
 **Signature**
 
 ```ts
-export function ap_<E, A, B>(iof: IO<E, FunctionN<[A], B>>, ioa: IO<E, A>): IO<E, B> { ... }
+export function ap_<R, E, A, B>(iof: IO<R, E, FunctionN<[A], B>>, ioa: IO<R, E, A>): IO<R, E, B> { ... }
 ```
 
 # applyFirst (function)
@@ -382,31 +434,37 @@ Evaluate two IOs in sequence and produce the value produced by the first
 **Signature**
 
 ```ts
-export function applyFirst<E, A, B>(first: IO<E, A>, second: IO<E, B>): IO<E, A> { ... }
+export function applyFirst<R, E, A, B>(first: IO<R, E, A>, second: IO<R, E, B>): IO<R, E, A> { ... }
 ```
 
 # applyOther (function)
 
+Curried form of applySecond
+
 **Signature**
 
 ```ts
-export function applyOther<E, A>(first: IO<E, A>): <B>(second: IO<E, B>) => IO<E, B> { ... }
+export function applyOther<R, E, A>(first: IO<R, E, A>): <B>(second: IO<R, E, B>) => IO<R, E, B> { ... }
 ```
 
 # applySecond (function)
 
+Evaluate two IOs in sequence and produce the value produced by the second
+
 **Signature**
 
 ```ts
-export function applySecond<E, A, B>(first: IO<E, A>, second: IO<E, B>): IO<E, B> { ... }
+export function applySecond<R, E, A, B>(first: IO<R, E, A>, second: IO<R, E, B>): IO<R, E, B> { ... }
 ```
 
 # applyThis (function)
 
+Curried form of applyFirst.
+
 **Signature**
 
 ```ts
-export function applyThis<E, A>(first: IO<E, A>): <B>(second: IO<E, B>) => IO<E, A> { ... }
+export function applyThis<R, E, A>(first: IO<R, E, A>): <B>(second: IO<R, E, B>) => IO<R, E, A> { ... }
 ```
 
 # as (function)
@@ -416,7 +474,7 @@ Map the value produced by an IO to the constant b
 **Signature**
 
 ```ts
-export function as<E, A, B>(io: IO<E, A>, b: B): IO<E, B> { ... }
+export function as<R, E, A, B>(io: IO<R, E, A>, b: B): IO<R, E, B> { ... }
 ```
 
 # asUnit (function)
@@ -426,7 +484,7 @@ Map the value produced by an IO to undefined
 **Signature**
 
 ```ts
-export function asUnit<E, A>(io: IO<E, A>): IO<E, void> { ... }
+export function asUnit<R, E, A>(io: IO<R, E, A>): IO<R, E, void> { ... }
 ```
 
 # async (function)
@@ -462,9 +520,9 @@ Map over either the error or value produced by an IO
 **Signature**
 
 ```ts
-export function bimap<E1, E2, A, B>(io: IO<E1, A>,
+export function bimap<R, E1, E2, A, B>(io: IO<R, E1, A>,
     leftMap: FunctionN<[E1], E2>,
-    rightMap: FunctionN<[A], B>): IO<E2, B> { ... }
+    rightMap: FunctionN<[A], B>): IO<R, E2, B> { ... }
 ```
 
 # bimapWith (function)
@@ -474,8 +532,8 @@ Data last form of bimap
 **Signature**
 
 ```ts
-export function bimapWith<E1, E2, A, B>(leftMap: FunctionN<[E1], E2>,
-    rightMap: FunctionN<[A], B>): FunctionN<[IO<E1, A>], IO<E2, B>> { ... }
+export function bimapWith<R, E1, E2, A, B>(leftMap: FunctionN<[E1], E2>,
+    rightMap: FunctionN<[A], B>): FunctionN<[IO<R, E1, A>], IO<R, E2, B>> { ... }
 ```
 
 # bracket (function)
@@ -483,9 +541,9 @@ export function bimapWith<E1, E2, A, B>(leftMap: FunctionN<[E1], E2>,
 **Signature**
 
 ```ts
-export function bracket<E, A, B>(acquire: IO<E, A>,
-    release: FunctionN<[A], IO<E, unknown>>,
-    use: FunctionN<[A], IO<E, B>>): IO<E, B> { ... }
+export function bracket<R, E, A, B>(acquire: IO<R, E, A>,
+    release: FunctionN<[A], IO<R, E, unknown>>,
+    use: FunctionN<[A], IO<R, E, B>>): IO<R, E, B> { ... }
 ```
 
 # bracketExit (function)
@@ -493,9 +551,9 @@ export function bracket<E, A, B>(acquire: IO<E, A>,
 **Signature**
 
 ```ts
-export function bracketExit<E, A, B>(acquire: IO<E, A>,
-    release: FunctionN<[A, Exit<E, B>], IO<E, unknown>>,
-    use: FunctionN<[A], IO<E, B>>): IO<E, B> { ... }
+export function bracketExit<R, E, A, B>(acquire: IO<R, E, A>,
+    release: FunctionN<[A, Exit<E, B>], IO<R, E, unknown>>,
+    use: FunctionN<[A], IO<R, E, B>>): IO<R, E, B> { ... }
 ```
 
 # chain (function)
@@ -505,7 +563,7 @@ Produce an new IO that will use the value produced by inner to produce the next 
 **Signature**
 
 ```ts
-export function chain<E, Z, A>(inner: IO<E, Z>, bind: FunctionN<[Z], IO<E, A>>): Chain<E, Z, A> { ... }
+export function chain<R, E, Z, A>(inner: IO<R, E, Z>, bind: FunctionN<[Z], IO<R, E, A>>): Chain<R, E, Z, A> { ... }
 ```
 
 # chainError (function)
@@ -515,7 +573,7 @@ Produce an new IO that will use the error produced by inner to produce a recover
 **Signature**
 
 ```ts
-export function chainError<E1, E2, A>(io: IO<E1, A>, f: FunctionN<[E1], IO<E2, A>>): IO<E2, A> { ... }
+export function chainError<R, E1, E2, A>(io: IO<R, E1, A>, f: FunctionN<[E1], IO<R, E2, A>>): IO<R, E2, A> { ... }
 ```
 
 # chainErrorWith (function)
@@ -525,7 +583,7 @@ Data last form of chainError
 **Signature**
 
 ```ts
-export function chainErrorWith<E1, E2, A>(f: FunctionN<[E1], IO<E2, A>>): FunctionN<[IO<E1, A>], IO<E2, A>> { ... }
+export function chainErrorWith<R, E1, E2, A>(f: FunctionN<[E1], IO<R, E2, A>>): FunctionN<[IO<R, E1, A>], IO<R, E2, A>> { ... }
 ```
 
 # chainWith (function)
@@ -533,7 +591,7 @@ export function chainErrorWith<E1, E2, A>(f: FunctionN<[E1], IO<E2, A>>): Functi
 **Signature**
 
 ```ts
-export function chainWith<E, Z, A>(bind: FunctionN<[Z], IO<E, A>>): FunctionN<[IO<E, Z>], Chain<E, Z, A>> { ... }
+export function chainWith<R, E, Z, A>(bind: FunctionN<[Z], IO<R, E, A>>): FunctionN<[IO<R, E, Z>], Chain<R, E, Z, A>> { ... }
 ```
 
 # completed (function)
@@ -551,7 +609,7 @@ export function completed<E, A>(exit: Exit<E, A>): Completed<E, A> { ... }
 **Signature**
 
 ```ts
-export function delay<E, A>(inner: IO<E, A>, ms: number): IO<E, A> { ... }
+export function delay<R, E, A>(inner: IO<R, E, A>, ms: number): IO<R, E, A> { ... }
 ```
 
 # flatten (function)
@@ -561,15 +619,17 @@ Flatten a nested IO
 **Signature**
 
 ```ts
-export function flatten<E, A>(inner: IO<E, IO<E, A>>): IO<E, A> { ... }
+export function flatten<R, E, A>(inner: IO<R, E, IO<R, E, A>>): IO<R, E, A> { ... }
 ```
 
 # flip (function)
 
+Flip the error and success channels in an IO
+
 **Signature**
 
 ```ts
-export function flip<E, A>(io: IO<E, A>): IO<A, E> { ... }
+export function flip<R, E, A>(io: IO<R, E, A>): IO<R, A, E> { ... }
 ```
 
 # foldExit (function)
@@ -577,9 +637,9 @@ export function flip<E, A>(io: IO<E, A>): IO<A, E> { ... }
 **Signature**
 
 ```ts
-export function foldExit<E1, E2, A1, A2>(inner: IO<E1, A1>,
-    failure: FunctionN<[Cause<E1>], IO<E2, A2>>,
-    success: FunctionN<[A1], IO<E2, A2>>): Collapse<E1, E2, A1, A2> { ... }
+export function foldExit<R, E1, E2, A1, A2>(inner: IO<R, E1, A1>,
+    failure: FunctionN<[Cause<E1>], IO<R, E2, A2>>,
+    success: FunctionN<[A1], IO<R, E2, A2>>): Collapse<R, E1, E2, A1, A2> { ... }
 ```
 
 # foldExitWith (function)
@@ -587,9 +647,9 @@ export function foldExit<E1, E2, A1, A2>(inner: IO<E1, A1>,
 **Signature**
 
 ```ts
-export function foldExitWith<E1, E2, A1, A2>(failure: FunctionN<[Cause<E1>], IO<E2, A2>>,
-    success: FunctionN<[A1], IO<E2, A2>>):
-    FunctionN<[IO<E1, A1>], Collapse<E1, E2, A1, A2>> { ... }
+export function foldExitWith<R, E1, E2, A1, A2>(failure: FunctionN<[Cause<E1>], IO<R, E2, A2>>,
+    success: FunctionN<[A1], IO<R, E2, A2>>):
+    FunctionN<[IO<R, E1, A1>], Collapse<R, E1, E2, A1, A2>> { ... }
 ```
 
 # fork (function)
@@ -597,7 +657,7 @@ export function foldExitWith<E1, E2, A1, A2>(failure: FunctionN<[Cause<E1>], IO<
 **Signature**
 
 ```ts
-export function fork<E, A>(io: IO<E, A>, name?: string): IO<never, Fiber<E, A>> { ... }
+export function fork<R, E, A>(io: IO<R, E, A>, name?: string): IO<R, never, Fiber<E, A>> { ... }
 ```
 
 # fromPromise (function)
@@ -605,7 +665,7 @@ export function fork<E, A>(io: IO<E, A>, name?: string): IO<never, Fiber<E, A>> 
 **Signature**
 
 ```ts
-export function fromPromise<A>(thunk: Lazy<Promise<A>>): IO<unknown, A> { ... }
+export function fromPromise<A>(thunk: Lazy<Promise<A>>): IO<DefaultR, unknown, A> { ... }
 ```
 
 # interruptible (function)
@@ -613,7 +673,7 @@ export function fromPromise<A>(thunk: Lazy<Promise<A>>): IO<unknown, A> { ... }
 **Signature**
 
 ```ts
-export function interruptible<E, A>(io: IO<E, A>): IO<E, A> { ... }
+export function interruptible<R, E, A>(io: IO<R, E, A>): IO<R, E, A> { ... }
 ```
 
 # interruptibleMask (function)
@@ -621,7 +681,7 @@ export function interruptible<E, A>(io: IO<E, A>): IO<E, A> { ... }
 **Signature**
 
 ```ts
-export function interruptibleMask<E, A>(f: FunctionN<[InterruptMaskCutout<E, A>], IO<E, A>>): IO<E, A> { ... }
+export function interruptibleMask<R, E, A>(f: FunctionN<[InterruptMaskCutout<R, E, A>], IO<R, E, A>>): IO<R, E, A> { ... }
 ```
 
 # interruptibleRegion (function)
@@ -631,7 +691,7 @@ Demarcate a region of interruptible state
 **Signature**
 
 ```ts
-export function interruptibleRegion<E, A>(inner: IO<E, A>, flag: boolean): InterruptibleRegion<E, A> { ... }
+export function interruptibleRegion<R, E, A>(inner: IO<R, E, A>, flag: boolean): InterruptibleRegion<R, E, A> { ... }
 ```
 
 # lift (function)
@@ -641,7 +701,7 @@ Lift a function on values to a function on IOs
 **Signature**
 
 ```ts
-export function lift<A, B>(f: FunctionN<[A], B>): <E>(io: IO<E, A>) => IO<E, B> { ... }
+export function lift<A, B>(f: FunctionN<[A], B>): <R, E>(io: IO<R, E, A>) => IO<R, E, B> { ... }
 ```
 
 # liftAs (function)
@@ -649,7 +709,7 @@ export function lift<A, B>(f: FunctionN<[A], B>): <E>(io: IO<E, A>) => IO<E, B> 
 **Signature**
 
 ```ts
-export function liftAs<B>(b: B): <E, A>(io: IO<E, A>) => IO<E, B> { ... }
+export function liftAs<B>(b: B): <R, E, A>(io: IO<R, E, A>) => IO<R, E, B> { ... }
 ```
 
 # liftDelay (function)
@@ -657,7 +717,7 @@ export function liftAs<B>(b: B): <E, A>(io: IO<E, A>) => IO<E, B> { ... }
 **Signature**
 
 ```ts
-export function liftDelay(ms: number): <E, A>(io: IO<E, A>) => IO<E, A> { ... }
+export function liftDelay(ms: number): <R, E, A>(io: IO<R, E, A>) => IO<R, E, A> { ... }
 ```
 
 # map (function)
@@ -667,7 +727,7 @@ Map the value produced by an IO
 **Signature**
 
 ```ts
-export function map<E, A, B>(io: IO<E, A>, f: FunctionN<[A], B>): IO<E, B> { ... }
+export function map<R, E, A, B>(io: IO<R, E, A>, f: FunctionN<[A], B>): IO<R, E, B> { ... }
 ```
 
 # mapError (function)
@@ -677,7 +737,7 @@ Map the error produced by an IO
 **Signature**
 
 ```ts
-export function mapError<E1, E2, A>(io: IO<E1, A>, f: FunctionN<[E1], E2>): IO<E2, A> { ... }
+export function mapError<R, E1, E2, A>(io: IO<R, E1, A>, f: FunctionN<[E1], E2>): IO<R, E2, A> { ... }
 ```
 
 # mapErrorWith (function)
@@ -687,7 +747,7 @@ Lift a function on error values to a function on IOs
 **Signature**
 
 ```ts
-export function mapErrorWith<E1, E2>(f: FunctionN<[E1], E2>): <A>(io: IO<E1, A>) => IO<E2, A> { ... }
+export function mapErrorWith<R, E1, E2>(f: FunctionN<[E1], E2>): <A>(io: IO<R, E1, A>) => IO<R, E2, A> { ... }
 ```
 
 # onComplete (function)
@@ -695,7 +755,7 @@ export function mapErrorWith<E1, E2>(f: FunctionN<[E1], E2>): <A>(io: IO<E1, A>)
 **Signature**
 
 ```ts
-export function onComplete<E, A>(ioa: IO<E, A>, finalizer: IO<E, unknown>): IO<E, A> { ... }
+export function onComplete<R, E, A>(ioa: IO<R, E, A>, finalizer: IO<R, E, unknown>): IO<R, E, A> { ... }
 ```
 
 # onInterrupted (function)
@@ -703,7 +763,7 @@ export function onComplete<E, A>(ioa: IO<E, A>, finalizer: IO<E, unknown>): IO<E
 **Signature**
 
 ```ts
-export function onInterrupted<E, A>(ioa: IO<E, A>, finalizer: IO<E, unknown>): IO<E, A> { ... }
+export function onInterrupted<R, E, A>(ioa: IO<R, E, A>, finalizer: IO<R, E, unknown>): IO<R, E, A> { ... }
 ```
 
 # parAp (function)
@@ -711,7 +771,7 @@ export function onInterrupted<E, A>(ioa: IO<E, A>, finalizer: IO<E, unknown>): I
 **Signature**
 
 ```ts
-export function parAp<E, A, B>(ioa: IO<E, A>, iof: IO<E, FunctionN<[A], B>>): IO<E, B> { ... }
+export function parAp<R, E, A, B>(ioa: IO<R, E, A>, iof: IO<R, E, FunctionN<[A], B>>): IO<R, E, B> { ... }
 ```
 
 # parAp\_ (function)
@@ -719,15 +779,17 @@ export function parAp<E, A, B>(ioa: IO<E, A>, iof: IO<E, FunctionN<[A], B>>): IO
 **Signature**
 
 ```ts
-export function parAp_<E, A, B>(iof: IO<E, FunctionN<[A], B>>, ioa: IO<E, A>): IO<E, B> { ... }
+export function parAp_<R, E, A, B>(iof: IO<R, E, FunctionN<[A], B>>, ioa: IO<R, E, A>): IO<R, E, B> { ... }
 ```
 
 # parApplyFirst (function)
 
+Execute two ios in parallel and take the result of the first.
+
 **Signature**
 
 ```ts
-export function parApplyFirst<E, A, B>(ioa: IO<E, A>, iob: IO<E, B>): IO<E, A> { ... }
+export function parApplyFirst<R, E, A, B>(ioa: IO<R, E, A>, iob: IO<R, E, B>): IO<R, E, A> { ... }
 ```
 
 # parApplySecond (function)
@@ -735,23 +797,35 @@ export function parApplyFirst<E, A, B>(ioa: IO<E, A>, iob: IO<E, B>): IO<E, A> {
 **Signature**
 
 ```ts
-export function parApplySecond<E, A, B>(ioa: IO<E, A>, iob: IO<E, B>): IO<E, B> { ... }
+export function parApplySecond<R, E, A, B>(ioa: IO<R, E, A>, iob: IO<R, E, B>): IO<R, E, B> { ... }
 ```
 
 # parZip (function)
 
+Tuple the result of 2 ios executed in parallel
+
 **Signature**
 
 ```ts
-export function parZip<E, A, B>(ioa: IO<E, A>, iob: IO<E, B>): IO<E, readonly [A, B]> { ... }
+export function parZip<R, E, A, B>(ioa: IO<R, E, A>, iob: IO<R, E, B>): IO<R, E, readonly [A, B]> { ... }
 ```
 
 # parZipWith (function)
 
+Zip the result of 2 ios executed in parallel together with the provided function.
+
 **Signature**
 
 ```ts
-export function parZipWith<E, A, B, C>(ioa: IO<E, A>, iob: IO<E, B>, f: FunctionN<[A, B], C>): IO<E, C> { ... }
+export function parZipWith<R, E, A, B, C>(ioa: IO<R, E, A>, iob: IO<R, E, B>, f: FunctionN<[A, B], C>): IO<R, E, C> { ... }
+```
+
+# provideEnv (function)
+
+**Signature**
+
+```ts
+export function provideEnv<R, E, A>(r: R, io: IO<R, E, A>): IO<DefaultR, E, A> { ... }
 ```
 
 # pure (function)
@@ -769,7 +843,7 @@ export function pure<A>(a: A): Pure<A> { ... }
 **Signature**
 
 ```ts
-export function race<E, A>(io1: IO<E, A>, io2: IO<E, A>): IO<E, A> { ... }
+export function race<R, E, A>(io1: IO<R, E, A>, io2: IO<R, E, A>): IO<R, E, A> { ... }
 ```
 
 # raceFirst (function)
@@ -777,7 +851,7 @@ export function race<E, A>(io1: IO<E, A>, io2: IO<E, A>): IO<E, A> { ... }
 **Signature**
 
 ```ts
-export function raceFirst<E, A>(io1: IO<E, A>, io2: IO<E, A>): IO<E, A> { ... }
+export function raceFirst<R, E, A>(io1: IO<R, E, A>, io2: IO<R, E, A>): IO<R, E, A> { ... }
 ```
 
 # raceFold (function)
@@ -785,9 +859,9 @@ export function raceFirst<E, A>(io1: IO<E, A>, io2: IO<E, A>): IO<E, A> { ... }
 **Signature**
 
 ```ts
-export function raceFold<E1, E2, A, B, C>(first: IO<E1, A>, second: IO<E1, B>,
-    onFirstWon: FunctionN<[Exit<E1, A>, Fiber<E1, B>], IO<E2, C>>,
-    onSecondWon: FunctionN<[Exit<E1, B>, Fiber<E1, A>], IO<E2, C>>): IO<E2, C> { ... }
+export function raceFold<R, E1, E2, A, B, C>(first: IO<R, E1, A>, second: IO<R, E1, B>,
+    onFirstWon: FunctionN<[Exit<E1, A>, Fiber<E1, B>], IO<R, E2, C>>,
+    onSecondWon: FunctionN<[Exit<E1, B>, Fiber<E1, A>], IO<R, E2, C>>): IO<R, E2, C> { ... }
 ```
 
 # raiseAbort (function)
@@ -822,10 +896,12 @@ export function raised<E>(e: Cause<E>): Raised<E> { ... }
 
 # result (function)
 
+Create an IO that takes does not fail with a checked exception but produces an exit status.
+
 **Signature**
 
 ```ts
-export function result<E, A>(io: IO<E, A>): IO<never, Exit<E, A>> { ... }
+export function result<R, E, A>(io: IO<R, E, A>): IO<R, never, Exit<E, A>> { ... }
 ```
 
 # resultE (function)
@@ -833,7 +909,7 @@ export function result<E, A>(io: IO<E, A>): IO<never, Exit<E, A>> { ... }
 **Signature**
 
 ```ts
-export function resultE<E, A>(io: IO<E, A>): IO<E, Exit<E, A>> { ... }
+export function resultE<R, E, A>(io: IO<R, E, A>): IO<R, E, Exit<E, A>> { ... }
 ```
 
 # run (function)
@@ -841,7 +917,15 @@ export function resultE<E, A>(io: IO<E, A>): IO<E, Exit<E, A>> { ... }
 **Signature**
 
 ```ts
-export function run<E, A>(io: IO<E, A>, callback: FunctionN<[Exit<E, A>], void>): Lazy<void> { ... }
+export function run<E, A>(io: IO<DefaultR, E, A>, callback: FunctionN<[Exit<E, A>], void>): Lazy<void> { ... }
+```
+
+# runR (function)
+
+**Signature**
+
+```ts
+export function runR<R, E, A>(io: IO<R, E, A>, r: R, callback: FunctionN<[Exit<E, A>], void>): Lazy<void> { ... }
 ```
 
 # runToPromise (function)
@@ -856,7 +940,7 @@ The returned promise may never complete if the provided IO never produces a valu
 **Signature**
 
 ```ts
-export function runToPromise<E, A>(io: IO<E, A>): Promise<A> { ... }
+export function runToPromise<E, A>(io: IO<DefaultR, E, A>): Promise<A> { ... }
 ```
 
 # runToPromiseExit (function)
@@ -868,7 +952,32 @@ The returned promise will never reject.
 **Signature**
 
 ```ts
-export function runToPromiseExit<E, A>(io: IO<E, A>): Promise<Exit<E, A>> { ... }
+export function runToPromiseExit<E, A>(io: IO<DefaultR, E, A>): Promise<Exit<E, A>> { ... }
+```
+
+# runToPromiseExitR (function)
+
+Run an IO returning a promise of an Exit.
+
+The Promise will not reject.
+Allows providing an environment parameter directly
+
+**Signature**
+
+```ts
+export function runToPromiseExitR<R, E, A>(io: IO<R, E, A>, r: R): Promise<Exit<E, A>> { ... }
+```
+
+# runToPromiseR (function)
+
+Run an IO and return a Promise of its result
+
+Allows providing an environment parameter directly
+
+**Signature**
+
+```ts
+export function runToPromiseR<R, E, A>(io: IO<R, E, A>, r: R): Promise<A> { ... }
 ```
 
 # shift (function)
@@ -876,7 +985,7 @@ export function runToPromiseExit<E, A>(io: IO<E, A>): Promise<Exit<E, A>> { ... 
 **Signature**
 
 ```ts
-export function shift<E, A>(io: IO<E, A>): IO<E, A> { ... }
+export function shift<R, E, A>(io: IO<R, E, A>): IO<R, E, A> { ... }
 ```
 
 # shiftAsync (function)
@@ -884,7 +993,7 @@ export function shift<E, A>(io: IO<E, A>): IO<E, A> { ... }
 **Signature**
 
 ```ts
-export function shiftAsync<E, A>(io: IO<E, A>): IO<E, A> { ... }
+export function shiftAsync<R, E, A>(io: IO<R, E, A>): IO<R, E, A> { ... }
 ```
 
 # suspended (function)
@@ -896,7 +1005,7 @@ When evaluated this IO will run thunk to produce the next IO to execute.
 **Signature**
 
 ```ts
-export function suspended<E, A>(thunk: Lazy<IO<E, A>>): Suspended<E, A> { ... }
+export function suspended<R, E, A>(thunk: Lazy<IO<R, E, A>>): Suspended<R, E, A> { ... }
 ```
 
 # sync (function)
@@ -908,7 +1017,7 @@ When evaluated the created IO will produce the value produced by the thunk
 **Signature**
 
 ```ts
-export function sync<A>(thunk: Lazy<A>): Suspended<never, A> { ... }
+export function sync<A>(thunk: Lazy<A>): Suspended<DefaultR, never, A> { ... }
 ```
 
 # timeoutFold (function)
@@ -916,10 +1025,10 @@ export function sync<A>(thunk: Lazy<A>): Suspended<never, A> { ... }
 **Signature**
 
 ```ts
-export function timeoutFold<E1, E2, A, B>(source: IO<E1, A>,
+export function timeoutFold<R, E1, E2, A, B>(source: IO<R, E1, A>,
     ms: number,
-    onTimeout: FunctionN<[Fiber<E1, A>], IO<E2, B>>,
-    onCompleted: FunctionN<[Exit<E1, A>], IO<E2, B>>): IO<E2, B> { ... }
+    onTimeout: FunctionN<[Fiber<E1, A>], IO<R, E2, B>>,
+    onCompleted: FunctionN<[Exit<E1, A>], IO<R, E2, B>>): IO<R, E2, B> { ... }
 ```
 
 # timeoutOption (function)
@@ -927,7 +1036,7 @@ export function timeoutFold<E1, E2, A, B>(source: IO<E1, A>,
 **Signature**
 
 ```ts
-export function timeoutOption<E, A>(source: IO<E, A>, ms: number): IO<E, Option<A>> { ... }
+export function timeoutOption<R, E, A>(source: IO<R, E, A>, ms: number): IO<R, E, Option<A>> { ... }
 ```
 
 # uninterruptible (function)
@@ -935,7 +1044,7 @@ export function timeoutOption<E, A>(source: IO<E, A>, ms: number): IO<E, Option<
 **Signature**
 
 ```ts
-export function uninterruptible<E, A>(io: IO<E, A>): IO<E, A> { ... }
+export function uninterruptible<R, E, A>(io: IO<R, E, A>): IO<R, E, A> { ... }
 ```
 
 # uninterruptibleMask (function)
@@ -943,7 +1052,7 @@ export function uninterruptible<E, A>(io: IO<E, A>): IO<E, A> { ... }
 **Signature**
 
 ```ts
-export function uninterruptibleMask<E, A>(f: FunctionN<[InterruptMaskCutout<E, A>], IO<E, A>>): IO<E, A> { ... }
+export function uninterruptibleMask<R, E, A>(f: FunctionN<[InterruptMaskCutout<R, E, A>], IO<R, E, A>>): IO<R, E, A> { ... }
 ```
 
 # withRuntime (function)
@@ -951,7 +1060,7 @@ export function uninterruptibleMask<E, A>(f: FunctionN<[InterruptMaskCutout<E, A
 **Signature**
 
 ```ts
-export function withRuntime<E, A>(f: FunctionN<[Runtime], IO<E, A>>): IO<E, A> { ... }
+export function withRuntime<R, E, A>(f: FunctionN<[Runtime], IO<R, E, A>>): IO<R, E, A> { ... }
 ```
 
 # zip (function)
@@ -961,7 +1070,7 @@ Zip the result of two IOs together into a tuple type
 **Signature**
 
 ```ts
-export function zip<E, A, B>(first: IO<E, A>, second: IO<E, B>): IO<E, readonly [A, B]> { ... }
+export function zip<R, E, A, B>(first: IO<R, E, A>, second: IO<R, E, B>): IO<R, E, readonly [A, B]> { ... }
 ```
 
 # zipWith (function)
@@ -971,5 +1080,5 @@ Zip the result of two IOs together using the provided function
 **Signature**
 
 ```ts
-export function zipWith<E, A, B, C>(first: IO<E, A>, second: IO<E, B>, f: FunctionN<[A, B], C>): IO<E, C> { ... }
+export function zipWith<R, E, A, B, C>(first: IO<R, E, A>, second: IO<R, E, B>, f: FunctionN<[A, B], C>): IO<R, E, C> { ... }
 ```

@@ -10,6 +10,7 @@ parent: Modules
 
 - [Driver (interface)](#driver-interface)
 - [FrameType (type alias)](#frametype-type-alias)
+- [RegionFrameType (type alias)](#regionframetype-type-alias)
 - [makeDriver (function)](#makedriver-function)
 
 ---
@@ -19,8 +20,8 @@ parent: Modules
 **Signature**
 
 ```ts
-export interface Driver<E, A> {
-  start(): void
+export interface Driver<R, E, A> {
+  start(r: R, run: IO<R, E, A>): void
   interrupt(): void
   onExit(f: FunctionN<[Exit<E, A>], void>): Lazy<void>
   exit(): Option<Exit<E, A>>
@@ -32,7 +33,15 @@ export interface Driver<E, A> {
 **Signature**
 
 ```ts
-export type FrameType = Frame | FoldFrame | InterruptFrame
+export type FrameType = Frame | FoldFrame | RegionFrameType
+```
+
+# RegionFrameType (type alias)
+
+**Signature**
+
+```ts
+export type RegionFrameType = InterruptFrame | EnvironmentFrame
 ```
 
 # makeDriver (function)
@@ -40,5 +49,5 @@ export type FrameType = Frame | FoldFrame | InterruptFrame
 **Signature**
 
 ```ts
-export function makeDriver<E, A>(run: IO<E, A>, runtime: Runtime = defaultRuntime): Driver<E, A> { ... }
+export function makeDriver<R, E, A>(runtime: Runtime = defaultRuntime): Driver<R, E, A> { ... }
 ```

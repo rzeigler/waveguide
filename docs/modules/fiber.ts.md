@@ -29,24 +29,24 @@ export interface Fiber<E, A> {
    * The this will complete execution once the target fiber has halted.
    * Does nothing if the target fiber is already complete
    */
-  readonly interrupt: IO<never, void>
+  readonly interrupt: IO<DefaultR, never, void>
   /**
    * Await the result of this fiber
    */
-  readonly wait: IO<never, Exit<E, A>>
+  readonly wait: IO<DefaultR, never, Exit<E, A>>
   /**
    * Join with this fiber.
    * This is equivalent to fiber.wait.chain(io.completeWith)
    */
-  readonly join: IO<E, A>
+  readonly join: IO<DefaultR, E, A>
   /**
    * Poll for a fiber result
    */
-  readonly result: IO<E, Option<A>>
+  readonly result: IO<DefaultR, E, Option<A>>
   /**
    * Determine if the fiber is complete
    */
-  readonly isComplete: IO<never, boolean>
+  readonly isComplete: IO<DefaultR, never, boolean>
 }
 ```
 
@@ -55,5 +55,5 @@ export interface Fiber<E, A> {
 **Signature**
 
 ```ts
-export function makeFiber<E, A>(init: IO<E, A>, runtime: Runtime, name?: string): IO<never, Fiber<E, A>> { ... }
+export function makeFiber<E, A>(init: IO<DefaultR, E, A>, runtime: Runtime, name?: string): IO<DefaultR, never, Fiber<E, A>> { ... }
 ```

@@ -50,7 +50,7 @@ export interface Fiber<E, A> {
     readonly isComplete: IO<DefaultR, never, boolean>;
 }
 
-function createFiber<E, A>(driver: Driver<E, A>, n?: string): Fiber<E, A> {
+function createFiber<E, A>(driver: Driver<DefaultR, E, A>, n?: string): Fiber<E, A> {
     const name = fromNullable(n);
     const sendInterrupt = io.sync(() => {
         driver.interrupt();
@@ -74,9 +74,9 @@ function createFiber<E, A>(driver: Driver<E, A>, n?: string): Fiber<E, A> {
 
 export function makeFiber<E, A>(init: IO<DefaultR, E, A>, runtime: Runtime, name?: string): IO<DefaultR, never, Fiber<E, A>> {
     return io.sync(() => {
-        const driver = makeDriver(init, runtime);
+        const driver = makeDriver<DefaultR, E, A>(runtime);
         const fiber = createFiber(driver, name);
-        driver.start();
+        driver.start({}, init);
         return fiber;
     });
 }

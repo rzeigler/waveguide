@@ -20,7 +20,7 @@ IO is:
 For more information see [the docs](https://rzeigler.github.io/waveguide).
 For useful low level wrappers around node see [waveguide-node](https://github.com/rzeigler/waveguide-node) or the browser see [waveguide-browser](https://github.com/rzeigler/waveguide-browser)
 
-waveguide's API is still very much in flux. 
+Waveguide is currently preparing for a 1.0.0 release and the API wil be finalized soon.
 If you have questions don't hesitate to ask them in the gitter.
 
 ## Compared to...

@@ -19,11 +19,11 @@ parent: Modules
 
 ```ts
 export interface Deferred<E, A> {
-  readonly wait: IO<E, A>
-  interrupt: IO<never, void>
-  done(a: A): IO<never, void>
-  error(e: E): IO<never, void>
-  from(source: IO<E, A>): IO<never, void>
+  readonly wait: IO<DefaultR, E, A>
+  interrupt: IO<DefaultR, never, void>
+  done(a: A): IO<DefaultR, never, void>
+  error(e: E): IO<DefaultR, never, void>
+  from(source: IO<DefaultR, E, A>): IO<DefaultR, never, void>
 }
 ```
 
@@ -32,5 +32,5 @@ export interface Deferred<E, A> {
 **Signature**
 
 ```ts
-export function makeDeferred<E, A, E2 = never>(): IO<E2, Deferred<E, A>> { ... }
+export function makeDeferred<E, A, E2 = never>(): IO<DefaultR, E2, Deferred<E, A>> { ... }
 ```

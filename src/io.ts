@@ -51,7 +51,8 @@ export type IO<R, E, A> =
   Suspended<R, E, A> |
   Async<E, A> |
   Chain<R, E, any, A> | // eslint-disable-line @typescript-eslint/no-explicit-any
-  Read<R> |
+  AccessEnv<R> |
+  ProvideEnv<any, E, A> | // eslint-disable-line @typescript-eslint/no-explicit-any
   Collapse<R, any, E, any, A> | // eslint-disable-line @typescript-eslint/no-explicit-any
   InterruptibleRegion<R, E, A> |
   (boolean extends A ? AccessInterruptible : never) |
@@ -219,11 +220,27 @@ export function chain<R, E, Z, A>(inner: IO<R, E, Z>, bind: FunctionN<[Z], IO<R,
     };
 }
 
-export interface Read<R> {
+export interface AccessEnv<R> {
     readonly _tag: "read";
 }
 
-export const read: Read<never> = { _tag: "read" }
+export function accessEnv<R>(): IO<R, never, R> {
+    return { _tag: "read" }
+}
+
+export interface ProvideEnv<R, E, A> {
+    readonly _tag: "provide";
+    readonly r: R;
+    readonly inner: IO<R, E, A>
+}
+
+export function provideEnv<R, E, A>(r: R, io: IO<R, E, A>): IO<DefaultR, E, A> {
+    return {
+        _tag: "provide",
+        r,
+        inner: io
+    } as ProvideEnv<R, E, A>;
+}
 
 /**
  * Flatten a nested IO
@@ -418,23 +435,45 @@ export function applyFirst<R, E, A, B>(first: IO<R, E, A>, second: IO<R, E, B>):
     return zipWith(first, second, fst);
 }
 
+/**
+ * Curried form of applyFirst.
+ * @param first 
+ */
 export function applyThis<R, E, A>(first: IO<R, E, A>): <B>(second: IO<R, E, B>) => IO<R, E, A> {
     return <B>(second: IO<R, E, B>) => applyFirst(first, second);
 }
 
+/**
+ * Evaluate two IOs in sequence and produce the value produced by the second
+ * @param first 
+ * @param second 
+ */
 export function applySecond<R, E, A, B>(first: IO<R, E, A>, second: IO<R, E, B>): IO<R, E, B> {
     return zipWith(first, second, snd);
 }
 
+/**
+ * Curried form of applySecond
+ * @param first
+ */
 export function applyOther<R, E, A>(first: IO<R, E, A>): <B>(second: IO<R, E, B>) => IO<R, E, B> {
     return <B>(second: IO<R, E, B>) => applySecond(first, second);
 }
 
+/**
+ * Applicative ap
+ * @param ioa 
+ * @param iof 
+ */
 export function ap<R, E, A, B>(ioa: IO<R, E, A>, iof: IO<R, E, FunctionN<[A], B>>): IO<R, E, B> {
     // Find the apply/thrush operator I'm sure exists in fp-ts somewhere
     return zipWith(ioa, iof, (a, f) => f(a));
 }
 
+/**
+ * Curried form of ap
+ * @param ioa 
+ */
 export function apWith<R, E, A>(ioa: IO<R, E, A>): <B>(iof: IO<R, E, FunctionN<[A], B>>) => IO<R, E, B> {
     return <B>(iof: IO<R, E, FunctionN<[A], B>>) => ap(ioa, iof);
 }
@@ -447,6 +486,10 @@ export function apWith_<R, E, A, B>(iof: IO<R, E, FunctionN<[A], B>>): FunctionN
     return (io) => ap_(iof, io);
 }
 
+/**
+ * Flip the error and success channels in an IO
+ * @param io 
+ */
 export function flip<R, E, A>(io: IO<R, E, A>): IO<R, A, E> {
     return foldExit(
         io,
@@ -455,6 +498,10 @@ export function flip<R, E, A>(io: IO<R, E, A>): IO<R, A, E> {
     );
 }
 
+/**
+ * Create an IO that takes does not fail with a checked exception but produces an exit status.
+ * @param io 
+ */
 export function result<R, E, A>(io: IO<R, E, A>): IO<R, never, Exit<E, A>> {
     return foldExit<R, E, never, A, Exit<E, A>>(
         io,
@@ -679,6 +726,12 @@ export function race<R, E, A>(io1: IO<R, E, A>, io2: IO<R, E, A>): IO<R, E, A> {
     return raceFold(io1, io2, fallbackToLoser, fallbackToLoser);
 }
 
+/**
+ * Zip the result of 2 ios executed in parallel together with the provided function.
+ * @param ioa 
+ * @param iob 
+ * @param f 
+ */
 export function parZipWith<R, E, A, B, C>(ioa: IO<R, E, A>, iob: IO<R, E, B>, f: FunctionN<[A, B], C>): IO<R, E, C> {
     return raceFold(ioa, iob,
         (aExit, bFiber) => zipWith(completed(aExit), bFiber.join, f),
@@ -686,10 +739,20 @@ export function parZipWith<R, E, A, B, C>(ioa: IO<R, E, A>, iob: IO<R, E, B>, f:
     );
 }
 
+/**
+ * Tuple the result of 2 ios executed in parallel
+ * @param ioa 
+ * @param iob 
+ */
 export function parZip<R, E, A, B>(ioa: IO<R, E, A>, iob: IO<R, E, B>): IO<R, E, readonly [A, B]> {
     return parZipWith(ioa, iob, tuple2);
 }
 
+/**
+ * Execute two ios in parallel and take the result of the first.
+ * @param ioa 
+ * @param iob 
+ */
 export function parApplyFirst<R, E, A, B>(ioa: IO<R, E, A>, iob: IO<R, E, B>): IO<R, E, A> {
     return parZipWith(ioa, iob, fst);
 }
@@ -723,11 +786,15 @@ export function fromPromise<A>(thunk: Lazy<Promise<A>>): IO<DefaultR, unknown, A
     }));
 }
 
-export function run<R, E, A>(io: IO<R, E, A>, callback: FunctionN<[Exit<E, A>], void>): Lazy<void> {
-    const driver = makeDriver(io);
+export function runR<R, E, A>(io: IO<R, E, A>, r: R, callback: FunctionN<[Exit<E, A>], void>): Lazy<void> {
+    const driver = makeDriver<R, E, A>();
     driver.onExit(callback);
-    driver.start();
+    driver.start(r, io);
     return driver.interrupt;
+}
+
+export function run<E, A>(io: IO<DefaultR, E, A>, callback: FunctionN<[Exit<E, A>], void>): Lazy<void> {
+    return runR(io, {}, callback);
 }
 
 /**
@@ -739,9 +806,32 @@ export function run<R, E, A>(io: IO<R, E, A>, callback: FunctionN<[Exit<E, A>], 
  * The returned promise may never complete if the provided IO never produces a value or error.
  * @param io
  */
-export function runToPromise<R, E, A>(io: IO<R, E, A>): Promise<A> {
+export function runToPromise<E, A>(io: IO<DefaultR, E, A>): Promise<A> {
     return new Promise((resolve, reject) =>
         run(io, (exit) => {
+            if (exit._tag === "value") {
+                resolve(exit.value);
+            } else if (exit._tag === "abort") {
+                reject(exit.abortedWith);
+            } else if (exit._tag === "raise") {
+                reject(exit.error);
+            } else if (exit._tag === "interrupt") {
+                reject();
+            }
+        })
+    );
+}
+
+/**
+ * Run an IO and return a Promise of its result
+ * 
+ * Allows providing an environment parameter directly
+ * @param io 
+ * @param r 
+ */
+export function runToPromiseR<R, E, A>(io: IO<R, E, A>, r: R): Promise<A> {
+    return new Promise((resolve, reject) =>
+        runR(io, r, (exit) => {
             if (exit._tag === "value") {
                 resolve(exit.value);
             } else if (exit._tag === "abort") {
@@ -761,8 +851,20 @@ export function runToPromise<R, E, A>(io: IO<R, E, A>): Promise<A> {
  * The returned promise will never reject.
  * @param io
  */
-export function runToPromiseExit<R, E, A>(io: IO<R, E, A>): Promise<Exit<E, A>> {
+export function runToPromiseExit<E, A>(io: IO<DefaultR, E, A>): Promise<Exit<E, A>> {
     return new Promise((resolve) => run(io, resolve));
+}
+
+/**
+ * Run an IO returning a promise of an Exit. 
+ * 
+ * The Promise will not reject.
+ * Allows providing an environment parameter directly
+ * @param io 
+ * @param r 
+ */
+export function runToPromiseExitR<R, E, A>(io: IO<R, E, A>, r: R): Promise<Exit<E, A>> {
+    return new Promise((result) => runR(io, r, result))
 }
 
 export const URI = "IO";

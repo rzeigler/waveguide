@@ -19,14 +19,14 @@ parent: Modules
 
 ```ts
 export interface Semaphore {
-  readonly acquire: IO<never, void>
-  readonly release: IO<never, void>
-  readonly available: IO<never, number>
+  readonly acquire: IO<DefaultR, never, void>
+  readonly release: IO<DefaultR, never, void>
+  readonly available: IO<DefaultR, never, number>
 
-  acquireN(n: number): IO<never, void>
-  releaseN(n: number): IO<never, void>
-  withPermitsN<E, A>(n: number, io: IO<E, A>): IO<E, A>
-  withPermit<E, A>(n: IO<E, A>): IO<E, A>
+  acquireN(n: number): IO<DefaultR, never, void>
+  releaseN(n: number): IO<DefaultR, never, void>
+  withPermitsN<E, A>(n: number, io: IO<DefaultR, E, A>): IO<DefaultR, E, A>
+  withPermit<E, A>(n: IO<DefaultR, E, A>): IO<DefaultR, E, A>
 }
 ```
 
@@ -37,5 +37,5 @@ Allocate a semaphore.
 **Signature**
 
 ```ts
-export function makeSemaphore(n: number): IO<never, Semaphore> { ... }
+export function makeSemaphore(n: number): IO<DefaultR, never, Semaphore> { ... }
 ```

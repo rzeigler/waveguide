@@ -20,10 +20,10 @@ parent: Modules
 
 ```ts
 export interface Ref<A> {
-  readonly get: IO<never, A>
-  set(a: A): IO<never, A>
-  update(f: FunctionN<[A], A>): IO<never, A>
-  modify<B>(f: FunctionN<[A], readonly [B, A]>): IO<never, B>
+  readonly get: IO<DefaultR, never, A>
+  set(a: A): IO<DefaultR, never, A>
+  update(f: FunctionN<[A], A>): IO<DefaultR, never, A>
+  modify<B>(f: FunctionN<[A], readonly [B, A]>): IO<DefaultR, never, B>
 }
 ```
 
@@ -35,7 +35,7 @@ Curried form of makeRef\_ to allow for inference on the initial type
 **Signature**
 
 ```ts
-export const makeRef = <E = never>() => <A>(initial: A): IO<E, Ref<A>> =>
+export const makeRef = <E = never>() => <A>(initial: A): IO<DefaultR, E, Ref<A>> =>
     sync(() => ...
 ```
 
@@ -44,5 +44,5 @@ export const makeRef = <E = never>() => <A>(initial: A): IO<E, Ref<A>> =>
 **Signature**
 
 ```ts
-export function makeRef_<E, A>(initial: A): IO<E, Ref<A>> { ... }
+export function makeRef_<E, A>(initial: A): IO<DefaultR, E, Ref<A>> { ... }
 ```

@@ -19,10 +19,10 @@ parent: Modules
 
 ```ts
 export interface Mutex {
-  readonly acquire: IO<never, void>
-  readonly release: IO<never, void>
-  readonly available: IO<never, boolean>
-  withExclusion<E, A>(inner: IO<E, A>): IO<E, A>
+  readonly acquire: IO<DefaultR, never, void>
+  readonly release: IO<DefaultR, never, void>
+  readonly available: IO<DefaultR, never, boolean>
+  withExclusion<E, A>(inner: IO<DefaultR, E, A>): IO<DefaultR, E, A>
 }
 ```
 
