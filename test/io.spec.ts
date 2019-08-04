@@ -427,26 +427,30 @@ describe("io", () => {
             )
         );
     });
-    it("many async ios should be parZipWithAble", () => {
-        const ios: RIO<DefaultR, never, number>[] = [];
-        for (let i = 0; i < 10000; i++) {
-            ios.push(io.delay(io.pure(1), Math.random() * 100));
-        }
-        return eqvIO(
-            array.reduce(ios, io.pure(42) as RIO<DefaultR, never, number>, (l, r) => io.parApplyFirst(l, r)),
-            io.pure(42)
-        );
-    });
-    it("many sync ios should be parZipWithAble", () => {
-        const ios: RIO<DefaultR, never, number>[] = [];
-        for (let i = 0; i < 10000; i++) {
-            ios.push(io.pure(1));
-        }
-        return eqvIO(
-            array.reduce(ios, io.pure(42) as RIO<DefaultR, never, number>, (l, r) => io.parApplyFirst(l, r)),
-            io.pure(42)
-        );
-    });
+    describe("parZip", function () {
+        this.timeout(10000);
+        it("many async ios should be parZipWithAble", () => {
+            const ios: RIO<DefaultR, never, number>[] = [];
+            for (let i = 0; i < 10000; i++) {
+                ios.push(io.delay(io.pure(1), Math.random() * 100));
+            }
+            return eqvIO(
+                array.reduce(ios, io.pure(42) as RIO<DefaultR, never, number>, (l, r) => io.parApplyFirst(l, r)),
+                io.pure(42)
+            );
+        });
+        it("many sync ios should be parZipWithAble", () => {
+            const ios: RIO<DefaultR, never, number>[] = [];
+            for (let i = 0; i < 10000; i++) {
+                ios.push(io.pure(1));
+            }
+            return eqvIO(
+                array.reduce(ios, io.pure(42) as RIO<DefaultR, never, number>, (l, r) => io.parApplyFirst(l, r)),
+                io.pure(42)
+            );
+        });
+    })
+    
     describe("#bracketExit", function() {
         this.timeout(10000);
         // Verify that bracketExit has the cleanup semantics that we expect
