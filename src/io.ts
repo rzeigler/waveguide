@@ -1146,17 +1146,17 @@ export const parInstances: Applicative3<URI> = {
     ap: parAp_
 } as const;
 
-export function getSemigroup<R, E, A>(Semigroup: Semigroup<A>): Semigroup<RIO<R, E, A>> {
+export function getSemigroup<R, E, A>(s: Semigroup<A>): Semigroup<RIO<R, E, A>> {
     return {
         concat(x: RIO<R, E, A>, y: RIO<R, E, A>): RIO<R, E, A> {
-            return zipWith(x, y, Semigroup.concat)
+            return zipWith(x, y, s.concat)
         }
     };
 }
 
-export function getMonoid<R, E, A>(Monoid: Monoid<A>): Monoid<RIO<R, E, A>> {
+export function getMonoid<R, E, A>(m: Monoid<A>): Monoid<RIO<R, E, A>> {
     return {
-        ...getSemigroup(Monoid),
-        empty: pure(Monoid.empty)
+        ...getSemigroup(m),
+        empty: pure(m.empty)
     }
 }
