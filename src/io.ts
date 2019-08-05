@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Alt, Alt3 } from "fp-ts/lib/Alt";
 import { Semigroup } from "fp-ts/lib/Semigroup"
 import { Monoid } from "fp-ts/lib/Monoid";
 import { Applicative3 } from "fp-ts/lib/Applicative";
@@ -31,7 +30,6 @@ import { Fiber, makeFiber } from "./fiber";
 import { makeRef, Ref } from "./ref";
 import { Runtime } from "./runtime";
 import { MonadThrow3 } from "fp-ts/lib/MonadThrow";
-import { HKT } from "fp-ts/lib/HKT";
 
 export type DefaultR = {}; // eslint-disable-line @typescript-eslint/prefer-interface
 
@@ -249,6 +247,33 @@ export interface ProvideEnv<R, E, A> {
 }
 
 /**
+ * Lift a function from R => IO<E, A> to a RIO<R, E, A>
+ * @param f 
+ */
+export function encaseRIO<R, E, A>(f: FunctionN<[R], IO<E, A>>): RIO<R, E, A> {
+    return chain(accessEnv<R>(), f);
+}
+
+/**
+ * Lift an Either into an IO
+ * @param e 
+ */
+export function encaseEither<E, A>(e: Either<E, A>): IO<E, A> {
+    return pipe(e, either.fold<E, A, IO<E, A>>(raiseError, pure));
+}
+
+/**
+ * Lift an Option into an IO
+ * @param o 
+ * @param onError 
+ */
+export function encaseOption<E, A>(o: Option<A>, onError: Lazy<E>): IO<E, A> {
+    return pipe(o, 
+        option.map<A, IO<E, A>>(pure), 
+        option.getOrElse<IO<E, A>>(() => raiseError(onError())));
+}
+
+/**
  * Provide an environment to an RIO. 
  * 
  * This eliminates the dependency on the specific R of the input. 
@@ -265,6 +290,15 @@ export function provideEnv<R, E, A>(r: R, io: RIO<R, E, A>): RIO<DefaultR, E, A>
 }
 
 /**
+ * Manipulate an IO by producing its environment from an IO in different environment such that it may execute in that other environment
+ * @param contra 
+ * @param io 
+ */
+export function contramapEnvM<R1, R2, E, A>(contra: RIO<R1, E, R2>, io: RIO<R2, E, A>): RIO<R1, E, A> {
+    return chain(contra, (r2) => provideEnv(r2, io));
+}
+
+/**
  * Manipulate an IO with by producing its environment from a different one
  * @param f 
  * @param io 
@@ -273,14 +307,6 @@ export function contramapEnv<R1, R2, E, A>(f: FunctionN<[R1], R2>, io: RIO<R2, E
     return contramapEnvM(encaseRIO((r1) => pure(f(r1))), io);
 }
 
-/**
- * Manipulate an IO by producing its environment from an IO in different environment such that it may execute in that other environment
- * @param contra 
- * @param io 
- */
-export function contramapEnvM<R1, R2, E, A>(contra: RIO<R1, E, R2>, io: RIO<R2, E, A>): RIO<R1, E, A> {
-    return chain(contra, (r2) => provideEnv(r2, io));
-}
 
 /**
  * Flatten a nested IO
@@ -1002,33 +1028,6 @@ export function fromPromise<A>(thunk: Lazy<Promise<A>>): RIO<DefaultR, unknown, 
         // tslint:disable-next-line
         return () => { };
     }));
-}
-
-/**
- * Lift a function from R => IO<E, A> to a RIO<R, E, A>
- * @param f 
- */
-export function encaseRIO<R, E, A>(f: FunctionN<[R], IO<E, A>>): RIO<R, E, A> {
-    return chain(accessEnv<R>(), f);
-}
-
-/**
- * Lift an Either into an IO
- * @param e 
- */
-export function encaseEither<E, A>(e: Either<E, A>): IO<E, A> {
-    return pipe(e, either.fold<E, A, IO<E, A>>(raiseError, pure));
-}
-
-/**
- * Lift an Option into an IO
- * @param o 
- * @param onError 
- */
-export function encaseOption<E, A>(o: Option<A>, onError: Lazy<E>): IO<E, A> {
-    return pipe(o, 
-        option.map<A, IO<E, A>>(pure), 
-        option.getOrElse<IO<E, A>>(() => raiseError(onError())));
 }
 
 /**
