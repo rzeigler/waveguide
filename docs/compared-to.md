@@ -3,7 +3,7 @@ title: Compared To
 permalink: /compared-to/
 has_children: false
 has_toc: false
-nav_order: 1
+nav_order: 2
 ---
 ## Compared to...
 
