@@ -546,11 +546,29 @@ export function applySecond<R, E, A, B>(first: RIO<R, E, A>, second: RIO<R, E, B
 }
 
 /**
+ * Evaluate two IOs in sequence and produce the value of the second.
+ * This is suitable for cases where second is recursively defined
+ * @param first 
+ * @param second 
+ */
+export function applySecondL<R, E, A, B>(first: RIO<R, E, A>, second: Lazy<RIO<R, E, B>>): RIO<R, E, B> {
+    return chain(first, () => second());
+}
+
+/**
  * Curried form of applySecond
  * @param first
  */
 export function applyOther<R, E, A>(first: RIO<R, E, A>): <B>(second: RIO<R, E, B>) => RIO<R, E, B> {
     return <B>(second: RIO<R, E, B>) => applySecond(first, second);
+}
+
+/**
+ * Curried form of applySecondL
+ * @param first 
+ */
+export function applyOtherL<R, E, A>(first: RIO<R, E, A>): <B>(second: Lazy<RIO<R, E, B>>) => RIO<R, E, B> {
+    return <B>(second: Lazy<RIO<R, E, B>>) => applySecondL(first, second);
 }
 
 /**
@@ -1028,6 +1046,16 @@ export function fromPromise<A>(thunk: Lazy<Promise<A>>): RIO<DefaultR, unknown, 
         // tslint:disable-next-line
         return () => { };
     }));
+}
+
+export type Widen<A, B> = A extends B ? B : (B extends A ? A : A | B)
+/**
+ * Widen the error channel of an IO such that both E1 and E2 are acceptable as errors
+ * If E1 or E2 are related this selects the ancestor, otherwise it selects E1 | E2
+ * @param io 
+ */
+export function widenError<R, E1, E2, A>(io: RIO<R, E1, A>): RIO<R, Widen<E1, E2>, A> {
+    return io as RIO<R, Widen<E1, E2>, A>;
 }
 
 /**
