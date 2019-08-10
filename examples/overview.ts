@@ -170,6 +170,12 @@ const run = wave.chainError(
  * We haven't actually done anything yet.
  * While IO provides helpful things like run, runToPromise, and friends here we will drive the run loop outselves
  * and wire process signals to IOs interruption mechanism
+ * 
+ * In the future, this will be in the waveguide-node and waveguide-browser packages (the implementation is different per platform)
+ * but it is presented here so you can see what is happening.
+ * 
+ * wave.run could also be used to achieve something similar, but here we invoke the driver ourselves to make sure we 
+ * can wire the process signals before we start executing the action.
  */
 import { makeDriver } from "../src/driver";
 function main(io: IO<never, void>): void {
@@ -179,7 +185,7 @@ function main(io: IO<never, void>): void {
     // These will cause the runloop to switch to its interrupt handling
     process.on('SIGINT', () => driver.interrupt());
     process.on('SIGTERM', () => driver.interrupt());
-    // If the driver exists, we should send a signal
+    // If the driver exits, we should terminate the process
     driver.onExit((e) => {
         // We don't worry about the raise case because the type of main says you must have handled your errors
         if (e._tag === "abort") {
