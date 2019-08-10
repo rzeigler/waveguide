@@ -1,10 +1,9 @@
 ---
 title: Compared To
 permalink: /compared-to/
-has_children: false
-has_toc: false
 nav_order: 2
 ---
+
 ## Compared to...
 
 ### [funfix](https://github.com/funfix/funfix/)
