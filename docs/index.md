@@ -7,8 +7,11 @@ nav_order: 1
 
 ## Getting Started
 ```
-import * as w, { IO } from "waveguide/lib/io"
+import * as wave, { IO } from "waveguide/lib/io"
 ```
+
+## Quick examples
+For a quick overview of what IO can do see the [overview example](https://github.com/rzeigler/waveguide/examples/overview.ts)
 
 ## Constructing an IO
 There are a number of ways of constructing IOs exported from the /lib/io module
@@ -32,8 +35,8 @@ Once the resource is acquired, the release action will always happen.
 If all you need is to ensure that an acquired resource is cleaned up, there is also the Resource data type which forms a Monad for nesting resource scopes.
 
 ## Fibers
-An `RIO<E, A>` may be converted to a fiber using `fork()`.
-The result being an `RIO<never, Fiber<E, A>>`.
+An `IO<E, A>` may be converted to a fiber using `fork()`.
+The result being an `IO<never, Fiber<E, A>>`.
 The IO action is now running in the background and can be interrupted, waited, or joined.
 `interrupt` sends an interrupt to a fiber causing it to halt once it leaves any critical sections it may be in.
 `join` will halt the progress of the current fiber until the result of the target fiber is known.
