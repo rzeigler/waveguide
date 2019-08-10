@@ -25,7 +25,7 @@ They include
 There are also a number of functions to construct IOs from Promises and fp-ts tasks
 
 ## Using an IO
-`RIO<E, A>` is a monad and exposes the relevant functions in a naming scheme similar to [fp-ts](https://github.com/gcanti/fp-ts/) along with typeclass instances for Monad and parallel Applicative.
+`IO<E, A>` is a monad and exposes the relevant functions in a naming scheme similar to [fp-ts](https://github.com/gcanti/fp-ts/) along with typeclass instances for Monad and parallel Applicative.
 These instances are the exports io and par respectively from /lib/io
 Furthermore, there are a several resource acquisition functions such as `bracket` and `onComplete` which guarantee IO actions happen in the fact of errors or interuption.
 These respect interruptible state
