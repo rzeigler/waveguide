@@ -1,6 +1,5 @@
 ---
 title: Compared To
-permalink: /compared-to/
 nav_order: 2
 ---
 
