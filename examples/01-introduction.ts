@@ -200,6 +200,6 @@ function main(io: IO<never, void>): void {
 /**
  * Now that we have a 'main' function, we can execute our IO.
  * Notice how the pid file exists while the process is active but is gracefully cleared up at shutdown
- * This file is built by npm run test-build to ./build/examples/overview.js
+ * This file is built by npm run test-build to ./build/examples/01-introduction.js
  */
 main(run);

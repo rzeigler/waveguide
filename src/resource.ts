@@ -20,15 +20,20 @@ import { RIO } from "./io";
 import * as io from "./io";
 
 /**
- * A Resource<E, A> is a type that encapsulates the safe acquisition and release of a resource.
+ * A Managed<E, A> is a type that encapsulates the safe acquisition and release of a resource.
  *
  * This is a friendly monadic wrapper around bracketExit.
  */
-export type Resource<R, E, A> =
+export type Managed<R, E, A> =
   Pure<A> |
   Bracket<R, E, A> |
   Suspended<R, E, A>  |
   Chain<R, E, any, A>; // eslint-disable-line @typescript-eslint/no-explicit-any
+
+/**
+ * The short form of rsource
+ */
+export type Resource<E, A> = Managed<io.DefaultR, E, A>;
 
 export interface Pure<A> {
     readonly _tag: "pure";
@@ -67,14 +72,14 @@ export function bracket<R, E, A>(acquire: RIO<R, E, A>, release: FunctionN<[A], 
 
 export interface Suspended<R, E, A> {
     readonly _tag: "suspend";
-    readonly suspended: RIO<R, E, Resource<R, E, A>>;
+    readonly suspended: RIO<R, E, Managed<R, E, A>>;
 }
 
 /**
  * Lift an IO of a Resource into a resource
  * @param suspended 
  */
-export function suspend<R, E, A>(suspended: RIO<R, E, Resource<R, E, A>>): Suspended<R, E, A> {
+export function suspend<R, E, A>(suspended: RIO<R, E, Managed<R, E, A>>): Suspended<R, E, A> {
     return {
         _tag: "suspend",
         suspended
@@ -83,8 +88,8 @@ export function suspend<R, E, A>(suspended: RIO<R, E, Resource<R, E, A>>): Suspe
 
 export interface Chain<R, E, L, A> {
     readonly _tag: "chain";
-    readonly left: Resource<R, E, L>;
-    readonly bind: FunctionN<[L], Resource<R, E, A>>;
+    readonly left: Managed<R, E, L>;
+    readonly bind: FunctionN<[L], Managed<R, E, A>>;
 }
 
 /**
@@ -94,7 +99,7 @@ export interface Chain<R, E, L, A> {
  * @param left 
  * @param bind 
  */
-export function chain<R, E, L, A>(left: Resource<R, E, L>, bind: FunctionN<[L], Resource<R, E, A>>): Chain<R, E, L, A> {
+export function chain<R, E, L, A>(left: Managed<R, E, L>, bind: FunctionN<[L], Managed<R, E, A>>): Chain<R, E, L, A> {
     return {
         _tag: "chain",
         left,
@@ -107,7 +112,7 @@ export function chain<R, E, L, A>(left: Resource<R, E, L>, bind: FunctionN<[L], 
  * @param res 
  * @param f 
  */
-export function map<R, E, L, A>(res: Resource<R, E, L>, f: FunctionN<[L], A>): Resource<R, E, A> {
+export function map<R, E, L, A>(res: Managed<R, E, L>, f: FunctionN<[L], A>): Managed<R, E, A> {
     return chain(res, (r) => pure(f(r)));
 }
 
@@ -119,9 +124,9 @@ export function map<R, E, L, A>(res: Resource<R, E, L>, f: FunctionN<[L], A>): R
  * @param resb 
  * @param f 
  */
-export function zipWith<R, E, A, B, C>(resa: Resource<R, E, A>,
-    resb: Resource<R, E, B>,
-    f: FunctionN<[A, B], C>): Resource<R, E, C> {
+export function zipWith<R, E, A, B, C>(resa: Managed<R, E, A>,
+    resb: Managed<R, E, B>,
+    f: FunctionN<[A, B], C>): Managed<R, E, C> {
     return chain(resa, (a) => map(resb, (b) => f(a, b)));
 }
 
@@ -132,15 +137,15 @@ export function zipWith<R, E, A, B, C>(resa: Resource<R, E, A>,
  * @param resa 
  * @param resb 
  */
-export function zip<R, E, A, B>(resa: Resource<R, E, A>, resb: Resource<R, E, B>): Resource<R, E, readonly [A, B]> {
+export function zip<R, E, A, B>(resa: Managed<R, E, A>, resb: Managed<R, E, B>): Managed<R, E, readonly [A, B]> {
     return zipWith(resa, resb, (a, b) => [a, b] as const);
 }
 
-export function ap<R, E, A, B>(resa: Resource<R, E, A>, resfab: Resource<R, E, FunctionN<[A], B>>): Resource<R, E, B> {
+export function ap<R, E, A, B>(resa: Managed<R, E, A>, resfab: Managed<R, E, FunctionN<[A], B>>): Managed<R, E, B> {
     return zipWith(resa, resfab, (a, f) => f(a));
 }
 
-export function ap_<R, E, A, B>(resfab: Resource<R, E, FunctionN<[A], B>>, resa: Resource<R, E, A>): Resource<R, E, B> {
+export function ap_<R, E, A, B>(resfab: Managed<R, E, FunctionN<[A], B>>, resa: Managed<R, E, A>): Managed<R, E, B> {
     return zipWith(resfab, resa, (f, a) => f(a));
 }
 
@@ -148,7 +153,7 @@ export function ap_<R, E, A, B>(resfab: Resource<R, E, FunctionN<[A], B>>, resa:
  * Curried data last form of use
  * @param f 
  */
-export function consume<R, E, A, B>(f: FunctionN<[A], RIO<R, E, B>>): FunctionN<[Resource<R, E, A>], RIO<R, E, B>> {
+export function consume<R, E, A, B>(f: FunctionN<[A], RIO<R, E, B>>): FunctionN<[Managed<R, E, A>], RIO<R, E, B>> {
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
     return (r) => use(r, f);
 }
@@ -158,7 +163,7 @@ export function consume<R, E, A, B>(f: FunctionN<[A], RIO<R, E, B>>): FunctionN<
  * @param res 
  * @param f 
  */
-export function use<R, E, A, B>(res: Resource<R, E, A>, f: FunctionN<[A], RIO<R, E, B>>): RIO<R, E, B> {
+export function use<R, E, A, B>(res: Managed<R, E, A>, f: FunctionN<[A], RIO<R, E, B>>): RIO<R, E, B> {
     if (res._tag === "pure") {
         return f(res.value);
     } else if (res._tag === "bracket") {
@@ -176,7 +181,7 @@ export type URI = typeof URI;
 
 declare module 'fp-ts/lib/HKT' {
     interface URItoKind3<R, E, A> {
-        Resource: Resource<R, E, A>;
+        Resource: Managed<R, E, A>;
     }
 }
 export const instances: Monad3<URI> = {
@@ -187,15 +192,15 @@ export const instances: Monad3<URI> = {
     chain
 } as const;
 
-export function getSemigroup<R, E, A>(Semigroup: Semigroup<A>): Semigroup<Resource<R, E, A>> {
+export function getSemigroup<R, E, A>(Semigroup: Semigroup<A>): Semigroup<Managed<R, E, A>> {
     return {
-        concat(x: Resource<R, E, A>, y: Resource<R, E, A>): Resource<R, E, A> {
+        concat(x: Managed<R, E, A>, y: Managed<R, E, A>): Managed<R, E, A> {
             return zipWith(x, y, Semigroup.concat)
         }
     };
 }
 
-export function getMonoid<R, E, A>(Monoid: Monoid<A>): Monoid<Resource<R, E, A>> {
+export function getMonoid<R, E, A>(Monoid: Monoid<A>): Monoid<Managed<R, E, A>> {
     return {
         ...getSemigroup(Monoid),
         empty: pure(Monoid.empty)

@@ -13,7 +13,7 @@ import * as wave, { IO } from "waveguide/lib/io"
 ```
 
 ## Quick examples
-For a quick overview of what IO can do see the [overview example](https://github.com/rzeigler/waveguide/blob/master/examples/overview.ts)
+For a quick overview of what IO can do see the [overview example](https://github.com/rzeigler/waveguide/blob/master/examples/)
 
 ## Constructing an IO
 There are a number of ways of constructing IOs exported from the /lib/io module

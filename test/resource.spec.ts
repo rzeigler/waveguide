@@ -15,14 +15,14 @@
 import { done } from "../src/exit";
 import * as io from "../src/io";
 import { makeRef, Ref } from "../src/ref";
-import { Resource } from "../src/resource";
+import { Managed } from "../src/resource";
 import * as rsc from "../src/resource";
 import { expectExit } from "./tools.spec";
 import { DefaultR } from "../src/io";
 
 describe("Resource", () => {
     it("should bracket as expected", () => {
-        function makeBracket(ref: Ref<string[]>, s: string): Resource<DefaultR, never, string> {
+        function makeBracket(ref: Ref<string[]>, s: string): Managed<DefaultR, never, string> {
             return rsc.bracket(
                 io.as(ref.update((ss) => [...ss, s]), s),
                 (c) => io.asUnit(ref.update((ss) => ss.filter((v) => v !== c)))

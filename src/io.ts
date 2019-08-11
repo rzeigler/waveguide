@@ -1021,6 +1021,14 @@ export function parAp_<R, E, A, B>(iof: RIO<R, E, FunctionN<[A], B>>, ioa: RIO<R
 }
 
 /**
+ * Convert an error into an unchecked error.
+ * @param io 
+ */
+export function orAbort<R, E, A>(io: RIO<R, E, A>): RIO<R, never, A> {
+    return chainError(io, (e) => raiseAbort(e));
+}
+
+/**
  * Run source for a maximum amount of ms.
  * 
  * If it completes succesfully produce a some, if not interrupt it and produce none
@@ -1048,15 +1056,41 @@ export function fromPromise<A>(thunk: Lazy<Promise<A>>): RIO<DefaultR, unknown, 
     }));
 }
 
+/**
+ * Create an IO by lifting an Either
+ * @param e 
+ */
+export function fromEither<E, A>(e: Either<E, A>): IO<E, A> {
+    return either.fold<E, A, IO<E, A>>(raiseError, pure)(e);
+}
+
+/**
+ * Create an IO from an Option, failing if it is none with the given error
+ * @param o 
+ * @param ifNone 
+ */
+export function fromOption<E, A>(o: Option<A>, ifNone: Lazy<E>): IO<E, A> {
+    return option.fold<A, IO<E, A>>(() => raiseError(ifNone()), pure)(o);
+}
+
+/**
+ * Curried form of fromOption
+ * @param ifNone 
+ */
+export function fromOptionWith<E, A>(ifNone: Lazy<E>): FunctionN<[Option<A>], IO<E, A>> {
+    return (o) => fromOption(o, ifNone);
+}
+
 export type Widen<A, B> = A extends B ? B : (B extends A ? A : A | B)
 /**
  * Widen the error channel of an IO such that both E1 and E2 are acceptable as errors
  * If E1 or E2 are related this selects the ancestor, otherwise it selects E1 | E2
  * @param io 
  */
-export function widenError<R, E1, E2, A>(io: RIO<R, E1, A>): RIO<R, Widen<E1, E2>, A> {
-    return io as RIO<R, Widen<E1, E2>, A>;
+export function widenError<E2>(): <R, E1, A>(io: RIO<R, E1, A>) => RIO<R, Widen<E1, E2>, A> {
+    return <R, E1, A>(io: RIO<R, E1, A>) => io as RIO<R, Widen<E1, E2>, A>
 }
+
 
 /**
  * Run the given IO with the provided environment.
