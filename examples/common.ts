@@ -17,6 +17,8 @@
 
 import * as wave from '../src/io';
 import { IO } from '../src/io';
+import { Resource } from "../src/resource";
+import * as rsrc from "../src/resource";
 import * as fs from "fs";
 import { left, right } from "fp-ts/lib/Either";
 
@@ -105,3 +107,18 @@ export const read = (handle: number, length: number): IO<NodeJS.ErrnoException, 
         });
     })
 )
+
+
+/**
+ * Now lets define the resources that define our input and output file handles.
+ * We use rsrc.suspend as the outer call because we need to perform IO in order to get the name of the file to open
+ * This allows us to create a resource from an IO of a resource
+ */
+const fileHandle = (path: string, mode: string): Resource<NodeJS.ErrnoException, number> =>
+    // Once we have the path to open, we can create the resource itself
+    // Bracket is similar to wave.bracket except it doesn't have consume logic
+    // We are defering defining how we will consume this resource
+    rsrc.bracket(
+        openFile(path, mode),
+        closeFile
+    );

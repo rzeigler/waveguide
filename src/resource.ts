@@ -175,6 +175,14 @@ export function use<R, E, A, B>(res: Managed<R, E, A>, f: FunctionN<[A], RIO<R, 
     }
 }
 
+/**
+ * Provide a Managed as a resource to a resource
+ * @param res 
+ * @param rio 
+ */
+export function provideTo<R, E, A, B>(res: Managed<R, E, A>, rio: RIO<A, E, B>): RIO<io.DefaultR, E, B> {
+    return use(res, (r) => io.provideEnv(r, rio));
+}
 
 export const URI = "Resource";
 export type URI = typeof URI;

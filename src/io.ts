@@ -30,6 +30,7 @@ import { Fiber, makeFiber } from "./fiber";
 import { makeRef, Ref } from "./ref";
 import { Runtime } from "./runtime";
 import { MonadThrow3 } from "fp-ts/lib/MonadThrow";
+import { array } from "fp-ts/lib/Array";
 
 export type DefaultR = {}; // eslint-disable-line @typescript-eslint/prefer-interface
 
@@ -1091,6 +1092,25 @@ export function widenError<E2>(): <R, E1, A>(io: RIO<R, E1, A>) => RIO<R, Widen<
     return <R, E1, A>(io: RIO<R, E1, A>) => io as RIO<R, Widen<E1, E2>, A>
 }
 
+/**
+ * Collect the results of many IOs.
+ * 
+ * Returns an IO that will evaluate each of the inputs in sequence and collect their results in order
+ * @param ios 
+ */
+export function collectAll<R, E, A>(ios: Array<RIO<R, E, A>>): RIO<R, E, A[]> {
+    return array.sequence(instances)(ios);
+}
+
+/**
+ * Collect the results of many IOs evaluated in parallel.
+ * 
+ * Returns an IO that will evaluate all of the inputs in parallel and collect their results in order
+ * @param ios 
+ */
+export function parCollectAll<R, E, A>(ios: Array<RIO<R, E, A>>): RIO<R, E, A[]> {
+    return array.sequence(parInstances)(ios);
+}
 
 /**
  * Run the given IO with the provided environment.
