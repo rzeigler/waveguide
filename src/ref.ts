@@ -26,7 +26,7 @@ export interface Ref<A> {
  * Creates an IO that will allocate a Ref.
  * Curried form of makeRef_ to allow for inference on the initial type
  */
-export const makeRef = <E = never>() => <A>(initial: A): RIO<DefaultR, E, Ref<A>> =>
+export const makeRef = <A>(initial: A): RIO<DefaultR, never, Ref<A>> =>
     sync(() => {
         let value = initial;
 
@@ -55,7 +55,3 @@ export const makeRef = <E = never>() => <A>(initial: A): RIO<DefaultR, E, Ref<A>
             modify
         };
     });
-
-export function makeRef_<E, A>(initial: A): RIO<DefaultR, E, Ref<A>> {
-    return makeRef<E>()(initial);
-}

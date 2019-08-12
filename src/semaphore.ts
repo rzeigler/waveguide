@@ -167,6 +167,6 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
 export function makeSemaphore(n: number): RIO<DefaultR, never, Semaphore> {
     return io.applySecond(
         sanityCheck(n),
-        io.map(makeRef()<State>(right(n)), makeSemaphoreImpl)
+        io.map(makeRef(right(n) as State), makeSemaphoreImpl)
     );
 }

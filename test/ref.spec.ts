@@ -22,7 +22,7 @@ describe("Ref", function() {
     this.timeout(5000);
     it("should be initialized with a value", () =>
         eqvIO(
-            io.chain(makeRef()(42), (r) => r.get),
+            io.chain(makeRef(42), (r) => r.get),
             io.pure(42)
         )
     );
@@ -34,9 +34,9 @@ describe("Ref", function() {
                     fc.array(fc.nat(), 1, 10),
                     (initial, sets) =>
                         eqvIO(
-                            io.chain(makeRef()(initial),
+                            io.chain(makeRef(initial),
                                 (r) => io.applySecond(array.traverse(io.instances)(sets, (v) => r.set(v)), r.get)),
-                            io.chain(makeRef()(initial),
+                            io.chain(makeRef(initial),
                                 (r) => io.applySecond(r.set(sets[sets.length - 1]), r.get))
                         )
                 )
@@ -57,9 +57,9 @@ describe("Ref", function() {
                     fc.nat(1000),
                     (initial, value, count) =>
                         eqvIO(
-                            io.chain(makeRef()(initial),
+                            io.chain(makeRef(initial),
                                 (cell) => io.applySecond(cell.set(value), cell.get)),
-                            io.chain(makeRef()(initial),
+                            io.chain(makeRef(initial),
                                 (cell) =>
                                     io.applySecond(
                                         array.traverse(io.instances)(repeat(value, count + 1), (v) => cell.set(v)),
@@ -76,9 +76,9 @@ describe("Ref", function() {
                     fc.nat(),
                     (before, after) =>
                         eqvIO(
-                            io.chain(makeRef()(before),
+                            io.chain(makeRef(before),
                                 (cell) => cell.set(after)),
-                            io.chain(makeRef()(before),
+                            io.chain(makeRef(before),
                                 (cell) => cell.get)
                         )
                 )

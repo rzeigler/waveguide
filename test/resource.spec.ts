@@ -28,7 +28,7 @@ describe("Resource", () => {
                 (c) => io.asUnit(ref.update((ss) => ss.filter((v) => v !== c)))
             );
         }
-        const eff = io.chain(makeRef()<string[]>([]),
+        const eff = io.chain(makeRef([] as string[]),
             (ref) => {
                 const resources = ["a", "b", "c", "d"].map((r) => makeBracket(ref, r))
                     .reduce((l, r) => rsc.chain(l, (_) => r));

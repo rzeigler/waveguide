@@ -43,7 +43,7 @@ describe("semaphore", () => {
     });
     it("should block acquisition", () => {
         const eff = Do(io.instances)
-            .bind("gate", makeRef()(false))
+            .bind("gate", makeRef(false))
             .bind("sem", makeSemaphore(0))
             .doL(({gate, sem}) => io.fork(sem.withPermit(gate.set(true))))
             .bindL("before", ({gate}) => gate.get)
@@ -55,7 +55,7 @@ describe("semaphore", () => {
     });
     it("should allow acquire to be interruptible", () => {
         const eff1 =
-      io.chain(makeRef()(false),
+      io.chain(makeRef(false),
           (gate) =>
               io.chain(makeSemaphore(1),
                   (sem) =>
@@ -71,7 +71,7 @@ describe("semaphore", () => {
     });
     it("interrupts should release acquired permits for subsequent acquires to advance", () => {
         const eff = Do(io.instances)
-            .bind("turnstyle", makeRef()(0))
+            .bind("turnstyle", makeRef(0))
             .bind("sem", makeSemaphore(2))
             .bindL("child1", ({sem, turnstyle}) => io.fork(io.applySecond(sem.acquireN(3), turnstyle.set(1))))
             .bindL("child2", ({sem, turnstyle}) => io.fork(io.applySecond(sem.acquireN(2), turnstyle.set(2))))

@@ -72,7 +72,7 @@ describe("fiber", () => {
                             io.chain(
                                 makeDeferred<never, void>(),
                                 (latch) =>
-                                    io.chain(makeRef()(false),
+                                    io.chain(makeRef(false),
                                         (cell) =>
                                             io.chain(
                                                 io.fork(

@@ -225,8 +225,8 @@ export interface Chain<R, E, Z, A> {
 export function chain<R1, R2, E1, E2, A1, A2>(inner: RIO<R1, E1, A1>, bind: FunctionN<[A1], RIO<R2, E2, A2>>): Chain<R1 & R2, E1 | E2, A1, A2> {
     return {
         _tag: "chain",
-        inner,
-        bind
+        inner: inner as RIO<R1 & R2, E1 | E2, A1>,
+        bind: bind as FunctionN<[A1], RIO<R1 & R2, E1 | E2, A2>>
     };
 }
 
@@ -896,7 +896,7 @@ export function raceFold<R, E1, E2, A, B, C>(first: RIO<R, E1, A>, second: RIO<R
     onFirstWon: FunctionN<[Exit<E1, A>, Fiber<E1, B>], RIO<R, E2, C>>,
     onSecondWon: FunctionN<[Exit<E1, B>, Fiber<E1, A>], RIO<R, E2, C>>): RIO<R, E2, C> {
     return uninterruptibleMask((cutout) =>
-        chain(makeRef<E2>()(false),
+        chain(makeRef(false),
             (latch) => chain(makeDeferred<E2, C>(),
                 (channel) => chain(fork(first),
                     (fiber1) => chain(fork(second),

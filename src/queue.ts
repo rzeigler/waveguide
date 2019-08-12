@@ -131,7 +131,7 @@ function makeConcurrentQueueImpl<A>(state: Ref<State<A>>,
     
 
 export function unboundedQueue<A>(): RIO<DefaultR, never, ConcurrentQueue<A>> {
-    return io.map(makeRef()(initial<A>()),
+    return io.map(makeRef(initial<A>()),
         (ref) => makeConcurrentQueueImpl(ref, makeDeferred<never, A>(), unboundedOffer, io.unit, identity));
 }
 
@@ -140,7 +140,7 @@ const natCapacity = natNumber(new Error("Die: capacity must be a natural number"
 export function slidingQueue<A>(capacity: number): RIO<DefaultR, never, ConcurrentQueue<A>> {
     return io.applySecond(
         natCapacity(capacity),
-        io.map(makeRef()(initial<A>()),
+        io.map(makeRef(initial<A>()),
             (ref) => makeConcurrentQueueImpl(ref, makeDeferred<never, A>(), slidingOffer(capacity), io.unit, identity)
         )
     );
@@ -149,7 +149,7 @@ export function slidingQueue<A>(capacity: number): RIO<DefaultR, never, Concurre
 export function droppingQueue<A>(capacity: number): RIO<DefaultR, never, ConcurrentQueue<A>> {
     return io.applySecond(
         natCapacity(capacity),
-        io.map(makeRef()(initial<A>()),
+        io.map(makeRef(initial<A>()),
             (ref) => makeConcurrentQueueImpl(ref, makeDeferred<never, A>(), droppingOffer(capacity), io.unit, identity)
         )
     );
@@ -159,7 +159,7 @@ export function boundedQueue<A>(capacity: number): RIO<DefaultR, never, Concurre
     return io.applySecond(
         natCapacity(capacity),
         io.zipWith(
-            makeRef()(initial<A>()),
+            makeRef(initial<A>()),
             makeSemaphore(capacity),
             (ref, sem) =>
                 makeConcurrentQueueImpl(
