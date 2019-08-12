@@ -59,8 +59,7 @@ type Errno = NodeJS.ErrnoException;
  */
 const inFileHandle: Resource<Errno, number> = rsrc.suspend(
     wave.map(
-        // Here we widen the error of inFilePath so that the error type of the resource lines up with the error type of inFilePath
-        wave.widenError<Errno>()(inFilePath),
+        inFilePath,
         (path) =>
             // Once we have the path to open, we can create the resource itself
             // Bracket is similar to wave.bracket except it doesn't have consume logic
@@ -77,7 +76,7 @@ const inFileHandle: Resource<Errno, number> = rsrc.suspend(
  */
 const outFileHandle: Resource<Errno, number> = rsrc.suspend(
     wave.map(
-        wave.widenError<Errno>()(outFilePath),
+        outFilePath,
         (path) =>
             rsrc.bracket(
                 openFile(path, "w"),
