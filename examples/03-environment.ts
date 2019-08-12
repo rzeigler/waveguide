@@ -77,14 +77,23 @@ function fetch(url: string) {
     })
 }
 
-
-const go = 
+/**
+ * Here we see that we can construct a RIO that needs an Agent to execute
+ */
+const needsAgent: RIO<https.Agent, never, void> = 
     pipe(
         fetch("https://www.google.com"),
         wave.chainWith((buffer) => log(buffer.toString("utf-8").length.toString())),
         wave.chainErrorWith((e) => log(e.toString()))
     )
 
+/**
+ * There are several ways to provide environments to RIO's and make them ready for execution
+ * You can use wave.provideEnv yourself or if you have a resource, you may use resource.provideTo
+ */
+const ready = resource.provideTo(agent, needsAgent)
 
-
-main(resource.provideTo(agent, go));
+/**
+ * And then we launch
+ */
+main(ready);
