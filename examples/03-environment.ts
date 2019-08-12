@@ -34,7 +34,7 @@ import { Resource } from "../src/resource";
 import * as wave from "../src/io";
 import { IO, RIO } from "../src/io";
 import { pipe } from "fp-ts/lib/pipeable";
-import { right } from "fp-ts/lib/Either";
+import { left, right } from "fp-ts/lib/Either";
 
 const agent = resource.bracket(
     wave.sync(() => new https.Agent()),
@@ -42,9 +42,35 @@ const agent = resource.bracket(
 );
 
 /**
- * We can think of an IncomingMessage as something we can produce if we have a resource
+ * We can think of an IncomingMessage as something we can produce if we have an agent resource
  * @param url 
  */
 function fetch(url: string) {
-    
+    return wave.encaseRIO((agent: https.Agent) => {
+        const options = {agent};
+        return wave.async<Error, Buffer>((callback) => {
+            let cancelled = false;
+            let response: http.IncomingMessage | undefined;
+            http.get(url, options, (res) => {
+                response = res;
+                let buffers: Buffer[] = [];
+                res.on('data', (chunk) => {
+                    console.log(chunk);
+                    buffers.push(chunk);
+                })
+                res.on('end', () => {
+                    callback(right(Buffer.concat(buffers)))
+                });
+                res.on('error', (e) => {
+                    callback(left(e));
+                });
+            });
+            return () => {
+                cancelled = true;
+                if (response) {
+                    response.destroy();
+                }
+            };
+        })
+    })
 }
