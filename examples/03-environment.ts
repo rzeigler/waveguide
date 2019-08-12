@@ -33,6 +33,9 @@ import * as resource from "../src/resource";
 import { Resource } from "../src/resource";
 import * as wave from "../src/io";
 import { IO, RIO } from "../src/io";
+import { log } from "../src/console";
+import { main } from "./common";
+
 import { pipe } from "fp-ts/lib/pipeable";
 import { left, right } from "fp-ts/lib/Either";
 
@@ -55,7 +58,6 @@ function fetch(url: string) {
                 response = res;
                 let buffers: Buffer[] = [];
                 res.on('data', (chunk) => {
-                    console.log(chunk);
                     buffers.push(chunk);
                 })
                 res.on('end', () => {
@@ -74,3 +76,15 @@ function fetch(url: string) {
         })
     })
 }
+
+
+const go = 
+    pipe(
+        fetch("https://www.google.com"),
+        wave.chainWith((buffer) => log(buffer.toString("utf-8").length.toString())),
+        wave.chainErrorWith((e) => log(e.toString()))
+    )
+
+
+
+main(resource.provideTo(agent, go));

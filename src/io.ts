@@ -222,7 +222,7 @@ export interface Chain<R, E, Z, A> {
  * @param inner
  * @param bind
  */
-export function chain<R, E, Z, A>(inner: RIO<R, E, Z>, bind: FunctionN<[Z], RIO<R, E, A>>): Chain<R, E, Z, A> {
+export function chain<R1, R2, E1, E2, A1, A2>(inner: RIO<R1, E1, A1>, bind: FunctionN<[A1], RIO<R2, E2, A2>>): Chain<R1 & R2, E1 | E2, A1, A2> {
     return {
         _tag: "chain",
         inner,
@@ -314,7 +314,7 @@ export function contramapEnv<R1, R2, E, A>(f: FunctionN<[R1], R2>, io: RIO<R2, E
  *
  * @param inner
  */
-export function flatten<R, E, A>(inner: RIO<R, E, RIO<R, E, A>>): RIO<R, E, A> {
+export function flatten<R1, R2, E1, E2, A>(inner: RIO<R1, E1, RIO<R2, E2, A>>): RIO<R1 & R2, E1 | E2, A> {
     return chain(inner, identity);
 }
 
@@ -322,7 +322,7 @@ export function flatten<R, E, A>(inner: RIO<R, E, RIO<R, E, A>>): RIO<R, E, A> {
  * Curried function first form of chain
  * @param bind 
  */
-export function chainWith<R, E, Z, A>(bind: FunctionN<[Z], RIO<R, E, A>>): FunctionN<[RIO<R, E, Z>], Chain<R, E, Z, A>> {
+export function chainWith<R2, E2, Z, A>(bind: FunctionN<[Z], RIO<R2, E2, A>>): <R1, E1>(io: RIO<R1, E1, Z>) => RIO<R1 & R2, E1 | E2, A> {
     return (io) => chain(io, bind);
 }
 
@@ -442,7 +442,7 @@ export const unit: RIO<DefaultR, never, void> = pure(undefined);
  * @param io
  * @param f
  */
-export function chainError<R, E1, E2, A>(io: RIO<R, E1, A>, f: FunctionN<[E1], RIO<R, E2, A>>): RIO<R, E2, A> {
+export function chainError<R1, R2, E1, E2, A>(io: RIO<R1, E1, A>, f: FunctionN<[E1], RIO<R2, E2, A>>): RIO<R1 & R2, E2, A> {
     return foldExit(io,
         (cause) => cause._tag === "raise" ? f(cause.error) : completed(cause),
         pure
@@ -453,7 +453,7 @@ export function chainError<R, E1, E2, A>(io: RIO<R, E1, A>, f: FunctionN<[E1], R
  * Curriend form of chainError
  * @param f
  */
-export function chainErrorWith<R, E1, E2, A>(f: FunctionN<[E1], RIO<R, E2, A>>): FunctionN<[RIO<R, E1, A>], RIO<R, E2, A>> {
+export function chainErrorWith<R1, E1, E2, A>(f: FunctionN<[E1], RIO<R1, E2, A>>): <R2>(rio: RIO<R2, E1, A>) => RIO<R1 & R2, E2, A> {
     return (io) => chainError(io, f);
 }
 
@@ -505,7 +505,7 @@ export function bimapWith<R, E1, E2, A, B>(leftMap: FunctionN<[E1], E2>,
  * @param second
  * @param f
  */
-export function zipWith<R, E, A, B, C>(first: RIO<R, E, A>, second: RIO<R, E, B>, f: FunctionN<[A, B], C>): RIO<R, E, C> {
+export function zipWith<R1, R2, E1, E2, A, B, C>(first: RIO<R1, E1, A>, second: RIO<R2, E2, B>, f: FunctionN<[A, B], C>): RIO<R1 & R2, E1 | E2, C> {
     return chain(first, (a) =>
         map(second, (b) => f(a, b))
     );
@@ -516,7 +516,7 @@ export function zipWith<R, E, A, B, C>(first: RIO<R, E, A>, second: RIO<R, E, B>
  * @param first
  * @param second
  */
-export function zip<R, E, A, B>(first: RIO<R, E, A>, second: RIO<R, E, B>): RIO<R, E, readonly [A, B]> {
+export function zip<R1, R2, E1, E2, A, B>(first: RIO<R1, E1, A>, second: RIO<R2, E2, B>): RIO<R1 & R2, E1 | E2, readonly [A, B]> {
     return zipWith(first, second, tuple2);
 }
 
@@ -525,7 +525,7 @@ export function zip<R, E, A, B>(first: RIO<R, E, A>, second: RIO<R, E, B>): RIO<
  * @param first
  * @param second
  */
-export function applyFirst<R, E, A, B>(first: RIO<R, E, A>, second: RIO<R, E, B>): RIO<R, E, A> {
+export function applyFirst<R1, R2, E1, E2, A, B>(first: RIO<R1, E1, A>, second: RIO<R2, E2, B>): RIO<R1 & R2, E1 | E2, A> {
     return zipWith(first, second, fst);
 }
 
@@ -533,8 +533,8 @@ export function applyFirst<R, E, A, B>(first: RIO<R, E, A>, second: RIO<R, E, B>
  * Curried form of applyFirst
  * @param first 
  */
-export function applyThis<R, E, A>(first: RIO<R, E, A>): <B>(second: RIO<R, E, B>) => RIO<R, E, A> {
-    return <B>(second: RIO<R, E, B>) => applyFirst(first, second);
+export function applyThis<R1, E1, A>(first: RIO<R1, E1, A>): <R2, E2, B>(second: RIO<R2, E2, B>) => RIO<R1 & R2, E1 | E2, A> {
+    return <R2, E2, B>(second: RIO<R2, E2, B>) => applyFirst(first, second);
 }
 
 /**
@@ -542,7 +542,7 @@ export function applyThis<R, E, A>(first: RIO<R, E, A>): <B>(second: RIO<R, E, B
  * @param first 
  * @param second 
  */
-export function applySecond<R, E, A, B>(first: RIO<R, E, A>, second: RIO<R, E, B>): RIO<R, E, B> {
+export function applySecond<R1, R2, E1, E2, A, B>(first: RIO<R1, E1, A>, second: RIO<R2, E2, B>): RIO<R1 & R2, E1 | E2, B> {
     return zipWith(first, second, snd);
 }
 
@@ -552,7 +552,7 @@ export function applySecond<R, E, A, B>(first: RIO<R, E, A>, second: RIO<R, E, B
  * @param first 
  * @param second 
  */
-export function applySecondL<R, E, A, B>(first: RIO<R, E, A>, second: Lazy<RIO<R, E, B>>): RIO<R, E, B> {
+export function applySecondL<R1, R2, E1, E2, A, B>(first: RIO<R1, E1, A>, second: Lazy<RIO<R2, E2, B>>): RIO<R1 & R2, E1 | E2, B> {
     return chain(first, () => second());
 }
 
@@ -560,16 +560,16 @@ export function applySecondL<R, E, A, B>(first: RIO<R, E, A>, second: Lazy<RIO<R
  * Curried form of applySecond
  * @param first
  */
-export function applyOther<R, E, A>(first: RIO<R, E, A>): <B>(second: RIO<R, E, B>) => RIO<R, E, B> {
-    return <B>(second: RIO<R, E, B>) => applySecond(first, second);
+export function applyOther<R1, E1, A>(first: RIO<R1, E1, A>): <R2, E2, B>(second: RIO<R2, E2, B>) => RIO<R1 & R2, E1 | E2, B> {
+    return <R2, E2, B>(second: RIO<R2, E2, B>) => applySecond(first, second);
 }
 
 /**
  * Curried form of applySecondL
  * @param first 
  */
-export function applyOtherL<R, E, A>(first: RIO<R, E, A>): <B>(second: Lazy<RIO<R, E, B>>) => RIO<R, E, B> {
-    return <B>(second: Lazy<RIO<R, E, B>>) => applySecondL(first, second);
+export function applyOtherL<R1, E1, A>(first: RIO<R1, E1, A>): <R2, E2, B>(second: Lazy<RIO<R2, E2, B>>) => RIO<R1 & R2, E1 | E2, B> {
+    return <R1, E2, B>(second: Lazy<RIO<R1, E2, B>>) => applySecondL(first, second);
 }
 
 /**
@@ -577,7 +577,7 @@ export function applyOtherL<R, E, A>(first: RIO<R, E, A>): <B>(second: Lazy<RIO<
  * @param ioa 
  * @param iof 
  */
-export function ap<R, E, A, B>(ioa: RIO<R, E, A>, iof: RIO<R, E, FunctionN<[A], B>>): RIO<R, E, B> {
+export function ap<R1, R2, E1, E2, A, B>(ioa: RIO<R1, E1, A>, iof: RIO<R2, E2, FunctionN<[A], B>>): RIO<R1 & R2, E1 | E2, B> {
     // Find the apply/thrush operator I'm sure exists in fp-ts somewhere
     return zipWith(ioa, iof, (a, f) => f(a));
 }
@@ -586,8 +586,8 @@ export function ap<R, E, A, B>(ioa: RIO<R, E, A>, iof: RIO<R, E, FunctionN<[A], 
  * Curried form of ap
  * @param ioa 
  */
-export function apWith<R, E, A>(ioa: RIO<R, E, A>): <B>(iof: RIO<R, E, FunctionN<[A], B>>) => RIO<R, E, B> {
-    return <B>(iof: RIO<R, E, FunctionN<[A], B>>) => ap(ioa, iof);
+export function apWith<R1, E1, A>(ioa: RIO<R1, E1, A>): <R2, E2, B>(iof: RIO<R2, E2, FunctionN<[A], B>>) => RIO<R1 & R2, E1 | E2, B> {
+    return <R2, E2, B>(iof: RIO<R2, E2, FunctionN<[A], B>>) => ap(ioa, iof);
 }
 
 /**
@@ -595,7 +595,7 @@ export function apWith<R, E, A>(ioa: RIO<R, E, A>): <B>(iof: RIO<R, E, FunctionN
  * @param iof 
  * @param ioa 
  */
-export function ap_<R, E, A, B>(iof: RIO<R, E, FunctionN<[A], B>>, ioa: RIO<R, E, A>): RIO<R, E, B> {
+export function ap_<R1, R2, E1, E2, A, B>(iof: RIO<R1, E1, FunctionN<[A], B>>, ioa: RIO<R2, E2, A>): RIO<R1 & R1, E1 | E2, B> {
     return zipWith(iof, ioa, (f, a) => f(a));
 }
 
@@ -603,7 +603,7 @@ export function ap_<R, E, A, B>(iof: RIO<R, E, FunctionN<[A], B>>, ioa: RIO<R, E
  * Curried form of ap_
  * @param iof 
  */
-export function apWith_<R, E, A, B>(iof: RIO<R, E, FunctionN<[A], B>>): FunctionN<[RIO<R, E, A>], RIO<R, E, B>> {
+export function apWith_<R1, R2, E1, E2, A, B>(iof: RIO<R1, E1, FunctionN<[A], B>>): FunctionN<[RIO<R2, E2, A>], RIO<R1 & R1, E1 | E2, B>> {
     return (io) => ap_(iof, io);
 }
 
