@@ -1093,26 +1093,6 @@ export function widenError<E2>(): <R, E1, A>(io: RIO<R, E1, A>) => RIO<R, Widen<
 }
 
 /**
- * Collect the results of many IOs.
- * 
- * Returns an IO that will evaluate each of the inputs in sequence and collect their results in order
- * @param ios 
- */
-export function collectAll<R, E, A>(ios: Array<RIO<R, E, A>>): RIO<R, E, A[]> {
-    return array.sequence(instances)(ios);
-}
-
-/**
- * Collect the results of many IOs evaluated in parallel.
- * 
- * Returns an IO that will evaluate all of the inputs in parallel and collect their results in order
- * @param ios 
- */
-export function parCollectAll<R, E, A>(ios: Array<RIO<R, E, A>>): RIO<R, E, A[]> {
-    return array.sequence(parInstances)(ios);
-}
-
-/**
  * Run the given IO with the provided environment.
  * @param io 
  * @param r 
@@ -1242,3 +1222,4 @@ export function getMonoid<R, E, A>(m: Monoid<A>): Monoid<RIO<R, E, A>> {
         empty: pure(m.empty)
     }
 }
+
