@@ -39,7 +39,7 @@ import { main } from "./common";
 import { pipe } from "fp-ts/lib/pipeable";
 import { left, right } from "fp-ts/lib/Either";
 
-const agent = resource.bracket(
+const agent: Resource<never, https.Agent> = resource.bracket(
     wave.sync(() => new https.Agent()),
     (agent) => wave.sync(() => agent.destroy())
 );
@@ -48,7 +48,7 @@ const agent = resource.bracket(
  * We can think of an IncomingMessage as something we can produce if we have an agent resource
  * @param url 
  */
-function fetch(url: string) {
+function fetch(url: string): RIO<https.Agent, Error, Buffer> {
     return wave.encaseRIO((agent: https.Agent) => {
         const options = {agent};
         return wave.async<Error, Buffer>((callback) => {
