@@ -21,9 +21,11 @@ parent: Modules
 - [Raised (interface)](#raised-interface)
 - [Suspended (interface)](#suspended-interface)
 - [DefaultR (type alias)](#defaultr-type-alias)
+- [IO (type alias)](#io-type-alias)
 - [InterruptMaskCutout (type alias)](#interruptmaskcutout-type-alias)
 - [RIO (type alias)](#rio-type-alias)
 - [URI (type alias)](#uri-type-alias)
+- [Widen (type alias)](#widen-type-alias)
 - [URI (constant)](#uri-constant)
 - [accessInterruptible (constant)](#accessinterruptible-constant)
 - [accessRuntime (constant)](#accessruntime-constant)
@@ -42,7 +44,9 @@ parent: Modules
 - [ap\_ (function)](#ap_-function)
 - [applyFirst (function)](#applyfirst-function)
 - [applyOther (function)](#applyother-function)
+- [applyOtherL (function)](#applyotherl-function)
 - [applySecond (function)](#applysecond-function)
+- [applySecondL (function)](#applysecondl-function)
 - [applyThis (function)](#applythis-function)
 - [as (function)](#as-function)
 - [asUnit (function)](#asunit-function)
@@ -56,13 +60,22 @@ parent: Modules
 - [chainError (function)](#chainerror-function)
 - [chainErrorWith (function)](#chainerrorwith-function)
 - [chainWith (function)](#chainwith-function)
+- [collectAll (function)](#collectall-function)
 - [completed (function)](#completed-function)
+- [contramapEnv (function)](#contramapenv-function)
+- [contramapEnvM (function)](#contramapenvm-function)
 - [delay (function)](#delay-function)
+- [encaseEither (function)](#encaseeither-function)
+- [encaseOption (function)](#encaseoption-function)
+- [encaseRIO (function)](#encaserio-function)
 - [flatten (function)](#flatten-function)
 - [flip (function)](#flip-function)
 - [foldExit (function)](#foldexit-function)
 - [foldExitWith (function)](#foldexitwith-function)
 - [fork (function)](#fork-function)
+- [fromEither (function)](#fromeither-function)
+- [fromOption (function)](#fromoption-function)
+- [fromOptionWith (function)](#fromoptionwith-function)
 - [fromPromise (function)](#frompromise-function)
 - [getMonoid (function)](#getmonoid-function)
 - [getSemigroup (function)](#getsemigroup-function)
@@ -77,10 +90,12 @@ parent: Modules
 - [mapErrorWith (function)](#maperrorwith-function)
 - [onComplete (function)](#oncomplete-function)
 - [onInterrupted (function)](#oninterrupted-function)
+- [orAbort (function)](#orabort-function)
 - [parAp (function)](#parap-function)
 - [parAp\_ (function)](#parap_-function)
 - [parApplyFirst (function)](#parapplyfirst-function)
 - [parApplySecond (function)](#parapplysecond-function)
+- [parCollectAll (function)](#parcollectall-function)
 - [parZip (function)](#parzip-function)
 - [parZipWith (function)](#parzipwith-function)
 - [provideEnv (function)](#provideenv-function)
@@ -106,6 +121,7 @@ parent: Modules
 - [timeoutOption (function)](#timeoutoption-function)
 - [uninterruptible (function)](#uninterruptible-function)
 - [uninterruptibleMask (function)](#uninterruptiblemask-function)
+- [widenError (function)](#widenerror-function)
 - [withRuntime (function)](#withruntime-function)
 - [zip (function)](#zip-function)
 - [zipWith (function)](#zipwith-function)
@@ -254,6 +270,14 @@ export interface Suspended<R, E, A> {
 export type DefaultR = {}
 ```
 
+# IO (type alias)
+
+**Signature**
+
+```ts
+export type IO<E, A> = RIO<DefaultR, E, A>
+```
+
 # InterruptMaskCutout (type alias)
 
 The type of a function that can restore outer interruptible state
@@ -292,6 +316,14 @@ export type RIO<R, E, A> =
 
 ```ts
 export type URI = typeof URI
+```
+
+# Widen (type alias)
+
+**Signature**
+
+```ts
+export type Widen<A, B> = A extends B ? B : (B extends A ? A : A | B)
 ```
 
 # URI (constant)
@@ -417,7 +449,7 @@ Applicative ap
 **Signature**
 
 ```ts
-export function ap<R, E, A, B>(ioa: RIO<R, E, A>, iof: RIO<R, E, FunctionN<[A], B>>): RIO<R, E, B> { ... }
+export function ap<R1, R2, E1, E2, A, B>(ioa: RIO<R1, E1, A>, iof: RIO<R2, E2, FunctionN<[A], B>>): RIO<R1 & R2, E1 | E2, B> { ... }
 ```
 
 # apWith (function)
@@ -427,7 +459,7 @@ Curried form of ap
 **Signature**
 
 ```ts
-export function apWith<R, E, A>(ioa: RIO<R, E, A>): <B>(iof: RIO<R, E, FunctionN<[A], B>>) => RIO<R, E, B> { ... }
+export function apWith<R1, E1, A>(ioa: RIO<R1, E1, A>): <R2, E2, B>(iof: RIO<R2, E2, FunctionN<[A], B>>) => RIO<R1 & R2, E1 | E2, B> { ... }
 ```
 
 # apWith\_ (function)
@@ -437,7 +469,7 @@ Curried form of ap\_
 **Signature**
 
 ```ts
-export function apWith_<R, E, A, B>(iof: RIO<R, E, FunctionN<[A], B>>): FunctionN<[RIO<R, E, A>], RIO<R, E, B>> { ... }
+export function apWith_<R1, R2, E1, E2, A, B>(iof: RIO<R1, E1, FunctionN<[A], B>>): FunctionN<[RIO<R2, E2, A>], RIO<R1 & R1, E1 | E2, B>> { ... }
 ```
 
 # ap\_ (function)
@@ -447,7 +479,7 @@ Flipped argument form of ap
 **Signature**
 
 ```ts
-export function ap_<R, E, A, B>(iof: RIO<R, E, FunctionN<[A], B>>, ioa: RIO<R, E, A>): RIO<R, E, B> { ... }
+export function ap_<R1, R2, E1, E2, A, B>(iof: RIO<R1, E1, FunctionN<[A], B>>, ioa: RIO<R2, E2, A>): RIO<R1 & R1, E1 | E2, B> { ... }
 ```
 
 # applyFirst (function)
@@ -457,7 +489,7 @@ Evaluate two IOs in sequence and produce the value produced by the first
 **Signature**
 
 ```ts
-export function applyFirst<R, E, A, B>(first: RIO<R, E, A>, second: RIO<R, E, B>): RIO<R, E, A> { ... }
+export function applyFirst<R1, R2, E1, E2, A, B>(first: RIO<R1, E1, A>, second: RIO<R2, E2, B>): RIO<R1 & R2, E1 | E2, A> { ... }
 ```
 
 # applyOther (function)
@@ -467,7 +499,17 @@ Curried form of applySecond
 **Signature**
 
 ```ts
-export function applyOther<R, E, A>(first: RIO<R, E, A>): <B>(second: RIO<R, E, B>) => RIO<R, E, B> { ... }
+export function applyOther<R1, E1, A>(first: RIO<R1, E1, A>): <R2, E2, B>(second: RIO<R2, E2, B>) => RIO<R1 & R2, E1 | E2, B> { ... }
+```
+
+# applyOtherL (function)
+
+Curried form of applySecondL
+
+**Signature**
+
+```ts
+export function applyOtherL<R1, E1, A>(first: RIO<R1, E1, A>): <R2, E2, B>(second: Lazy<RIO<R2, E2, B>>) => RIO<R1 & R2, E1 | E2, B> { ... }
 ```
 
 # applySecond (function)
@@ -477,7 +519,18 @@ Evaluate two IOs in sequence and produce the value produced by the second
 **Signature**
 
 ```ts
-export function applySecond<R, E, A, B>(first: RIO<R, E, A>, second: RIO<R, E, B>): RIO<R, E, B> { ... }
+export function applySecond<R1, R2, E1, E2, A, B>(first: RIO<R1, E1, A>, second: RIO<R2, E2, B>): RIO<R1 & R2, E1 | E2, B> { ... }
+```
+
+# applySecondL (function)
+
+Evaluate two IOs in sequence and produce the value of the second.
+This is suitable for cases where second is recursively defined
+
+**Signature**
+
+```ts
+export function applySecondL<R1, R2, E1, E2, A, B>(first: RIO<R1, E1, A>, second: Lazy<RIO<R2, E2, B>>): RIO<R1 & R2, E1 | E2, B> { ... }
 ```
 
 # applyThis (function)
@@ -487,7 +540,7 @@ Curried form of applyFirst
 **Signature**
 
 ```ts
-export function applyThis<R, E, A>(first: RIO<R, E, A>): <B>(second: RIO<R, E, B>) => RIO<R, E, A> { ... }
+export function applyThis<R1, E1, A>(first: RIO<R1, E1, A>): <R2, E2, B>(second: RIO<R2, E2, B>) => RIO<R1 & R2, E1 | E2, A> { ... }
 ```
 
 # as (function)
@@ -593,7 +646,7 @@ Produce an new IO that will use the value produced by inner to produce the next 
 **Signature**
 
 ```ts
-export function chain<R, E, Z, A>(inner: RIO<R, E, Z>, bind: FunctionN<[Z], RIO<R, E, A>>): Chain<R, E, Z, A> { ... }
+export function chain<R1, R2, E1, E2, A1, A2>(inner: RIO<R1, E1, A1>, bind: FunctionN<[A1], RIO<R2, E2, A2>>): Chain<R1 & R2, E1 | E2, A1, A2> { ... }
 ```
 
 # chainError (function)
@@ -603,7 +656,7 @@ Produce an new IO that will use the error produced by inner to produce a recover
 **Signature**
 
 ```ts
-export function chainError<R, E1, E2, A>(io: RIO<R, E1, A>, f: FunctionN<[E1], RIO<R, E2, A>>): RIO<R, E2, A> { ... }
+export function chainError<R1, R2, E1, E2, A>(io: RIO<R1, E1, A>, f: FunctionN<[E1], RIO<R2, E2, A>>): RIO<R1 & R2, E2, A> { ... }
 ```
 
 # chainErrorWith (function)
@@ -613,7 +666,7 @@ Curriend form of chainError
 **Signature**
 
 ```ts
-export function chainErrorWith<R, E1, E2, A>(f: FunctionN<[E1], RIO<R, E2, A>>): FunctionN<[RIO<R, E1, A>], RIO<R, E2, A>> { ... }
+export function chainErrorWith<R1, E1, E2, A>(f: FunctionN<[E1], RIO<R1, E2, A>>): <R2>(rio: RIO<R2, E1, A>) => RIO<R1 & R2, E2, A> { ... }
 ```
 
 # chainWith (function)
@@ -623,7 +676,19 @@ Curried function first form of chain
 **Signature**
 
 ```ts
-export function chainWith<R, E, Z, A>(bind: FunctionN<[Z], RIO<R, E, A>>): FunctionN<[RIO<R, E, Z>], Chain<R, E, Z, A>> { ... }
+export function chainWith<R2, E2, Z, A>(bind: FunctionN<[Z], RIO<R2, E2, A>>): <R1, E1>(io: RIO<R1, E1, Z>) => RIO<R1 & R2, E1 | E2, A> { ... }
+```
+
+# collectAll (function)
+
+Collect the results of many IOs.
+
+Returns an IO that will evaluate each of the inputs in sequence and collect their results in order
+
+**Signature**
+
+```ts
+export function collectAll<R, E, A>(ios: Array<RIO<R, E, A>>): RIO<R, E, A[]> { ... }
 ```
 
 # completed (function)
@@ -636,6 +701,26 @@ An IO that is completed with the given exit
 export function completed<E, A>(exit: Exit<E, A>): Completed<E, A> { ... }
 ```
 
+# contramapEnv (function)
+
+Manipulate an IO with by producing its environment from a different one
+
+**Signature**
+
+```ts
+export function contramapEnv<R1, R2, E, A>(f: FunctionN<[R1], R2>, io: RIO<R2, E, A>): RIO<R1, E, A> { ... }
+```
+
+# contramapEnvM (function)
+
+Manipulate an IO by producing its environment from an IO in different environment such that it may execute in that other environment
+
+**Signature**
+
+```ts
+export function contramapEnvM<R1, R2, E, A>(contra: RIO<R1, E, R2>, io: RIO<R2, E, A>): RIO<R1, E, A> { ... }
+```
+
 # delay (function)
 
 Delay evaluation of inner by some amount of time
@@ -646,6 +731,36 @@ Delay evaluation of inner by some amount of time
 export function delay<R, E, A>(inner: RIO<R, E, A>, ms: number): RIO<R, E, A> { ... }
 ```
 
+# encaseEither (function)
+
+Lift an Either into an IO
+
+**Signature**
+
+```ts
+export function encaseEither<E, A>(e: Either<E, A>): IO<E, A> { ... }
+```
+
+# encaseOption (function)
+
+Lift an Option into an IO
+
+**Signature**
+
+```ts
+export function encaseOption<E, A>(o: Option<A>, onError: Lazy<E>): IO<E, A> { ... }
+```
+
+# encaseRIO (function)
+
+Lift a function from R => IO<E, A> to a RIO<R, E, A>
+
+**Signature**
+
+```ts
+export function encaseRIO<R, E, A>(f: FunctionN<[R], IO<E, A>>): RIO<R, E, A> { ... }
+```
+
 # flatten (function)
 
 Flatten a nested IO
@@ -653,7 +768,7 @@ Flatten a nested IO
 **Signature**
 
 ```ts
-export function flatten<R, E, A>(inner: RIO<R, E, RIO<R, E, A>>): RIO<R, E, A> { ... }
+export function flatten<R1, R2, E1, E2, A>(inner: RIO<R1, E1, RIO<R2, E2, A>>): RIO<R1 & R2, E1 | E2, A> { ... }
 ```
 
 # flip (function)
@@ -706,6 +821,36 @@ If you need to begin the fiber immediately you should use applyFirst(forkIO, shi
 export function fork<R, E, A>(io: RIO<R, E, A>, name?: string): RIO<R, never, Fiber<E, A>> { ... }
 ```
 
+# fromEither (function)
+
+Create an IO by lifting an Either
+
+**Signature**
+
+```ts
+export function fromEither<E, A>(e: Either<E, A>): IO<E, A> { ... }
+```
+
+# fromOption (function)
+
+Create an IO from an Option, failing if it is none with the given error
+
+**Signature**
+
+```ts
+export function fromOption<E, A>(o: Option<A>, ifNone: Lazy<E>): IO<E, A> { ... }
+```
+
+# fromOptionWith (function)
+
+Curried form of fromOption
+
+**Signature**
+
+```ts
+export function fromOptionWith<E, A>(ifNone: Lazy<E>): FunctionN<[Option<A>], IO<E, A>> { ... }
+```
+
 # fromPromise (function)
 
 Create an IO from a Promise factory.
@@ -721,7 +866,7 @@ export function fromPromise<A>(thunk: Lazy<Promise<A>>): RIO<DefaultR, unknown, 
 **Signature**
 
 ```ts
-export function getMonoid<R, E, A>(Monoid: Monoid<A>): Monoid<RIO<R, E, A>> { ... }
+export function getMonoid<R, E, A>(m: Monoid<A>): Monoid<RIO<R, E, A>> { ... }
 ```
 
 # getSemigroup (function)
@@ -729,7 +874,7 @@ export function getMonoid<R, E, A>(Monoid: Monoid<A>): Monoid<RIO<R, E, A>> { ..
 **Signature**
 
 ```ts
-export function getSemigroup<R, E, A>(Semigroup: Semigroup<A>): Semigroup<RIO<R, E, A>> { ... }
+export function getSemigroup<R, E, A>(s: Semigroup<A>): Semigroup<RIO<R, E, A>> { ... }
 ```
 
 # interruptible (function)
@@ -844,6 +989,16 @@ Guarantee that once ioa begins executing if it is interrupted finalizer will exe
 export function onInterrupted<R, E, A>(ioa: RIO<R, E, A>, finalizer: RIO<R, E, unknown>): RIO<R, E, A> { ... }
 ```
 
+# orAbort (function)
+
+Convert an error into an unchecked error.
+
+**Signature**
+
+```ts
+export function orAbort<R, E, A>(io: RIO<R, E, A>): RIO<R, never, A> { ... }
+```
+
 # parAp (function)
 
 Parallel form of ap
@@ -882,6 +1037,18 @@ Exeute two IOs in parallel and take the result of the second
 
 ```ts
 export function parApplySecond<R, E, A, B>(ioa: RIO<R, E, A>, iob: RIO<R, E, B>): RIO<R, E, B> { ... }
+```
+
+# parCollectAll (function)
+
+Collect the results of many IOs evaluated in parallel.
+
+Returns an IO that will evaluate all of the inputs in parallel and collect their results in order
+
+**Signature**
+
+```ts
+export function parCollectAll<R, E, A>(ios: Array<RIO<R, E, A>>): RIO<R, E, A[]> { ... }
 ```
 
 # parZip (function)
@@ -1172,6 +1339,17 @@ interruptible status of the region above the one currently executing (which is u
 export function uninterruptibleMask<R, E, A>(f: FunctionN<[InterruptMaskCutout<R, E, A>], RIO<R, E, A>>): RIO<R, E, A> { ... }
 ```
 
+# widenError (function)
+
+Widen the error channel of an IO such that both E1 and E2 are acceptable as errors
+If E1 or E2 are related this selects the ancestor, otherwise it selects E1 | E2
+
+**Signature**
+
+```ts
+export function widenError<E2>(): <R, E1, A>(io: RIO<R, E1, A>) => RIO<R, Widen<E1, E2>, A> { ... }
+```
+
 # withRuntime (function)
 
 Access the runtime then provide it to the provided function
@@ -1189,7 +1367,7 @@ Zip the result of two IOs together into a tuple type
 **Signature**
 
 ```ts
-export function zip<R, E, A, B>(first: RIO<R, E, A>, second: RIO<R, E, B>): RIO<R, E, readonly [A, B]> { ... }
+export function zip<R1, R2, E1, E2, A, B>(first: RIO<R1, E1, A>, second: RIO<R2, E2, B>): RIO<R1 & R2, E1 | E2, readonly [A, B]> { ... }
 ```
 
 # zipWith (function)
@@ -1199,5 +1377,5 @@ Zip the result of two IOs together using the provided function
 **Signature**
 
 ```ts
-export function zipWith<R, E, A, B, C>(first: RIO<R, E, A>, second: RIO<R, E, B>, f: FunctionN<[A, B], C>): RIO<R, E, C> { ... }
+export function zipWith<R1, R2, E1, E2, A, B, C>(first: RIO<R1, E1, A>, second: RIO<R2, E2, B>, f: FunctionN<[A, B], C>): RIO<R1 & R2, E1 | E2, C> { ... }
 ```
