@@ -678,7 +678,7 @@ function makeInterruptMaskCutout<R, E, A>(state: boolean): InterruptMaskCutout<R
  * interruptible status of the region above the one currently executing (which is uninterruptible)
  * @param f 
  */
-export function uninterruptibleMask<R, E, A>(f: FunctionN<[InterruptMaskCutout<R, E, A>], RIO<R, E, A>>): RIO<R, E, A> {
+export function uninterruptibleMask<R1, R2, E1, E2, A>(f: FunctionN<[InterruptMaskCutout<R2, E2, A>], RIO<R2, E2, A>>): RIO<R1 & R2, E1 | E2, A> {
     return chain(accessInterruptible,
         (flag) => uninterruptible(f(makeInterruptMaskCutout(flag)))
     );
@@ -690,7 +690,7 @@ export function uninterruptibleMask<R, E, A>(f: FunctionN<[InterruptMaskCutout<R
  * Similar to uninterruptibleMask
  * @param f 
  */
-export function interruptibleMask<R, E, A>(f: FunctionN<[InterruptMaskCutout<R, E, A>], RIO<R, E, A>>): RIO<R, E, A> {
+export function interruptibleMask<R1, R2, E1, E2, A>(f: FunctionN<[InterruptMaskCutout<R2, E2, A>], RIO<R2, E2, A>>): RIO<R1 & R2, E1 | E2, A> {
     return chain(accessInterruptible,
         (flag) => interruptible(f(makeInterruptMaskCutout(flag)))
     );
@@ -720,10 +720,10 @@ function combineFinalizerExit<E, A>(fiberExit: Exit<E, A>, releaseExit: Exit<E, 
  * @param use 
  */
 
-export function bracketExit<R, E, A, B>(acquire: RIO<R, E, A>,
-    release: FunctionN<[A, Exit<E, B>], RIO<R, E, unknown>>,
-    use: FunctionN<[A], RIO<R, E, B>>): RIO<R, E, B> {
-    return uninterruptibleMask<R, E, B>((cutout) =>
+export function bracketExit<R1, R2, E1, A, B>(acquire: RIO<R1, E1, A>, // Unifying multiple E's here is just really hard...
+    release: FunctionN<[A, Exit<E1, B>], RIO<R1, E1, unknown>>,
+    use: FunctionN<[A], RIO<R2, E1, B>>): RIO<R1 & R2, E1, B> {
+    return uninterruptibleMask<R1, R2, E1, E1, B>((cutout) =>
         chain(acquire,
             (a) => pipe(a, use, cutout, result, chainWith(
                 (exit) => pipe(release(a, exit), result, chainWith(
@@ -740,9 +740,9 @@ export function bracketExit<R, E, A, B>(acquire: RIO<R, E, A>,
  * @param release 
  * @param use 
  */
-export function bracket<R, E, A, B>(acquire: RIO<R, E, A>,
-    release: FunctionN<[A], RIO<R, E, unknown>>,
-    use: FunctionN<[A], RIO<R, E, B>>): RIO<R, E, B> {
+export function bracket<R1, R2, E, A, B>(acquire: RIO<R1, E, A>,
+    release: FunctionN<[A], RIO<R1, E, unknown>>,
+    use: FunctionN<[A], RIO<R2, E, B>>): RIO<R1 & R2, E, B> {
     return bracketExit(acquire, (e) => release(e), use);
 }
 
