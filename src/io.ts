@@ -269,8 +269,8 @@ export function encaseEither<E, A>(e: Either<E, A>): IO<E, A> {
  * @param onError 
  */
 export function encaseOption<E, A>(o: Option<A>, onError: Lazy<E>): IO<E, A> {
-    return pipe(o, 
-        option.map<A, IO<E, A>>(pure), 
+    return pipe(o,
+        option.map<A, IO<E, A>>(pure),
         option.getOrElse<IO<E, A>>(() => raiseError(onError())));
 }
 
@@ -678,7 +678,7 @@ function makeInterruptMaskCutout<R, E, A>(state: boolean): InterruptMaskCutout<R
  * interruptible status of the region above the one currently executing (which is uninterruptible)
  * @param f 
  */
-export function uninterruptibleMask<R1, R2, E1, E2, A>(f: FunctionN<[InterruptMaskCutout<R2, E2, A>], RIO<R2, E2, A>>): RIO<R1 & R2, E1 | E2, A> {
+export function uninterruptibleMask<R1, R2, E1, E2, A>(f: FunctionN<[InterruptMaskCutout<R1 & R2, E1 | E2, A>], RIO<R1 & R2, E1 | E2, A>>): RIO<R1 & R2, E1 | E2, A> {
     return chain(accessInterruptible,
         (flag) => uninterruptible(f(makeInterruptMaskCutout(flag)))
     );
@@ -720,18 +720,18 @@ function combineFinalizerExit<E, A>(fiberExit: Exit<E, A>, releaseExit: Exit<E, 
  * @param use 
  */
 
-export function bracketExit<R1, R2, E1, A, B>(acquire: RIO<R1, E1, A>, // Unifying multiple E's here is just really hard...
-    release: FunctionN<[A, Exit<E1, B>], RIO<R1, E1, unknown>>,
-    use: FunctionN<[A], RIO<R2, E1, B>>): RIO<R1 & R2, E1, B> {
-    return uninterruptibleMask<R1, R2, E1, E1, B>((cutout) =>
-        chain(acquire,
-            (a) => pipe(a, use, cutout, result, chainWith(
+export function bracketExit<R1, R2, E1, E2, A, B>(acquire: RIO<R1, E1, A>, // Unifying multiple E's here is just really hard...
+    release: FunctionN<[A, Exit<E2, B>], RIO<R1, E1 | E2, unknown>>,
+    use: FunctionN<[A], RIO<R2, E2, B>>): RIO<R1 & R2, E1 | E2, B> {
+    return uninterruptibleMask<R1, R2, E1, E2, B>((cutout) => {
+        return chain(acquire,
+            (a) => pipe(a, use, cutout as InterruptMaskCutout<R2, E2, B>, result, chainWith(
                 (exit) => pipe(release(a, exit), result, chainWith(
-                    (finalize) => completed(combineFinalizerExit(exit, finalize))
+                    (finalize) => completed(combineFinalizerExit(exit as Exit<E1 | E2, B>, finalize))
                 ))
             ))
         )
-    );
+    });
 }
 
 /**
@@ -740,9 +740,9 @@ export function bracketExit<R1, R2, E1, A, B>(acquire: RIO<R1, E1, A>, // Unifyi
  * @param release 
  * @param use 
  */
-export function bracket<R1, R2, E, A, B>(acquire: RIO<R1, E, A>,
-    release: FunctionN<[A], RIO<R1, E, unknown>>,
-    use: FunctionN<[A], RIO<R2, E, B>>): RIO<R1 & R2, E, B> {
+export function bracket<R1, R2, E1, E2, A, B>(acquire: RIO<R1, E1, A>,
+    release: FunctionN<[A], RIO<R1, E1, unknown>>,
+    use: FunctionN<[A], RIO<R2, E2, B>>): RIO<R1 & R2, E1 | E2, B> {
     return bracketExit(acquire, (e) => release(e), use);
 }
 
@@ -751,7 +751,7 @@ export function bracket<R1, R2, E, A, B>(acquire: RIO<R1, E, A>,
  * @param ioa 
  * @param finalizer 
  */
-export function onComplete<R, E, A>(ioa: RIO<R, E, A>, finalizer: RIO<R, E, unknown>): RIO<R, E, A> {
+export function onComplete<R1, R2, E1, E2, A>(ioa: RIO<R1, E1, A>, finalizer: RIO<R2, E2, unknown>): RIO<R1 & R2, E1 | E2, A> {
     return uninterruptibleMask((cutout) =>
         pipe(
             result(cutout(ioa)),
@@ -773,7 +773,7 @@ export function onComplete<R, E, A>(ioa: RIO<R, E, A>, finalizer: RIO<R, E, unkn
  * @param ioa 
  * @param finalizer 
  */
-export function onInterrupted<R, E, A>(ioa: RIO<R, E, A>, finalizer: RIO<R, E, unknown>): RIO<R, E, A> {
+export function onInterrupted<R1, R2, E1, E2, A>(ioa: RIO<R1, E1, A>, finalizer: RIO<R2, E2, unknown>): RIO<R1 & R2, E1 | E2, A> {
     return uninterruptibleMask((cutout) =>
         pipe(
             result(cutout(ioa)),
@@ -808,8 +808,16 @@ export const shifted: RIO<DefaultR, never, void> =
  * Introduce a synchronous gap before io that will allow other fibers to execute (if any are pending)
  * @param io 
  */
-export function shift<R, E, A>(io: RIO<R, E, A>): RIO<R, E, A> {
+export function shiftBefore<R, E, A>(io: RIO<R, E, A>): RIO<R, E, A> {
     return applySecond(shifted, io);
+}
+
+/**
+ * Introduce a synchronous gap after an io that will allow other fibers to execute (if any are pending)
+ * @param io 
+ */
+export function shiftAfter<R, E, A>(io: RIO<R, E, A>): RIO<R, E, A> {
+    return applyFirst(io, shifted);
 }
 
 /**
@@ -826,8 +834,16 @@ export const shiftedAsync: RIO<DefaultR, never, void> =
  * Introduce an asynchronous gap before IO
  * @param io 
  */
-export function shiftAsync<R, E, A>(io: RIO<R, E, A>): RIO<R, E, A> {
+export function shiftAsyncBefore<R, E, A>(io: RIO<R, E, A>): RIO<R, E, A> {
     return applySecond(shiftedAsync, io);
+}
+
+/**
+ * Introduce asynchronous gap after an IO
+ * @param io 
+ */
+export function shfitAsyncAfter<R, E, A>(io: RIO<R, E, A>): RIO<R, E, A> {
+    return applyFirst(io, shiftedAsync);
 }
 
 /**

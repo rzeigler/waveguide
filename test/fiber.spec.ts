@@ -80,7 +80,7 @@ describe("fiber", () => {
                                                 ),
                                                 (child) =>
                                                     io.applySecond(
-                                                        io.fork(io.shiftAsync(child.interrupt)),
+                                                        io.fork(io.shiftAsyncBefore(child.interrupt)),
                                                         io.applySecond(
                                                             io.delay(latch.done(undefined), delay),
                                                             io.applySecond(
@@ -110,7 +110,7 @@ describe("fiber", () => {
                                     io.chain(io.fork(io.as(latch.wait, 42)),
                                         (child) =>
                                             io.applySecond(
-                                                io.shiftAsync(child.interrupt),
+                                                io.shiftAsyncBefore(child.interrupt),
                                                 io.applySecond(
                                                     io.delay(latch.done(undefined), delay),
                                                     child.wait
