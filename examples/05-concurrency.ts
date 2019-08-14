@@ -69,7 +69,11 @@ function compare(q: string): RIO<https.Agent, Error, CompareInfo> {
     // Now that we have both queries for our benchmark we can run them both to get the winner
     // We use parZip instead of zip
     // There are parallel versions of many combinators like zip, zipWith, applyFirst, applySecond, etc.
-    return wave.parZip(google, bing)
+    // We also add an onInterrupted action which will be useful later
+    return wave.onInterrupted(
+        wave.parZip(google, bing), 
+        consoleIO.log(`cancelling comparison of ${q}`)
+    );
 }
 
 
@@ -82,4 +86,17 @@ const rt: RIO<https.Agent, Error, void> =
 
 const versus = resource.provideTo(agent, rt)
 
-wave.runR(versus, {});
+
+/**
+ * It is also possible to race many fibers in parallel so that we only get the first one completed
+ * 
+ */
+const firstVersusIO = ["referential+transparency", "monad", "functor", "haskell", "scala", "purescript", "lenses"]
+        .map(compare)
+        // When we race IOs, the loser is automatically cancelled immediately
+        .reduce((left, right) => wave.race(left, right));
+const firstVersus = 
+        resource.provideTo(agent, wave.chain(firstVersusIO,
+            (results) => consoleIO.log(`winning query was ${results[0][0].q}`)));
+
+wave.runR(wave.applySecond(versus, firstVersus), {});
