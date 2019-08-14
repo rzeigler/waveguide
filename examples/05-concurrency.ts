@@ -95,8 +95,10 @@ const firstVersusIO = ["referential+transparency", "monad", "functor", "haskell"
         .map(compare)
         // When we race IOs, the loser is automatically cancelled immediately
         .reduce((left, right) => wave.race(left, right));
+        
 const firstVersus = 
         resource.provideTo(agent, wave.chain(firstVersusIO,
+            // Notice if you are running this code yourself that you see many query cancellations logged before this final output
             (results) => consoleIO.log(`winning query was ${results[0][0].q}`)));
 
 wave.runR(wave.applySecond(versus, firstVersus), {});
