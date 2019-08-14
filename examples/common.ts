@@ -122,3 +122,50 @@ const fileHandle = (path: string, mode: string): Resource<NodeJS.ErrnoException,
         openFile(path, mode),
         closeFile
     );
+
+
+    import * as https from "https"
+    import * as http from "http";
+    import * as resource from "../src/resource";
+    import { RIO } from "../src/io";
+    import { log } from "../src/console";
+    import { pipe } from "fp-ts/lib/pipeable";
+    
+    export const agent: Resource<never, https.Agent> = resource.bracket(
+        wave.sync(() => new https.Agent()),
+        (agent) => wave.sync(() => agent.destroy())
+    );
+    
+    /**
+     * We can think of an IncomingMessage as something we can produce if we have an agent resource
+     * @param url 
+     */
+    export function fetch(url: string): RIO<https.Agent, Error, Buffer> {
+        return wave.encaseReader((agent: https.Agent) => {
+            const options = {agent};
+            return wave.async<Error, Buffer>((callback) => {
+                let cancelled = false;
+                let response: http.IncomingMessage | undefined;
+                http.get(url, options, (res) => {
+                    response = res;
+                    let buffers: Buffer[] = [];
+                    res.on('data', (chunk) => {
+                        buffers.push(chunk);
+                    })
+                    res.on('end', () => {
+                        callback(right(Buffer.concat(buffers)))
+                    });
+                    res.on('error', (e) => {
+                        callback(left(e));
+                    });
+                });
+                return () => {
+                    cancelled = true;
+                    if (response) {
+                        response.destroy();
+                    }
+                };
+            })
+        })
+    }
+    

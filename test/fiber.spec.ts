@@ -48,6 +48,13 @@ describe("fiber", () => {
             done(interrupt)
         )
     );
+    it("environments should propogate across fibers", () => {
+        const fiber = 
+            io.accessEnv<string>()
+        const host = 
+            io.provideEnv("hello", io.chain(io.fork(fiber), (f) => f.join));
+        return expectExit(host, done("hello"));
+    });
     describe("properties", function() {
         this.timeout(5000);
         it("fork/join is the same result as initial", () =>

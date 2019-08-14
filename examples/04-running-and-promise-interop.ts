@@ -40,14 +40,14 @@ const fromPromise: IO<never, void> =
  * Now that we have an IO from a promise, we can also run back to a promise
  */
 
-const p: Promise<void> = wave.runToPromise(fromPromise)
+const p: Promise<void> = wave.runToPromiseR(fromPromise, {})
     .then(() => console.log("finished"));
 
 /**
  * We don't have to run to a Promise or use the runtime like main does
  * We can, instead use run
  */
-const cancellation: Lazy<void> = wave.run(fromPromise, (result) => {
+const cancellation: Lazy<void> = wave.runR(fromPromise, {}, (result) => {
     // note that this will actually log before the "finished" above because waveguide's machinery doesn't require event loop ticks
     console.log("finished with " + JSON.stringify(result))
 })

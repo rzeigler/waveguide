@@ -59,8 +59,8 @@ function createFiber<E, A>(driver: Driver<DefaultR, E, A>, n?: string): Fiber<E,
     const interrupt = io.applySecond(sendInterrupt, io.asUnit(wait));
     const join = io.chain(wait, (exit) => io.completed(exit));
     const result =
-    io.chain(io.sync(() => driver.exit()),
-        (opt) => foldOption(() => io.pure(none), (exit: Exit<E, A>) => io.map(io.completed(exit), some))(opt));
+        io.chain(io.sync(() => driver.exit()),
+            (opt) => foldOption(() => io.pure(none), (exit: Exit<E, A>) => io.map(io.completed(exit), some))(opt));
     const isComplete = io.sync(() => isSome(driver.exit()));
     return {
         name,
@@ -72,11 +72,13 @@ function createFiber<E, A>(driver: Driver<DefaultR, E, A>, n?: string): Fiber<E,
     };
 }
 
-export function makeFiber<E, A>(init: RIO<DefaultR, E, A>, runtime: Runtime, name?: string): RIO<DefaultR, never, Fiber<E, A>> {
-    return io.sync(() => {
-        const driver = makeDriver<DefaultR, E, A>(runtime);
-        const fiber = createFiber(driver, name);
-        driver.start({}, init);
-        return fiber;
-    });
+export function makeFiber<R, E, A>(init: RIO<R, E, A>, name?: string): RIO<R, never, Fiber<E, A>> {
+    return io.chain(io.accessRuntime,
+        (runtime) => io.chain(io.accessEnv<R>(),
+            (r) => io.sync(() => {
+                const driver = makeDriver<DefaultR, E, A>(runtime);
+                const fiber = createFiber(driver, name);
+                driver.start(r, init);
+                return fiber;
+            })));
 }

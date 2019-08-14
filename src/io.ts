@@ -251,7 +251,7 @@ export interface ProvideEnv<R, E, A> {
  * Lift a function from R => IO<E, A> to a RIO<R, E, A>
  * @param f 
  */
-export function encaseRIO<R, E, A>(f: FunctionN<[R], IO<E, A>>): RIO<R, E, A> {
+export function encaseReader<R, E, A>(f: FunctionN<[R], IO<E, A>>): RIO<R, E, A> {
     return chain(accessEnv<R>(), f);
 }
 
@@ -305,7 +305,7 @@ export function contramapEnvM<R1, R2, E, A>(contra: RIO<R1, E, R2>, io: RIO<R2, 
  * @param io 
  */
 export function contramapEnv<R1, R2, E, A>(f: FunctionN<[R1], R2>, io: RIO<R2, E, A>): RIO<R1, E, A> {
-    return contramapEnvM(encaseRIO((r1) => pure(f(r1))), io);
+    return contramapEnvM(encaseReader((r1) => pure(f(r1))), io);
 }
 
 
@@ -884,7 +884,7 @@ export function liftDelay(ms: number): <R, E, A>(io: RIO<R, E, A>) => RIO<R, E, 
  * @param name 
  */
 export function fork<R, E, A>(io: RIO<R, E, A>, name?: string): RIO<R, never, Fiber<E, A>> {
-    return withRuntime((runtime) => makeFiber(io, runtime, name));
+    return makeFiber(io, name);
 }
 
 function completeLatched<R, E1, E2, A, B, C>(latch: Ref<boolean>,
@@ -1114,45 +1114,13 @@ export function widenError<E2>(): <R, E1, A>(io: RIO<R, E1, A>) => RIO<R, Widen<
  * @param r 
  * @param callback 
  */
-export function runR<R, E, A>(io: RIO<R, E, A>, r: R, callback: FunctionN<[Exit<E, A>], void>): Lazy<void> {
+export function runR<R, E, A>(io: RIO<R, E, A>, r: R, callback?: FunctionN<[Exit<E, A>], void>): Lazy<void> {
     const driver = makeDriver<R, E, A>();
-    driver.onExit(callback);
+    if (callback) {
+        driver.onExit(callback);
+    }
     driver.start(r, io);
     return driver.interrupt;
-}
-
-/**
- * Run the given IO
- * @param io 
- * @param callback 
- */
-export function run<E, A>(io: RIO<DefaultR, E, A>, callback: FunctionN<[Exit<E, A>], void>): Lazy<void> {
-    return runR(io, {}, callback);
-}
-
-/**
- * Run an IO returning a promise of the result.
- *
- * The returned promise will resolve with a success value.
- * The returned promies will reject with an E, and unknown, or undefined in the case of raise, abort, or interrupt
- * respectively.
- * The returned promise may never complete if the provided IO never produces a value or error.
- * @param io
- */
-export function runToPromise<E, A>(io: RIO<DefaultR, E, A>): Promise<A> {
-    return new Promise((resolve, reject) =>
-        run(io, (exit) => {
-            if (exit._tag === "value") {
-                resolve(exit.value);
-            } else if (exit._tag === "abort") {
-                reject(exit.abortedWith);
-            } else if (exit._tag === "raise") {
-                reject(exit.error);
-            } else if (exit._tag === "interrupt") {
-                reject();
-            }
-        })
-    );
 }
 
 /**
@@ -1176,16 +1144,6 @@ export function runToPromiseR<R, E, A>(io: RIO<R, E, A>, r: R): Promise<A> {
             }
         })
     );
-}
-
-/**
- * Run an IO returning a promise of the Exit
- *
- * The returned promise will never reject.
- * @param io
- */
-export function runToPromiseExit<E, A>(io: RIO<DefaultR, E, A>): Promise<Exit<E, A>> {
-    return new Promise((resolve) => run(io, resolve));
 }
 
 /**

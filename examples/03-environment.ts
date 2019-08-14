@@ -49,7 +49,7 @@ const agent: Resource<never, https.Agent> = resource.bracket(
  * @param url 
  */
 function fetch(url: string): RIO<https.Agent, Error, Buffer> {
-    return wave.encaseRIO((agent: https.Agent) => {
+    return wave.encaseReader((agent: https.Agent) => {
         const options = {agent};
         return wave.async<Error, Buffer>((callback) => {
             let cancelled = false;

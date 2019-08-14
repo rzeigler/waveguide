@@ -9,7 +9,8 @@ has_toc: false
 
 ## Getting Started
 ```
-import * as wave, { IO } from "waveguide/lib/io"
+import * as wave from "waveguide/lib/io"
+import { IO } from "waveguide/lib/io"
 ```
 
 ## Quick examples
