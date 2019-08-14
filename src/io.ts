@@ -844,7 +844,7 @@ export function shiftAsyncBefore<R, E, A>(io: RIO<R, E, A>): RIO<R, E, A> {
  * Introduce asynchronous gap after an IO
  * @param io 
  */
-export function shfitAsyncAfter<R, E, A>(io: RIO<R, E, A>): RIO<R, E, A> {
+export function shiftAsyncAfter<R, E, A>(io: RIO<R, E, A>): RIO<R, E, A> {
     return applyFirst(io, shiftedAsync);
 }
 

@@ -17,6 +17,7 @@ import { Monad3 } from "fp-ts/lib/Monad";
 import { Semigroup } from "fp-ts/lib/Semigroup";
 import { Monoid } from "fp-ts/lib/Monoid";
 import { RIO } from "./io";
+import { Fiber } from "./fiber";
 import * as io from "./io";
 
 /**
@@ -156,6 +157,16 @@ export function ap_<R, E, A, B>(resfab: Managed<R, E, FunctionN<[A], B>>, resa: 
 export function consume<R, E, A, B>(f: FunctionN<[A], RIO<R, E, B>>): FunctionN<[Managed<R, E, A>], RIO<R, E, B>> {
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
     return (r) => use(r, f);
+}
+
+/**
+ * Create a Resource from the fiber of an IO.
+ * The acquisition of this resource corresponds to forking rio into a fiber.
+ * The destruction of the resource is interrupting said fiber.
+ * @param rio 
+ */
+export function fiber<R, E, A>(rio: RIO<R, E, A>): Managed<R, never, Fiber<E, A>> {
+    return bracket(io.fork(rio), (fiber) => fiber.interrupt);
 }
 
 /**
