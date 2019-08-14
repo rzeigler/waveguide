@@ -22,5 +22,6 @@
       "./src/**/*",
       "./test/**/*",
       "./examples/**/*"
-    ]
+    ],
+    "typeRoots" : ["./node_modules/@types"]
   }

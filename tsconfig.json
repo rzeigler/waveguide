@@ -13,13 +13,14 @@
       "strictPropertyInitialization": true,
       "noImplicitThis": true,
       "alwaysStrict": true,
-      "types": ["mocha"],
+      "types": ["mocha", "node"],
       "esModuleInterop": true,
       "experimentalDecorators": true,
       "sourceMap": true
     },
     "include": [
       "./src/**/*"
-    ]
+    ],
+    "typeRoots" : ["./node_modules/@types"]
   }
   
