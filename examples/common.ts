@@ -168,4 +168,19 @@ const fileHandle = (path: string, mode: string): Resource<NodeJS.ErrnoException,
             })
         })
     }
+
+export const now = wave.sync(() => process.hrtime.bigint());
+
+/**
+ * We also want a way of wrapping an IO so that we can see how long its execution took
+ */
+export function time<R, E, O>(io: RIO<R, E, O>): RIO<R, E, readonly [O, bigint]> {
+    // zipWith, zip happen in order with no parallelism
+    return wave.zipWith(
+        now,
+        wave.zip(io, now),
+        (start, [o, end]) => [o, end - start] as const
+    );
+}
+
     

@@ -407,6 +407,8 @@ export function lift<A, B>(f: FunctionN<[A], B>): <R, E>(io: RIO<R, E, A>) => RI
     return <R, E>(io: RIO<R, E, A>) => map(io, f);
 }
 
+export const mapWith = lift;
+
 /**
  * Map the value produced by an IO to the constant b
  * @param io

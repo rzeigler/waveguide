@@ -31,8 +31,8 @@ export interface Semaphore {
 
     acquireN(n: number): RIO<DefaultR, never, void>;
     releaseN(n: number): RIO<DefaultR, never, void>;
-    withPermitsN<E, A>(n: number, io: RIO<DefaultR, E, A>): RIO<DefaultR, E, A>;
-    withPermit<E, A>(n: RIO<DefaultR, E, A>): RIO<DefaultR, E, A>;
+    withPermitsN<R, E, A>(n: number, io: RIO<R, E, A>): RIO<R, E, A>;
+    withPermit<R, E, A>(n: RIO<R, E, A>): RIO<R, E, A>;
 }
 
 type Reservation = readonly [number, Deferred<never, void>];
@@ -143,9 +143,9 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
                 io.bracketExit<DefaultR, DefaultR, never, never, Ticket<void>, void>(ticketN(n), ticketExit, ticketUse)
         );
 
-    const withPermitsN = <E, A>(n: number, inner: RIO<DefaultR, E, A>): RIO<DefaultR, E, A> =>
+    const withPermitsN = <R, E, A>(n: number, inner: RIO<R, E, A>): RIO<R, E, A> =>
         // hrm... why downcast necessary?
-        io.bracket(io.interruptible(acquireN<E>(n)), constant(releaseN(n) as RIO<DefaultR, E, unknown>), () => inner);
+        io.bracket(io.interruptible(acquireN<E>(n)), constant(releaseN(n) as RIO<R, E, unknown>), () => inner);
 
     const available = io.map(ref.get, e.fold((q) => -1 * q.size(), identity));
 

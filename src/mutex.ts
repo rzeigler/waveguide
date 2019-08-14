@@ -20,7 +20,7 @@ export interface Mutex {
     readonly acquire: RIO<DefaultR, never, void>;
     readonly release: RIO<DefaultR, never, void>;
     readonly available: RIO<DefaultR, never, boolean>;
-    withExclusion<E, A>(inner: RIO<DefaultR, E, A>): RIO<DefaultR, E, A>;
+    withExclusion<R, E, A>(inner: RIO<R, E, A>): RIO<R, E, A>;
 }
 
 export const makeMutex: RIO<DefaultR, never, Mutex> =
@@ -29,7 +29,7 @@ export const makeMutex: RIO<DefaultR, never, Mutex> =
           acquire: sem.acquire,
           release: sem.release,
           available: io.map(sem.available, (n) => n > 0),
-          withExclusion<E, A>(inner: RIO<DefaultR, E, A>): RIO<DefaultR, E, A> {
+          withExclusion<R, E, A>(inner: RIO<R, E, A>): RIO<R, E, A> {
               return sem.withPermit(inner);
           }
       }));
