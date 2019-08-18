@@ -32,7 +32,7 @@ import * as http from "http";
 import * as resource from "../src/resource";
 import { Resource } from "../src/resource";
 import * as wave from "../src/io";
-import { IO, RIO } from "../src/io";
+import { RIO } from "../src/io";
 import { log } from "../src/console";
 import { main } from "./common";
 
@@ -61,10 +61,14 @@ function fetch(url: string): RIO<https.Agent, Error, Buffer> {
                     buffers.push(chunk);
                 })
                 res.on("end", () => {
-                    callback(right(Buffer.concat(buffers)))
+                    if (!cancelled) {
+                        callback(right(Buffer.concat(buffers)))
+                    }
                 });
                 res.on("error", (e) => {
-                    callback(left(e));
+                    if (!cancelled) {
+                        callback(left(e));
+                    }
                 });
             });
             return () => {

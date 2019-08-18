@@ -28,7 +28,6 @@ import { pipe } from "fp-ts/lib/pipeable";
 import * as o from "fp-ts/lib/Option";
 import * as wave from "../src/io";
 import { IO } from "../src/io";
-import { log } from "../src/console";
 
 
 /**

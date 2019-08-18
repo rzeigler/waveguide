@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import fc, {Arbitrary} from "fast-check";
+import fc from "fast-check";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { array } from "fp-ts/lib/Array";
 import { pipe } from "fp-ts/lib/pipeable";
-import { done, interrupt} from "../src/exit";
+import { done } from "../src/exit";
 import * as io from "../src/io";
 import { makeRef } from "../src/ref";
 import { makeSemaphore } from "../src/semaphore";

@@ -31,7 +31,6 @@ import {
     eqvIO,
     expectExit
 } from "./tools.spec";
-import { string } from "fast-check";
 
 // Tests for the io module
 describe("io", () => {
@@ -393,8 +392,8 @@ describe("io", () => {
                 // The host exists to ensure we are testing in async boundaries
                 recoveryEquivalence: <E, E2, A>(host: RIO<DefaultR, E2, A>, e: E, kea: FunctionN<[E], RIO<DefaultR, E2, A>>) =>
                     eqvIO(
-                        io.chain(host, (_) => io.chainError(io.raiseError(e), kea)),
-                        io.chain(host, (_) => kea(e))
+                        io.chain(host, () => io.chainError(io.raiseError(e), kea)),
+                        io.chain(host, () => kea(e))
                     )
             };
             it(" - recovery equivalence", () =>
@@ -472,7 +471,7 @@ describe("io", () => {
                                 (cell) => {
                                     const action = io.bracket(
                                         io.delay(cell.update((n) => n + 1), acqDelay),
-                                        (_) => io.delay(cell.update((n) => n - 1), relDelay), (_) => io.delay(useResult, useDelay));
+                                        () => io.delay(cell.update((n) => n - 1), relDelay), () => io.delay(useResult, useDelay));
                                     return io.chain(io.fork(action),
                                         (child) => io.applySecond(io.delay(child.interrupt, interruptDelay), cell.get));
                                 }),

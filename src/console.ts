@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 /* eslint no-console:off */
+/* eslint @typescript-eslint/no-explicit-any:off */
 
 import { RIO, DefaultR, sync } from "./io";
 

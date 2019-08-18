@@ -30,7 +30,6 @@ import { Fiber, makeFiber } from "./fiber";
 import { makeRef, Ref } from "./ref";
 import { Runtime } from "./runtime";
 import { MonadThrow3 } from "fp-ts/lib/MonadThrow";
-import { array } from "fp-ts/lib/Array";
 
 export type DefaultR = {}; // eslint-disable-line @typescript-eslint/prefer-interface
 

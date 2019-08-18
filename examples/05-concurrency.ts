@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { IO, RIO, DefaultR } from "../src/io";
+import { RIO } from "../src/io";
 import { pipe } from "fp-ts/lib/pipeable";
 import * as wave from "../src/io";
 import * as resource from "../src/resource";

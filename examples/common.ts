@@ -18,7 +18,6 @@
 import * as wave from "../src/io";
 import { IO } from "../src/io";
 import { Resource } from "../src/resource";
-import * as rsrc from "../src/resource";
 import * as fs from "fs";
 import { left, right } from "fp-ts/lib/Either";
 
@@ -108,27 +107,10 @@ export const read = (handle: number, length: number): IO<NodeJS.ErrnoException, 
 )
 
 
-/**
- * Now lets define the resources that define our input and output file handles.
- * We use rsrc.suspend as the outer call because we need to perform IO in order to get the name of the file to open
- * This allows us to create a resource from an IO of a resource
- */
-const fileHandle = (path: string, mode: string): Resource<NodeJS.ErrnoException, number> =>
-    // Once we have the path to open, we can create the resource itself
-    // Bracket is similar to wave.bracket except it doesn't have consume logic
-    // We are defering defining how we will consume this resource
-    rsrc.bracket(
-        openFile(path, mode),
-        closeFile
-    );
-
-
 import * as https from "https"
 import * as http from "http";
 import * as resource from "../src/resource";
 import { RIO } from "../src/io";
-import { log } from "../src/console";
-import { pipe } from "fp-ts/lib/pipeable";
     
 export const agent: Resource<never, https.Agent> = resource.bracket(
     wave.sync(() => new https.Agent()),
@@ -152,10 +134,14 @@ export function fetch(url: string): RIO<https.Agent, Error, Buffer> {
                     buffers.push(chunk);
                 })
                 res.on("end", () => {
-                    callback(right(Buffer.concat(buffers)))
+                    if (!cancelled) {
+                        callback(right(Buffer.concat(buffers)))
+                    }
                 });
                 res.on("error", (e) => {
-                    callback(left(e));
+                    if (!cancelled) {
+                        callback(left(e));
+                    }
                 });
             });
             return () => {

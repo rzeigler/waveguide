@@ -13,10 +13,8 @@
 // limitations under the License.
 
 import * as wave from "../src/io"
-import { IO, RIO } from "../src/io";
+import { IO } from "../src/io";
 import { log } from "../src/console";
-import { bracket } from "../src/resource";
-// import * as process from "process"
 import * as fs from "fs";
 import { left, right } from "fp-ts/lib/Either";
 import { pipe } from "fp-ts/lib/pipeable";

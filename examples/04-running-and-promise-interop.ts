@@ -34,21 +34,21 @@ const fromPromise: IO<never, void> =
         wave.lift(n => n + 1),
         wave.chainWith((n) => log(`the answer is ${n}`)),
         // note that the E of a fromPromise is unkown because we do not have type information about the reject
-        wave.chainErrorWith((e: unknown) => log("could not compute the answer"))
+        wave.chainErrorWith(() => log("could not compute the answer"))
     )
 
 /**
  * Now that we have an IO from a promise, we can also run back to a promise
  */
 
-const p: Promise<void> = wave.runToPromiseR(fromPromise, {})
+const _p: Promise<void> = wave.runToPromiseR(fromPromise, {})
     .then(() => console.log("finished"));
 
 /**
  * We don't have to run to a Promise or use the runtime like main does
  * We can, instead use run
  */
-const cancellation: Lazy<void> = wave.runR(fromPromise, {}, (result) => {
+const _cancellation: Lazy<void> = wave.runR(fromPromise, {}, (result) => {
     // note that this will actually log before the "finished" above because waveguide's machinery doesn't require event loop ticks
     console.log("finished with " + JSON.stringify(result))
 })

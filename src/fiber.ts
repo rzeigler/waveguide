@@ -17,7 +17,6 @@ import { Driver, makeDriver } from "./driver";
 import { Exit } from "./exit";
 import { RIO, DefaultR } from "./io";
 import * as io from "./io";
-import { Runtime } from "./runtime";
 
 export interface Fiber<E, A> {
     /**

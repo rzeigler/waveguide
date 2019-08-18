@@ -99,7 +99,7 @@ describe("Dequeue", () => {
                     r.actual = r.actual.push(n);
                 },
                 toString() {
-                    return `push $n`;
+                    return `push ${n}`;
                 }
             };
         });
@@ -141,7 +141,7 @@ describe("Dequeue", () => {
                     r.actual = r.actual.offer(n);
                 },
                 toString() {
-                    return `offer $n`;
+                    return `offer ${n}`;
                 }
             };
         });
