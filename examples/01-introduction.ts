@@ -176,6 +176,7 @@ const run = wave.chainError(
  * can wire the process signals before we start executing the action.
  */
 import { makeDriver } from "../src/driver";
+import { ExitTag } from "../src/exit";
 function main(io: IO<never, void>): void {
     // We need a driver to run the io
     const driver = makeDriver<wave.DefaultR, never, void>();
@@ -186,7 +187,7 @@ function main(io: IO<never, void>): void {
     // If the driver exits, we should terminate the process
     driver.onExit((e) => {
         // We don't worry about the raise case because the type of main says you must have handled your errors
-        if (e._tag === "abort") {
+        if (e._tag === ExitTag.Abort) {
             process.exit(1);
         } else {
             process.exit(0);

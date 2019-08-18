@@ -33,7 +33,7 @@ export function main(io: IO<never, void>): void {
     // If the driver exits, we should terminate the process
     driver.onExit((e) => {
         // We don't worry about the raise case because the type of main says you must have handled your errors
-        if (e._tag === "abort") {
+        if (e._tag === ExitTag.Abort) {
             process.exit(1);
         } else {
             process.exit(0);
@@ -111,6 +111,7 @@ import * as https from "https"
 import * as http from "http";
 import * as resource from "../src/resource";
 import { RIO } from "../src/io";
+import { ExitTag } from "../src/exit";
     
 export const agent: Resource<never, https.Agent> = resource.bracket(
     wave.sync(() => new https.Agent()),
