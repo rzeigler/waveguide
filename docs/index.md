@@ -14,7 +14,23 @@ import { IO } from "waveguide/lib/io"
 ```
 
 ## Quick examples
-For a quick overview of what IO can do see the [overview example](https://github.com/rzeigler/waveguide/blob/master/examples/)
+For a quick overview of what IO can do see the [tutorial](https://github.com/rzeigler/waveguide/blob/master/examples/)
+
+## A Note On Function Naming
+waveguide uses a slightly different naming convention from fp-ts.
+The two sets of instances for RIO are exported as `instances` and `parInstances` from `lib/io`.
+Generally fp-ts modules export data first functions on the typeclass instances and data last functions from the module.
+Since there are a large number of IO functions that do not correspond to typeclass implementations waveguide takes a slightly different approach.
+In general, the module exports a number of data first functions such as:
+    * chain
+    * map
+    * chainError
+It also exports a corresponding set of data last curried functions with the `With` suffix such as:
+    * chainWith
+    * mapWith
+    * chainErrorWith
+Combinators that take multiple RIOs are different. Don't be confused by `zipWith` for instance.
+
 
 ## Constructing an IO
 There are a number of ways of constructing IOs exported from the /lib/io module
@@ -48,9 +64,9 @@ The IO action is now running in the background and can be interrupted, waited, o
 
 ## Running
 IOs are lazy so they don't actually do anything until they are interpreted.
-`unsafeRun` will begin running a fiber and returns a cancellation action.
-`unsafeRunToPromise` will return a promise of the result of the fiber, rejecting if a failure is encountered.
-`unsafeRunToPromiseTotal` will return a promise of an `Exit<E, A>` for the result of evaluation. This promis will not reject.
+`unsafeRunR` will begin running a fiber and returns a cancellation action.
+`unsafeRunToPromiseR` will return a promise of the result of the fiber, rejecting if a failure is encountered.
+`unsafeRunToPromiseTotalR` will return a promise of an `Exit<E, A>` for the result of evaluation. This promis will not reject.
 Once an IO is launched its runloop will execute synchronous effects continuously until an asynchronous boundary is hit.
 If this is undesirable insert `io.shift` or `io.shiftAsync` calls at appropriate points.
 IO can be used to perform long-running tasks without resorting to service workers on the main thread in this way.
