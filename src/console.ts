@@ -21,10 +21,10 @@ import { RIO, DefaultR, sync } from "./io";
  * Suspend console.log in an IO
  * @param msg
  */
-export function log(msg: string): RIO<DefaultR, never, void> {
+export function log(msg?: any, ...more: any[]): RIO<DefaultR, never, void> {
     return sync(() => {
     // tslint:disable-next-line
-        console.log(msg);
+        console.log(msg, ...more);
     });
 }
 
@@ -32,10 +32,10 @@ export function log(msg: string): RIO<DefaultR, never, void> {
  * Suspend console.warn in an IO
  * @param msg
  */
-export function warn(msg: string): RIO<DefaultR, never, void> {
+export function warn(msg?: any, ...more: any[]): RIO<DefaultR, never, void> {
     return sync(() => {
     // tslint:disable-next-line
-        console.warn(msg);
+        console.warn(msg, ...more);
     });
 }
 
@@ -43,9 +43,9 @@ export function warn(msg: string): RIO<DefaultR, never, void> {
  * Suspend console.error in an IO
  * @param msg
  */
-export function error(msg: string): RIO<DefaultR, never, void> {
+export function error(msg?: any, ...more: any[]): RIO<DefaultR, never, void> {
     return sync(() => {
     // tslint:disable-next-line
-        console.error(msg);
+        console.error(msg, ...more);
     });
 }

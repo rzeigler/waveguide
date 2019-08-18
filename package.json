@@ -9,7 +9,7 @@
     "clean": "rimraf lib/ build/",
     "build": "tsc",
     "test-build": "tsc -p tsconfig.test.json",
-    "test": "tsc -p tsconfig.test.json && mocha --recursive build/**/*.spec.js",
+    "test": "mocha --require ts-node/register --project tsconfig.test.json --recursive --watch-extensions ts,tsx test/*",
     "test-watch": "nodemon -w src -w test -e .ts -x 'tsc -p tsconfig.test.json && mocha --recursive --reporter min build/**/*.spec.js'",
     "lint": "eslint --ext .ts,.tsx src test examples benchmarks",
     "lint-fix": "eslint --fix --ext .ts,.tsx src test examples benchmarks",
