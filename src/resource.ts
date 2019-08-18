@@ -198,7 +198,7 @@ export function provideTo<R, E, A, B>(res: Managed<R, E, A>, rio: RIO<A, E, B>):
 export const URI = "Resource";
 export type URI = typeof URI;
 
-declare module 'fp-ts/lib/HKT' {
+declare module "fp-ts/lib/HKT" {
     interface URItoKind3<R, E, A> {
         Resource: Managed<R, E, A>;
     }

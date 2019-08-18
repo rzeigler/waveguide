@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+/* eslint no-console:off */
 
 import { pipe } from "fp-ts/lib/pipeable";
 import * as wave from "../src/io";
@@ -33,7 +34,7 @@ const fromPromise: IO<never, void> =
         wave.lift(n => n + 1),
         wave.chainWith((n) => log(`the answer is ${n}`)),
         // note that the E of a fromPromise is unkown because we do not have type information about the reject
-        wave.chainErrorWith((e: unknown) => log(`could not compute the answer`))
+        wave.chainErrorWith((e: unknown) => log("could not compute the answer"))
     )
 
 /**

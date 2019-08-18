@@ -183,8 +183,8 @@ function main(io: IO<never, void>): void {
     const driver = makeDriver<wave.DefaultR, never, void>();
     // If we receive signals, we should interrupt
     // These will cause the runloop to switch to its interrupt handling
-    process.on('SIGINT', () => driver.interrupt());
-    process.on('SIGTERM', () => driver.interrupt());
+    process.on("SIGINT", () => driver.interrupt());
+    process.on("SIGTERM", () => driver.interrupt());
     // If the driver exits, we should terminate the process
     driver.onExit((e) => {
         // We don't worry about the raise case because the type of main says you must have handled your errors

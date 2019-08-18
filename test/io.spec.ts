@@ -503,7 +503,7 @@ describe("io", () => {
                         io.accessEnv()
                     )
                         
-                    ),
+                ),
                 io.pure([43, 42])
             );
         });

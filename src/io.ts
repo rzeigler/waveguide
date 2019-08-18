@@ -1162,7 +1162,7 @@ export function runToPromiseExitR<R, E, A>(io: RIO<R, E, A>, r: R): Promise<Exit
 
 export const URI = "IO";
 export type URI = typeof URI;
-declare module 'fp-ts/lib/HKT' {
+declare module "fp-ts/lib/HKT" {
     interface URItoKind3<R, E, A> {
         IO: RIO<R, E, A>;
     }

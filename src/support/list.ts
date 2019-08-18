@@ -207,7 +207,7 @@ export function toArray<A>(as: List<A>): A[] {
 export const URI = "List";
 export type URI = typeof URI;
 
-declare module 'fp-ts/lib/HKT' {
+declare module "fp-ts/lib/HKT" {
     interface URItoKind<A> {
         List: List<A>;
     }

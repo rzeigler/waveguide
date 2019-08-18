@@ -15,8 +15,8 @@
 // This is a file for code that has already been introduced in example modules
 // so it is only replicated 2x
 
-import * as wave from '../src/io';
-import { IO } from '../src/io';
+import * as wave from "../src/io";
+import { IO } from "../src/io";
 import { Resource } from "../src/resource";
 import * as rsrc from "../src/resource";
 import * as fs from "fs";
@@ -29,13 +29,12 @@ export function main(io: IO<never, void>): void {
     const driver = makeDriver<wave.DefaultR, never, void>();
     // If we receive signals, we should interrupt
     // These will cause the runloop to switch to its interrupt handling
-    process.on('SIGINT', () => driver.interrupt());
-    process.on('SIGTERM', () => driver.interrupt());
+    process.on("SIGINT", () => driver.interrupt());
+    process.on("SIGTERM", () => driver.interrupt());
     // If the driver exits, we should terminate the process
     driver.onExit((e) => {
         // We don't worry about the raise case because the type of main says you must have handled your errors
         if (e._tag === "abort") {
-            console.error(e.abortedWith);
             process.exit(1);
         } else {
             process.exit(0);
@@ -124,50 +123,50 @@ const fileHandle = (path: string, mode: string): Resource<NodeJS.ErrnoException,
     );
 
 
-    import * as https from "https"
-    import * as http from "http";
-    import * as resource from "../src/resource";
-    import { RIO } from "../src/io";
-    import { log } from "../src/console";
-    import { pipe } from "fp-ts/lib/pipeable";
+import * as https from "https"
+import * as http from "http";
+import * as resource from "../src/resource";
+import { RIO } from "../src/io";
+import { log } from "../src/console";
+import { pipe } from "fp-ts/lib/pipeable";
     
-    export const agent: Resource<never, https.Agent> = resource.bracket(
-        wave.sync(() => new https.Agent()),
-        (agent) => wave.sync(() => agent.destroy())
-    );
+export const agent: Resource<never, https.Agent> = resource.bracket(
+    wave.sync(() => new https.Agent()),
+    (agent) => wave.sync(() => agent.destroy())
+);
     
     /**
      * We can think of an IncomingMessage as something we can produce if we have an agent resource
      * @param url 
      */
-    export function fetch(url: string): RIO<https.Agent, Error, Buffer> {
-        return wave.encaseReader((agent: https.Agent) => {
-            const options = {agent};
-            return wave.async<Error, Buffer>((callback) => {
-                let cancelled = false;
-                let response: http.IncomingMessage | undefined;
-                http.get(url, options, (res) => {
-                    response = res;
-                    let buffers: Buffer[] = [];
-                    res.on('data', (chunk) => {
-                        buffers.push(chunk);
-                    })
-                    res.on('end', () => {
-                        callback(right(Buffer.concat(buffers)))
-                    });
-                    res.on('error', (e) => {
-                        callback(left(e));
-                    });
+export function fetch(url: string): RIO<https.Agent, Error, Buffer> {
+    return wave.encaseReader((agent: https.Agent) => {
+        const options = {agent};
+        return wave.async<Error, Buffer>((callback) => {
+            let cancelled = false;
+            let response: http.IncomingMessage | undefined;
+            http.get(url, options, (res) => {
+                response = res;
+                let buffers: Buffer[] = [];
+                res.on("data", (chunk) => {
+                    buffers.push(chunk);
+                })
+                res.on("end", () => {
+                    callback(right(Buffer.concat(buffers)))
                 });
-                return () => {
-                    cancelled = true;
-                    if (response) {
-                        response.destroy();
-                    }
-                };
-            })
+                res.on("error", (e) => {
+                    callback(left(e));
+                });
+            });
+            return () => {
+                cancelled = true;
+                if (response) {
+                    response.destroy();
+                }
+            };
         })
-    }
+    })
+}
 
 export const now = wave.sync(() => process.hrtime.bigint());
 

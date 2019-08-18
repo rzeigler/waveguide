@@ -57,13 +57,13 @@ function fetch(url: string): RIO<https.Agent, Error, Buffer> {
             http.get(url, options, (res) => {
                 response = res;
                 let buffers: Buffer[] = [];
-                res.on('data', (chunk) => {
+                res.on("data", (chunk) => {
                     buffers.push(chunk);
                 })
-                res.on('end', () => {
+                res.on("end", () => {
                     callback(right(Buffer.concat(buffers)))
                 });
-                res.on('error', (e) => {
+                res.on("error", (e) => {
                     callback(left(e));
                 });
             });

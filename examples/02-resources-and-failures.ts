@@ -95,7 +95,7 @@ const handles: Resource<Errno, [number, number]> =
     // or you could use
     // again, not that this call to zip is perfectly safe because like IO, 
     // Resource doesn't do anything until it is run
-    rsrc.zip(inFileHandle, outFileHandle)
+rsrc.zip(inFileHandle, outFileHandle)
 
 
 /**

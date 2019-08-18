@@ -47,7 +47,7 @@ function time<R, E, O>(io: RIO<R, E, O>): RIO<R, E, readonly [O, bigint]> {
  */
 import { fetch, agent } from "./common";
 
-type Info = {host: string, q: string};
+interface Info {host: string; q: string}
 type TimeInfo = readonly [ Info, bigint ];
 type CompareInfo = readonly [ TimeInfo, TimeInfo ];
 
@@ -93,9 +93,9 @@ const versus = resource.provideTo(agent, rt)
  * 
  */
 const firstVersusIO = ["referential+transparency", "monad", "functor", "haskell", "scala", "purescript", "lenses"]
-        .map(compare)
-        // When we race IOs, the loser is automatically cancelled immediately
-        .reduce((left, right) => wave.race(left, right));
+    .map(compare)
+// When we race IOs, the loser is automatically cancelled immediately
+    .reduce((left, right) => wave.race(left, right));
         
 const firstVersus = 
         resource.provideTo(agent, wave.chain(firstVersusIO,
