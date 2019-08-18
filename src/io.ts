@@ -46,6 +46,21 @@ function snd<A, B>(_: A, b: B): B {
     return b;
 }
 
+export enum RIOTag {
+    Pure,
+    Raised,
+    Completed,
+    Suspended,
+    Async,
+    Chain,
+    AccessEnv,
+    ProvideEnv,
+    Collapse,
+    InterruptibleRegion,
+    AccessInterruptible,
+    AccessRuntime
+}
+
 /**
  * A description of an effect to perform
  */
@@ -66,7 +81,7 @@ export type RIO<R, E, A> =
 export type IO<E, A> = RIO<DefaultR, E, A>;
 
 export interface Pure<A> {
-    readonly _tag: "pure";
+    readonly _tag: RIOTag.Pure;
     readonly value: A;
 }
 
@@ -76,13 +91,13 @@ export interface Pure<A> {
  */
 export function pure<A>(a: A): Pure<A> {
     return {
-        _tag: "pure",
+        _tag: RIOTag.Pure,
         value: a
     };
 }
 
 export interface Raised<E> {
-    readonly _tag: "raised";
+    readonly _tag: RIOTag.Raised;
     readonly error: Cause<E>;
 }
 
@@ -93,7 +108,7 @@ export interface Raised<E> {
  * @param e
  */
 export function raised<E>(e: Cause<E>): Raised<E> {
-    return { _tag: "raised", error: e };
+    return { _tag: RIOTag.Raised, error: e };
 }
 
 /**
@@ -118,7 +133,7 @@ export function raiseAbort(u: unknown): Raised<never> {
 export const raiseInterrupt: Raised<never> = raised(ex.interrupt);
 
 export interface Completed<E, A> {
-    readonly _tag: "completed";
+    readonly _tag: RIOTag.Completed;
     readonly exit: Exit<E, A>;
 }
 
@@ -128,13 +143,13 @@ export interface Completed<E, A> {
  */
 export function completed<E, A>(exit: Exit<E, A>): Completed<E, A> {
     return {
-        _tag: "completed",
+        _tag: RIOTag.Completed,
         exit
     };
 }
 
 export interface Suspended<R, E, A> {
-    readonly _tag: "suspended";
+    readonly _tag: RIOTag.Suspended;
     readonly thunk: Lazy<RIO<R, E, A>>;
 }
 
@@ -146,7 +161,7 @@ export interface Suspended<R, E, A> {
  */
 export function suspended<R, E, A>(thunk: Lazy<RIO<R, E, A>>): Suspended<R, E, A> {
     return {
-        _tag: "suspended",
+        _tag: RIOTag.Suspended,
         thunk
     };
 }
@@ -162,7 +177,7 @@ export function sync<A>(thunk: Lazy<A>): Suspended<DefaultR, never, A> {
 }
 
 export interface Async<E, A> {
-    readonly _tag: "async";
+    readonly _tag: RIOTag.Async;
     readonly op: FunctionN<[FunctionN<[Either<E, A>], void>], Lazy<void>>;
 }
 
@@ -176,7 +191,7 @@ export interface Async<E, A> {
  */
 export function async<E, A>(op: FunctionN<[FunctionN<[Either<E, A>], void>], Lazy<void>>): Async<E, A> {
     return {
-        _tag: "async",
+        _tag: RIOTag.Async,
         op
     };
 }
@@ -192,7 +207,7 @@ export function asyncTotal<A>(op: FunctionN<[FunctionN<[A], void>], Lazy<void>>)
 }
 
 export interface InterruptibleRegion<R, E, A> {
-    readonly _tag: "interrupt-region";
+    readonly _tag: RIOTag.InterruptibleRegion;
     readonly inner: RIO<R, E, A>;
     readonly flag: boolean;
 }
@@ -204,14 +219,14 @@ export interface InterruptibleRegion<R, E, A> {
  */
 export function interruptibleRegion<R, E, A>(inner: RIO<R, E, A>, flag: boolean): InterruptibleRegion<R, E, A> {
     return {
-        _tag: "interrupt-region",
+        _tag: RIOTag.InterruptibleRegion,
         inner,
         flag
     };
 }
 
 export interface Chain<R, E, Z, A> {
-    readonly _tag: "chain";
+    readonly _tag: RIOTag.Chain;
     readonly inner: RIO<R, E, Z>;
     readonly bind: FunctionN<[Z], RIO<R, E, A>>;
 }
@@ -223,25 +238,25 @@ export interface Chain<R, E, Z, A> {
  */
 export function chain<R1, R2, E1, E2, A1, A2>(inner: RIO<R1, E1, A1>, bind: FunctionN<[A1], RIO<R2, E2, A2>>): Chain<R1 & R2, E1 | E2, A1, A2> {
     return {
-        _tag: "chain",
+        _tag: RIOTag.Chain,
         inner: inner as RIO<R1 & R2, E1 | E2, A1>,
         bind: bind as FunctionN<[A1], RIO<R1 & R2, E1 | E2, A2>>
     };
 }
 
 export interface AccessEnv<R> {
-    readonly _tag: "read";
+    readonly _tag: RIOTag.AccessEnv;
 }
 
 /**
  * Create an IO that accesses its environment
  */
 export function accessEnv<R>(): RIO<R, never, R> {
-    return { _tag: "read" }
+    return { _tag: RIOTag.AccessEnv }
 }
 
 export interface ProvideEnv<R, E, A> {
-    readonly _tag: "provide";
+    readonly _tag: RIOTag.ProvideEnv;
     readonly r: R;
     readonly inner: RIO<R, E, A>;
 }
@@ -283,7 +298,7 @@ export function encaseOption<E, A>(o: Option<A>, onError: Lazy<E>): IO<E, A> {
  */
 export function provideEnv<R, E, A>(r: R, io: RIO<R, E, A>): RIO<DefaultR, E, A> {
     return {
-        _tag: "provide",
+        _tag: RIOTag.ProvideEnv,
         r,
         inner: io
     };
@@ -326,7 +341,7 @@ export function chainWith<R2, E2, Z, A>(bind: FunctionN<[Z], RIO<R2, E2, A>>): <
 }
 
 export interface Collapse<R, E1, E2, A1, A2> {
-    readonly _tag: "collapse";
+    readonly _tag: RIOTag.Collapse;
     readonly inner: RIO<R, E1, A1>;
     readonly failure: FunctionN<[Cause<E1>], RIO<R, E2, A2>>;
     readonly success: FunctionN<[A1], RIO<R, E2, A2>>;
@@ -345,7 +360,7 @@ export function foldExit<R, E1, E2, A1, A2>(inner: RIO<R, E1, A1>,
     failure: FunctionN<[Cause<E1>], RIO<R, E2, A2>>,
     success: FunctionN<[A1], RIO<R, E2, A2>>): Collapse<R, E1, E2, A1, A2> {
     return {
-        _tag: "collapse",
+        _tag: RIOTag.Collapse,
         inner,
         failure,
         success
@@ -364,22 +379,22 @@ export function foldExitWith<R, E1, E2, A1, A2>(failure: FunctionN<[Cause<E1>], 
 }
 
 export interface AccessInterruptible {
-    readonly _tag: "access-interruptible";
+    readonly _tag: RIOTag.AccessInterruptible;
 }
 
 /**
  * Get the interruptible state of the current fiber
  */
-export const accessInterruptible: RIO<DefaultR, never, boolean> = { _tag: "access-interruptible" };
+export const accessInterruptible: RIO<DefaultR, never, boolean> = { _tag: RIOTag.AccessInterruptible };
 
 export interface AccessRuntime {
-    readonly _tag: "access-runtime";
+    readonly _tag: RIOTag.AccessRuntime;
 }
 
 /**
  * Get the runtime of the current fiber
  */
-export const accessRuntime: RIO<DefaultR, never, Runtime> = { _tag: "access-runtime" };
+export const accessRuntime: RIO<DefaultR, never, Runtime> = { _tag: RIOTag.AccessRuntime };
 
 /**
  * Access the runtime then provide it to the provided function

@@ -16,7 +16,7 @@ import { Either, fold as foldEither } from "fp-ts/lib/Either";
 import { FunctionN, Lazy } from "fp-ts/lib/function";
 import { Option } from "fp-ts/lib/Option";
 import { Cause, Done, done, Exit, interrupt as interruptExit, raise } from "./exit";
-import { RIO } from "./io";
+import { RIO, RIOTag } from "./io";
 import * as io from "./io";
 import { defaultRuntime, Runtime } from "./runtime";
 import { Completable, completable } from "./support/completable";
@@ -209,43 +209,43 @@ export function makeDriver<R, E, A>(runtime: Runtime = defaultRuntime): Driver<R
         let current: UnkIO | undefined = go;
         while (current && (!isInterruptible() || !interrupted)) {
             try {
-                if (current._tag === "pure") {
+                if (current._tag === RIOTag.Pure) {
                     current = next(current.value);
-                } else if (current._tag === "raised") {
+                } else if (current._tag === RIOTag.Raised) {
                     if (current.error._tag === "interrupt") {
                         interrupted = true;
                     }
                     current = handle(current.error);
-                } else if (current._tag === "completed") {
+                } else if (current._tag === RIOTag.Completed) {
                     if (current.exit._tag === "value") {
                         current = next(current.exit.value);
                     } else {
                         current = handle(current.exit);
                     }
-                } else if (current._tag === "suspended") {
+                } else if (current._tag === RIOTag.Suspended) {
                     current = current.thunk();
-                } else if (current._tag === "async") {
+                } else if (current._tag === RIOTag.Async) {
                     contextSwitch(current.op);
                     current = undefined;
-                } else if (current._tag === "chain") {
+                } else if (current._tag === RIOTag.Chain) {
                     frameStack.push(makeFrame(current.bind));
                     current = current.inner;
-                } else if (current._tag === "collapse") {
+                } else if (current._tag === RIOTag.Collapse) {
                     frameStack.push(makeFoldFrame(current.success, current.failure));
                     current = current.inner;
-                } else if (current._tag === "read") {
+                } else if (current._tag === RIOTag.AccessEnv) {
                     current = io.pure(environmentStack.peek())
-                } else if (current._tag === "provide") {
+                } else if (current._tag === RIOTag.ProvideEnv) {
                     environmentStack.push(current.r)
                     frameStack.push(makeEnvironmentFrame(environmentStack));
                     current = current.inner;
-                } else if (current._tag === "interrupt-region") {
+                } else if (current._tag === RIOTag.InterruptibleRegion) {
                     interruptRegionStack.push(current.flag);
                     frameStack.push(makeInterruptFrame(interruptRegionStack));
                     current = current.inner;
-                } else if (current._tag === "access-runtime") {
+                } else if (current._tag === RIOTag.AccessRuntime) {
                     current = io.pure(runtime);
-                } else if (current._tag === "access-interruptible") {
+                } else if (current._tag === RIOTag.AccessInterruptible) {
                     current = io.pure(isInterruptible());
                 } else {
                     // This should never happen.
