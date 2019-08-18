@@ -209,49 +209,61 @@ export function makeDriver<R, E, A>(runtime: Runtime = defaultRuntime): Driver<R
         let current: UnkIO | undefined = go;
         while (current && (!isInterruptible() || !interrupted)) {
             try {
-                if (current._tag === RIOTag.Pure) {
-                    current = next(current.value);
-                } else if (current._tag === RIOTag.Raised) {
-                    if (current.error._tag === "interrupt") {
-                        interrupted = true;
-                    }
-                    current = handle(current.error);
-                } else if (current._tag === RIOTag.Completed) {
-                    if (current.exit._tag === "value") {
-                        current = next(current.exit.value);
-                    } else {
-                        current = handle(current.exit);
-                    }
-                } else if (current._tag === RIOTag.Suspended) {
-                    current = current.thunk();
-                } else if (current._tag === RIOTag.Async) {
-                    contextSwitch(current.op);
-                    current = undefined;
-                } else if (current._tag === RIOTag.Chain) {
-                    frameStack.push(makeFrame(current.bind));
-                    current = current.inner;
-                } else if (current._tag === RIOTag.Collapse) {
-                    frameStack.push(makeFoldFrame(current.success, current.failure));
-                    current = current.inner;
-                } else if (current._tag === RIOTag.AccessEnv) {
-                    current = io.pure(environmentStack.peek())
-                } else if (current._tag === RIOTag.ProvideEnv) {
-                    environmentStack.push(current.r)
-                    frameStack.push(makeEnvironmentFrame(environmentStack));
-                    current = current.inner;
-                } else if (current._tag === RIOTag.InterruptibleRegion) {
-                    interruptRegionStack.push(current.flag);
-                    frameStack.push(makeInterruptFrame(interruptRegionStack));
-                    current = current.inner;
-                } else if (current._tag === RIOTag.AccessRuntime) {
-                    current = io.pure(runtime);
-                } else if (current._tag === RIOTag.AccessInterruptible) {
-                    current = io.pure(isInterruptible());
-                } else {
-                    // This should never happen.
-                    // However, there is not great way of ensuring the above is total and its worth having during developments
-                    throw new Error(`Die: Unrecognized current type ${current}`);
+                switch (current._tag) {
+                    case RIOTag.Pure:
+                        current = next(current.value);
+                        break;
+                    case RIOTag.Raised:
+                        if (current.error._tag === "interrupt") {
+                            interrupted = true;
+                        }
+                        current = handle(current.error);
+                        break;
+                    case RIOTag.Completed:
+                        if (current.exit._tag === "value") {
+                            current = next(current.exit.value);
+                        } else {
+                            current = handle(current.exit);
+                        }
+                        break;
+                    case RIOTag.Suspended:
+                        current = current.thunk();
+                        break;
+                    case RIOTag.Async:
+                        contextSwitch(current.op);
+                        current = undefined;
+                        break;
+                    case RIOTag.Chain:
+                        frameStack.push(makeFrame(current.bind));
+                        current = current.inner;
+                        break;
+                    case RIOTag.Collapse:
+                        frameStack.push(makeFoldFrame(current.success, current.failure));
+                        current = current.inner;
+                        break;
+                    case RIOTag.ProvideEnv:
+                        environmentStack.push(current.r)
+                        frameStack.push(makeEnvironmentFrame(environmentStack));
+                        current = current.inner;
+                        break;
+                    case RIOTag.AccessEnv:
+                        current = io.pure(environmentStack.peek());
+                        break;
+                    case RIOTag.InterruptibleRegion:
+                        interruptRegionStack.push(current.flag);
+                        frameStack.push(makeInterruptFrame(interruptRegionStack));
+                        current = current.inner;
+                        break;
+                    case RIOTag.AccessRuntime:
+                        current = io.pure(runtime);
+                        break;
+                    case RIOTag.AccessInterruptible:
+                        current = io.pure(isInterruptible());
+                        break;
+                    default:
+                        throw new Error(`Die: Unrecognized current type ${current}`);
                 }
+
             } catch (e) {
                 current = io.raiseAbort(e);
             }

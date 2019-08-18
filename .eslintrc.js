@@ -17,7 +17,7 @@ module.exports = {
     ],
     rules: {
         "@typescript-eslint/explicit-function-return-type": ["error",  { allowExpressions: true, allowHigherOrderFunctions: true, allowTypedFunctionExpressions: true }],
-        "@typescript-eslint/no-unused-vars": ["off"],
+        "@typescript-eslint/no-unused-vars": ["warn", {varsIgnorePattern: "^_.*", argsIgnorePattern: "^_.*"}],
         "quotes": ["warn", "double"]
     }
   };
