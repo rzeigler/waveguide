@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Exit } from "./exit";
+import { Exit, ExitTag } from "./exit";
 import { RIO, DefaultR, unit } from "./io";
 
 export function ticketExit<A>(ticket: Ticket<A>, exit: Exit<never, A>): RIO<DefaultR, never, void> {
-    if (exit._tag === "interrupt") {
+    if (exit._tag === ExitTag.Interrupt) {
         return ticket.cleanup;
     }
     return unit;

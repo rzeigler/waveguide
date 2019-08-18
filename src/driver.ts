@@ -15,7 +15,7 @@
 import { Either, fold as foldEither } from "fp-ts/lib/Either";
 import { FunctionN, Lazy } from "fp-ts/lib/function";
 import { Option } from "fp-ts/lib/Option";
-import { Cause, Done, done, Exit, interrupt as interruptExit, raise } from "./exit";
+import { Cause, Done, done, Exit, interrupt as interruptExit, raise, ExitTag } from "./exit";
 import { RIO, RIOTag } from "./io";
 import * as io from "./io";
 import { defaultRuntime, Runtime } from "./runtime";
@@ -125,7 +125,7 @@ export function makeDriver<R, E, A>(runtime: Runtime = defaultRuntime): Driver<R
 
     function canRecover(cause: Cause<unknown>): boolean {
     // It is only possible to recovery from interrupts in an uninterruptible region
-        if (cause._tag === "interrupt") {
+        if (cause._tag === ExitTag.Interrupt) {
             return !isInterruptible();
         }
         return true;
@@ -214,13 +214,13 @@ export function makeDriver<R, E, A>(runtime: Runtime = defaultRuntime): Driver<R
                         current = next(current.value);
                         break;
                     case RIOTag.Raised:
-                        if (current.error._tag === "interrupt") {
+                        if (current.error._tag === ExitTag.Interrupt) {
                             interrupted = true;
                         }
                         current = handle(current.error);
                         break;
                     case RIOTag.Completed:
-                        if (current.exit._tag === "value") {
+                        if (current.exit._tag === ExitTag.Done) {
                             current = next(current.exit.value);
                         } else {
                             current = handle(current.exit);

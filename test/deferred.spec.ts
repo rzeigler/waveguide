@@ -14,7 +14,7 @@
 
 import fc from "fast-check";
 import { makeDeferred  } from "../src/deferred";
-import { done } from "../src/exit";
+import { done, ExitTag } from "../src/exit";
 import * as io from "../src/io";
 import { eqvIO, expectExit, expectExitIn } from "./tools.spec";
 
@@ -35,7 +35,7 @@ describe("Deferred", () => {
                     const c42 = def.done(42);
                     return io.applySecond(c42, c42);
                 }),
-            (exit) => exit._tag === "abort" ? (exit.abortedWith as Error).message : undefined,
+            (exit) => exit._tag === ExitTag.Abort ? (exit.abortedWith as Error).message : undefined,
             "Die: Completable is already completed"
         )
     );

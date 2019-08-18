@@ -25,6 +25,7 @@ import { natNumber } from "./sanity";
 import { makeSemaphore } from "./semaphore";
 import { Dequeue, empty, of } from "./support/dequeue";
 import { makeTicket, ticketExit, ticketUse } from "./ticket";
+import { ExitTag } from "./exit";
 
 export interface ConcurrentQueue<A> {
     readonly take: RIO<DefaultR, never, A>;
@@ -169,7 +170,7 @@ export function boundedQueue<A>(capacity: number): RIO<DefaultR, never, Concurre
                     sem.acquire,
                     (inner) =>
                     // Before take, we must release the semaphore. If we are interrupted we should re-acquire the item
-                        io.bracketExit(sem.release, (_, exit) => exit._tag === "interrupt" ? sem.acquire : io.unit, () => inner)
+                        io.bracketExit(sem.release, (_, exit) => exit._tag === ExitTag.Interrupt ? sem.acquire : io.unit, () => inner)
                 )
         )
     );

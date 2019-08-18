@@ -460,7 +460,7 @@ export const unit: RIO<DefaultR, never, void> = pure(undefined);
  */
 export function chainError<R1, R2, E1, E2, A>(io: RIO<R1, E1, A>, f: FunctionN<[E1], RIO<R2, E2, A>>): RIO<R1 & R2, E2, A> {
     return foldExit(io,
-        (cause) => cause._tag === "raise" ? f(cause.error) : completed(cause),
+        (cause) => cause._tag === ex.ExitTag.Raise ? f(cause.error) : completed(cause),
         pure
     );
 }
@@ -500,7 +500,7 @@ export function bimap<R, E1, E2, A, B>(io: RIO<R, E1, A>,
     leftMap: FunctionN<[E1], E2>,
     rightMap: FunctionN<[A], B>): RIO<R, E2, B> {
     return foldExit(io,
-        (cause) => cause._tag === "raise" ? raiseError(leftMap(cause.error)) : completed(cause),
+        (cause) => cause._tag === ex.ExitTag.Raise ? raiseError(leftMap(cause.error)) : completed(cause),
         flow(rightMap, pure)
     );
 }
@@ -630,7 +630,7 @@ export function apWith_<R1, R2, E1, E2, A, B>(iof: RIO<R1, E1, FunctionN<[A], B>
 export function flip<R, E, A>(io: RIO<R, E, A>): RIO<R, A, E> {
     return foldExit(
         io,
-        (error) => error._tag === "raise" ? pure(error.error) : completed(error),
+        (error) => error._tag === ex.ExitTag.Raise ? pure(error.error) : completed(error),
         raiseError
     );
 }
@@ -713,11 +713,11 @@ export function interruptibleMask<R1, R2, E1, E2, A>(f: FunctionN<[InterruptMask
 }
 
 function combineFinalizerExit<E, A>(fiberExit: Exit<E, A>, releaseExit: Exit<E, unknown>): Exit<E, A> {
-    if (fiberExit._tag === "value" && releaseExit._tag === "value") {
+    if (fiberExit._tag === ex.ExitTag.Done && releaseExit._tag === ex.ExitTag.Done) {
         return fiberExit;
-    } else if (fiberExit._tag === "value") {
+    } else if (fiberExit._tag === ex.ExitTag.Done) {
         return releaseExit as Cause<E>;
-    } else if (releaseExit._tag === "value") {
+    } else if (releaseExit._tag === ex.ExitTag.Done) {
         return fiberExit;
     } else {
         // TODO: Figure out how to sanely report both of these, we swallow them currently
@@ -794,7 +794,7 @@ export function onInterrupted<R1, R2, E1, E2, A>(ioa: RIO<R1, E1, A>, finalizer:
         pipe(
             result(cutout(ioa)),
             chainWith((exit) =>
-                exit._tag === "interrupt" ?
+                exit._tag === ex.ExitTag.Interrupt ?
                     pipe(
                         finalizer,
                         result,
@@ -978,7 +978,7 @@ export function raceFirst<R, E, A>(io1: RIO<R, E, A>, io2: RIO<R, E, A>): RIO<R,
 
 
 function fallbackToLoser<R, E, A>(exit: Exit<E, A>, loser: Fiber<E, A>): RIO<R, E, A> {
-    return exit._tag === "value" ?
+    return exit._tag === ex.ExitTag.Done ?
         applySecond(loser.interrupt, completed(exit)) :
         loser.join;
 }
@@ -1149,13 +1149,13 @@ export function runR<R, E, A>(io: RIO<R, E, A>, r: R, callback?: FunctionN<[Exit
 export function runToPromiseR<R, E, A>(io: RIO<R, E, A>, r: R): Promise<A> {
     return new Promise((resolve, reject) =>
         runR(io, r, (exit) => {
-            if (exit._tag === "value") {
+            if (exit._tag === ex.ExitTag.Done) {
                 resolve(exit.value);
-            } else if (exit._tag === "abort") {
+            } else if (exit._tag === ex.ExitTag.Abort) {
                 reject(exit.abortedWith);
-            } else if (exit._tag === "raise") {
+            } else if (exit._tag === ex.ExitTag.Raise) {
                 reject(exit.error);
-            } else if (exit._tag === "interrupt") {
+            } else if (exit._tag === ex.ExitTag.Interrupt) {
                 reject();
             }
         })

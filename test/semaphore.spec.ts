@@ -16,7 +16,7 @@ import fc from "fast-check";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { array } from "fp-ts/lib/Array";
 import { pipe } from "fp-ts/lib/pipeable";
-import { done } from "../src/exit";
+import { done, ExitTag } from "../src/exit";
 import * as io from "../src/io";
 import { makeRef } from "../src/ref";
 import { makeSemaphore } from "../src/semaphore";
@@ -81,7 +81,7 @@ describe("semaphore", () => {
             .bindL("c2exit", ({child2}) => child2.wait)
             .bindL("after", ({turnstyle}) => turnstyle.get)
             .return(({c2exit, moved, after}) => ({c2exit: c2exit._tag, moved, after}));
-        return expectExit(eff, done({c2exit: "value", moved: 0, after: 2}));
+        return expectExit(eff, done({c2exit: ExitTag.Done, moved: 0, after: 2}));
     });
     it("withPermitsN is interruptible", () => {
         const eff = Do(io.instances)

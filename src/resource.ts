@@ -20,6 +20,13 @@ import { RIO } from "./io";
 import { Fiber } from "./fiber";
 import * as io from "./io";
 
+export enum ManagedTag {
+    Pure,
+    Bracket,
+    Suspended,
+    Chain
+}
+
 /**
  * A Managed<E, A> is a type that encapsulates the safe acquisition and release of a resource.
  *
@@ -37,7 +44,7 @@ export type Managed<R, E, A> =
 export type Resource<E, A> = Managed<io.DefaultR, E, A>;
 
 export interface Pure<A> {
-    readonly _tag: "pure";
+    readonly _tag: ManagedTag.Pure;
     readonly value: A;
 }
 
@@ -47,13 +54,13 @@ export interface Pure<A> {
  */
 export function pure<A>(value: A): Pure<A> {
     return {
-        _tag: "pure",
+        _tag: ManagedTag.Pure,
         value
     };
 }
 
 export interface Bracket<R, E, A> {
-    readonly _tag: "bracket";
+    readonly _tag: ManagedTag.Bracket;
     readonly acquire: RIO<R, E, A>;
     readonly release: FunctionN<[A], RIO<R, E, unknown>>;
 }
@@ -65,14 +72,14 @@ export interface Bracket<R, E, A> {
  */
 export function bracket<R, E, A>(acquire: RIO<R, E, A>, release: FunctionN<[A], RIO<R, E, unknown>>): Bracket<R, E, A> {
     return {
-        _tag: "bracket",
+        _tag: ManagedTag.Bracket,
         acquire,
         release
     };
 }
 
 export interface Suspended<R, E, A> {
-    readonly _tag: "suspend";
+    readonly _tag: ManagedTag.Suspended;
     readonly suspended: RIO<R, E, Managed<R, E, A>>;
 }
 
@@ -82,13 +89,13 @@ export interface Suspended<R, E, A> {
  */
 export function suspend<R, E, A>(suspended: RIO<R, E, Managed<R, E, A>>): Suspended<R, E, A> {
     return {
-        _tag: "suspend",
+        _tag: ManagedTag.Suspended,
         suspended
     };
 }
 
 export interface Chain<R, E, L, A> {
-    readonly _tag: "chain";
+    readonly _tag: ManagedTag.Chain;
     readonly left: Managed<R, E, L>;
     readonly bind: FunctionN<[L], Managed<R, E, A>>;
 }
@@ -102,7 +109,7 @@ export interface Chain<R, E, L, A> {
  */
 export function chain<R, E, L, A>(left: Managed<R, E, L>, bind: FunctionN<[L], Managed<R, E, A>>): Chain<R, E, L, A> {
     return {
-        _tag: "chain",
+        _tag: ManagedTag.Chain,
         left,
         bind
     };
@@ -175,14 +182,17 @@ export function fiber<R, E, A>(rio: RIO<R, E, A>): Managed<R, never, Fiber<E, A>
  * @param f 
  */
 export function use<R, E, A, B>(res: Managed<R, E, A>, f: FunctionN<[A], RIO<R, E, B>>): RIO<R, E, B> {
-    if (res._tag === "pure") {
-        return f(res.value);
-    } else if (res._tag === "bracket") {
-        return io.bracket(res.acquire, res.release, f);
-    } else if (res._tag === "suspend") {
-        return io.chain(res.suspended, consume(f));
-    } else {
-        return use(res.left, (a) => use(res.bind(a), f));
+    switch (res._tag) {
+        case ManagedTag.Pure:
+            return f(res.value);
+        case ManagedTag.Bracket:
+            return io.bracket(res.acquire, res.release, f);
+        case ManagedTag.Suspended:
+            return io.chain(res.suspended, consume(f));
+        case ManagedTag.Chain:
+            return use(res.left, (a) => use(res.bind(a), f));
+        default:
+            throw new Error(`Die: Unrecognized current type ${res}`);
     }
 }
 

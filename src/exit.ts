@@ -12,16 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
+export enum ExitTag { Done, Raise, Abort, Interrupt }
+
 export type Exit<E, A> = Done<A> | Cause<E>;
 
 export interface Done<A> {
-    readonly _tag: "value";
+    readonly _tag: ExitTag.Done;
     readonly value: A;
 }
 
 export function done<A>(v: A): Done<A> {
     return {
-        _tag: "value",
+        _tag: ExitTag.Done,
         value: v
     };
 }
@@ -29,33 +32,33 @@ export function done<A>(v: A): Done<A> {
 export type Cause<E> = Raise<E> | Abort | Interrupt;
 
 export interface Raise<E> {
-    readonly _tag: "raise";
+    readonly _tag: ExitTag.Raise;
     readonly error: E;
 }
 
 export function raise<E>(e: E): Raise<E> {
     return {
-        _tag: "raise",
+        _tag: ExitTag.Raise,
         error: e
     };
 }
 
 export interface Abort {
-    readonly _tag: "abort";
+    readonly _tag: ExitTag.Abort;
     readonly abortedWith: unknown;
 }
 
 export function abort(a: unknown): Abort {
     return {
-        _tag: "abort",
+        _tag: ExitTag.Abort,
         abortedWith: a
     };
 }
 
 export interface Interrupt {
-    readonly _tag: "interrupt";
+    readonly _tag: ExitTag.Interrupt;
 }
 
 export const interrupt: Interrupt = {
-    _tag: "interrupt"
+    _tag: ExitTag.Interrupt
 };
