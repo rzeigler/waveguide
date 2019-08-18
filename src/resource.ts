@@ -177,6 +177,16 @@ export function fiber<R, E, A>(rio: RIO<R, E, A>): Managed<R, never, Fiber<E, A>
 }
 
 /**
+ * Create a Resource by wrapping an IO producing a value that does not need to be disposed
+ * 
+ * @param res 
+ * @param f 
+ */
+export function encaseRIO<R, E, A>(rio: RIO<R, E, A>): Managed<R, E, A> {
+    return bracket(rio, () => io.unit);
+}
+
+/**
  * Use a resource to produce a program that can be run.s
  * @param res 
  * @param f 
