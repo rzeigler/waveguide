@@ -37,7 +37,7 @@ RunSuite(`CreateNestedMap ${MAX}`, {
         return fluture
     },
     waveguide: () => {
-        let io: IO<never, BigInt> = wave.pure(BigInt(0));
+        let io: IO<never, bigint> = wave.pure(BigInt(0));
         for (let i = 0; i < MAX; i++) {
             io = wave.map(io, inc);
         }
