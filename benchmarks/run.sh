@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 
-rm benchmarks/README.md
+set -e 
+
+rm -f benchmarks/README.md
 
 for BENCH in benchmarks/*.ts
 do
-    npx ts-node $BENCH
+    npx ts-node $BENCH | tee benchmarks/README.md
 done
