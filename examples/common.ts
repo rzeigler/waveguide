@@ -20,6 +20,7 @@ import { IO } from "../src/io";
 import { Resource } from "../src/resource";
 import * as fs from "fs";
 import { left, right } from "fp-ts/lib/Either";
+import { ExitTag } from "../src/exit";
 
 // main from overview.ts
 import { makeDriver } from "../src/driver";
@@ -111,7 +112,6 @@ import * as https from "https"
 import * as http from "http";
 import * as resource from "../src/resource";
 import { RIO } from "../src/io";
-import { ExitTag } from "../src/exit";
     
 export const agent: Resource<never, https.Agent> = resource.bracket(
     wave.sync(() => new https.Agent()),
