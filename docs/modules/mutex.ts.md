@@ -22,7 +22,7 @@ export interface Mutex {
   readonly acquire: RIO<DefaultR, never, void>
   readonly release: RIO<DefaultR, never, void>
   readonly available: RIO<DefaultR, never, boolean>
-  withExclusion<E, A>(inner: RIO<DefaultR, E, A>): RIO<DefaultR, E, A>
+  withExclusion<R, E, A>(inner: RIO<R, E, A>): RIO<R, E, A>
 }
 ```
 

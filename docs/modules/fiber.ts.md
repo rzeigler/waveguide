@@ -55,5 +55,5 @@ export interface Fiber<E, A> {
 **Signature**
 
 ```ts
-export function makeFiber<E, A>(init: RIO<DefaultR, E, A>, runtime: Runtime, name?: string): RIO<DefaultR, never, Fiber<E, A>> { ... }
+export function makeFiber<R, E, A>(init: RIO<R, E, A>, name?: string): RIO<R, never, Fiber<E, A>> { ... }
 ```

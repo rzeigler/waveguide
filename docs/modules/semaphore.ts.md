@@ -25,8 +25,8 @@ export interface Semaphore {
 
   acquireN(n: number): RIO<DefaultR, never, void>
   releaseN(n: number): RIO<DefaultR, never, void>
-  withPermitsN<E, A>(n: number, io: RIO<DefaultR, E, A>): RIO<DefaultR, E, A>
-  withPermit<E, A>(n: RIO<DefaultR, E, A>): RIO<DefaultR, E, A>
+  withPermitsN<R, E, A>(n: number, io: RIO<R, E, A>): RIO<R, E, A>
+  withPermit<R, E, A>(n: RIO<R, E, A>): RIO<R, E, A>
 }
 ```
 

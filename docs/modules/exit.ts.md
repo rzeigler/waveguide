@@ -27,7 +27,7 @@ parent: Modules
 
 ```ts
 export interface Abort {
-  readonly _tag: 'abort'
+  readonly _tag: ExitTag.Abort
   readonly abortedWith: unknown
 }
 ```
@@ -38,7 +38,7 @@ export interface Abort {
 
 ```ts
 export interface Done<A> {
-  readonly _tag: 'value'
+  readonly _tag: ExitTag.Done
   readonly value: A
 }
 ```
@@ -49,7 +49,7 @@ export interface Done<A> {
 
 ```ts
 export interface Interrupt {
-  readonly _tag: 'interrupt'
+  readonly _tag: ExitTag.Interrupt
 }
 ```
 
@@ -59,7 +59,7 @@ export interface Interrupt {
 
 ```ts
 export interface Raise<E> {
-  readonly _tag: 'raise'
+  readonly _tag: ExitTag.Raise
   readonly error: E
 }
 ```

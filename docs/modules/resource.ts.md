@@ -22,6 +22,8 @@ parent: Modules
 - [bracket (function)](#bracket-function)
 - [chain (function)](#chain-function)
 - [consume (function)](#consume-function)
+- [encaseRIO (function)](#encaserio-function)
+- [fiber (function)](#fiber-function)
 - [getMonoid (function)](#getmonoid-function)
 - [getSemigroup (function)](#getsemigroup-function)
 - [map (function)](#map-function)
@@ -40,7 +42,7 @@ parent: Modules
 
 ```ts
 export interface Bracket<R, E, A> {
-  readonly _tag: 'bracket'
+  readonly _tag: ManagedTag.Bracket
   readonly acquire: RIO<R, E, A>
   readonly release: FunctionN<[A], RIO<R, E, unknown>>
 }
@@ -52,7 +54,7 @@ export interface Bracket<R, E, A> {
 
 ```ts
 export interface Chain<R, E, L, A> {
-  readonly _tag: 'chain'
+  readonly _tag: ManagedTag.Chain
   readonly left: Managed<R, E, L>
   readonly bind: FunctionN<[L], Managed<R, E, A>>
 }
@@ -64,7 +66,7 @@ export interface Chain<R, E, L, A> {
 
 ```ts
 export interface Pure<A> {
-  readonly _tag: 'pure'
+  readonly _tag: ManagedTag.Pure
   readonly value: A
 }
 ```
@@ -75,7 +77,7 @@ export interface Pure<A> {
 
 ```ts
 export interface Suspended<R, E, A> {
-  readonly _tag: 'suspend'
+  readonly _tag: ManagedTag.Suspended
   readonly suspended: RIO<R, E, Managed<R, E, A>>
 }
 ```
@@ -172,6 +174,28 @@ Curried data last form of use
 
 ```ts
 export function consume<R, E, A, B>(f: FunctionN<[A], RIO<R, E, B>>): FunctionN<[Managed<R, E, A>], RIO<R, E, B>> { ... }
+```
+
+# encaseRIO (function)
+
+Create a Resource by wrapping an IO producing a value that does not need to be disposed
+
+**Signature**
+
+```ts
+export function encaseRIO<R, E, A>(rio: RIO<R, E, A>): Managed<R, E, A> { ... }
+```
+
+# fiber (function)
+
+Create a Resource from the fiber of an IO.
+The acquisition of this resource corresponds to forking rio into a fiber.
+The destruction of the resource is interrupting said fiber.
+
+**Signature**
+
+```ts
+export function fiber<R, E, A>(rio: RIO<R, E, A>): Managed<R, never, Fiber<E, A>> { ... }
 ```
 
 # getMonoid (function)

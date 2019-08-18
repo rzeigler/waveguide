@@ -10,7 +10,6 @@ parent: Modules
 
 - [Ref (interface)](#ref-interface)
 - [makeRef (function)](#makeref-function)
-- [makeRef\_ (function)](#makeref_-function)
 
 ---
 
@@ -35,14 +34,6 @@ Curried form of makeRef\_ to allow for inference on the initial type
 **Signature**
 
 ```ts
-export const makeRef = <E = never>() => <A>(initial: A): RIO<DefaultR, E, Ref<A>> =>
+export const makeRef = <A>(initial: A): RIO<DefaultR, never, Ref<A>> =>
     sync(() => ...
-```
-
-# makeRef\_ (function)
-
-**Signature**
-
-```ts
-export function makeRef_<E, A>(initial: A): RIO<DefaultR, E, Ref<A>> { ... }
 ```

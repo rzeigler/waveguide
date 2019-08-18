@@ -30,6 +30,7 @@ parent: Modules
 - [accessInterruptible (constant)](#accessinterruptible-constant)
 - [accessRuntime (constant)](#accessruntime-constant)
 - [instances (constant)](#instances-constant)
+- [mapWith (constant)](#mapwith-constant)
 - [never (constant)](#never-constant)
 - [parInstances (constant)](#parinstances-constant)
 - [raiseInterrupt (constant)](#raiseinterrupt-constant)
@@ -60,14 +61,13 @@ parent: Modules
 - [chainError (function)](#chainerror-function)
 - [chainErrorWith (function)](#chainerrorwith-function)
 - [chainWith (function)](#chainwith-function)
-- [collectAll (function)](#collectall-function)
 - [completed (function)](#completed-function)
 - [contramapEnv (function)](#contramapenv-function)
 - [contramapEnvM (function)](#contramapenvm-function)
 - [delay (function)](#delay-function)
 - [encaseEither (function)](#encaseeither-function)
 - [encaseOption (function)](#encaseoption-function)
-- [encaseRIO (function)](#encaserio-function)
+- [encaseReader (function)](#encasereader-function)
 - [flatten (function)](#flatten-function)
 - [flip (function)](#flip-function)
 - [foldExit (function)](#foldexit-function)
@@ -95,7 +95,6 @@ parent: Modules
 - [parAp\_ (function)](#parap_-function)
 - [parApplyFirst (function)](#parapplyfirst-function)
 - [parApplySecond (function)](#parapplysecond-function)
-- [parCollectAll (function)](#parcollectall-function)
 - [parZip (function)](#parzip-function)
 - [parZipWith (function)](#parzipwith-function)
 - [provideEnv (function)](#provideenv-function)
@@ -107,14 +106,13 @@ parent: Modules
 - [raiseError (function)](#raiseerror-function)
 - [raised (function)](#raised-function)
 - [result (function)](#result-function)
-- [run (function)](#run-function)
 - [runR (function)](#runr-function)
-- [runToPromise (function)](#runtopromise-function)
-- [runToPromiseExit (function)](#runtopromiseexit-function)
 - [runToPromiseExitR (function)](#runtopromiseexitr-function)
 - [runToPromiseR (function)](#runtopromiser-function)
-- [shift (function)](#shift-function)
-- [shiftAsync (function)](#shiftasync-function)
+- [shiftAfter (function)](#shiftafter-function)
+- [shiftAsyncAfter (function)](#shiftasyncafter-function)
+- [shiftAsyncBefore (function)](#shiftasyncbefore-function)
+- [shiftBefore (function)](#shiftbefore-function)
 - [suspended (function)](#suspended-function)
 - [sync (function)](#sync-function)
 - [timeoutFold (function)](#timeoutfold-function)
@@ -134,7 +132,7 @@ parent: Modules
 
 ```ts
 export interface AccessEnv<R> {
-  readonly _tag: 'read'
+  readonly _tag: RIOTag.AccessEnv
 }
 ```
 
@@ -144,7 +142,7 @@ export interface AccessEnv<R> {
 
 ```ts
 export interface AccessInterruptible {
-  readonly _tag: 'access-interruptible'
+  readonly _tag: RIOTag.AccessInterruptible
 }
 ```
 
@@ -154,7 +152,7 @@ export interface AccessInterruptible {
 
 ```ts
 export interface AccessRuntime {
-  readonly _tag: 'access-runtime'
+  readonly _tag: RIOTag.AccessRuntime
 }
 ```
 
@@ -164,7 +162,7 @@ export interface AccessRuntime {
 
 ```ts
 export interface Async<E, A> {
-  readonly _tag: 'async'
+  readonly _tag: RIOTag.Async
   readonly op: FunctionN<[FunctionN<[Either<E, A>], void>], Lazy<void>>
 }
 ```
@@ -175,7 +173,7 @@ export interface Async<E, A> {
 
 ```ts
 export interface Chain<R, E, Z, A> {
-  readonly _tag: 'chain'
+  readonly _tag: RIOTag.Chain
   readonly inner: RIO<R, E, Z>
   readonly bind: FunctionN<[Z], RIO<R, E, A>>
 }
@@ -187,7 +185,7 @@ export interface Chain<R, E, Z, A> {
 
 ```ts
 export interface Collapse<R, E1, E2, A1, A2> {
-  readonly _tag: 'collapse'
+  readonly _tag: RIOTag.Collapse
   readonly inner: RIO<R, E1, A1>
   readonly failure: FunctionN<[Cause<E1>], RIO<R, E2, A2>>
   readonly success: FunctionN<[A1], RIO<R, E2, A2>>
@@ -200,7 +198,7 @@ export interface Collapse<R, E1, E2, A1, A2> {
 
 ```ts
 export interface Completed<E, A> {
-  readonly _tag: 'completed'
+  readonly _tag: RIOTag.Completed
   readonly exit: Exit<E, A>
 }
 ```
@@ -211,7 +209,7 @@ export interface Completed<E, A> {
 
 ```ts
 export interface InterruptibleRegion<R, E, A> {
-  readonly _tag: 'interrupt-region'
+  readonly _tag: RIOTag.InterruptibleRegion
   readonly inner: RIO<R, E, A>
   readonly flag: boolean
 }
@@ -223,7 +221,7 @@ export interface InterruptibleRegion<R, E, A> {
 
 ```ts
 export interface ProvideEnv<R, E, A> {
-  readonly _tag: 'provide'
+  readonly _tag: RIOTag.ProvideEnv
   readonly r: R
   readonly inner: RIO<R, E, A>
 }
@@ -235,7 +233,7 @@ export interface ProvideEnv<R, E, A> {
 
 ```ts
 export interface Pure<A> {
-  readonly _tag: 'pure'
+  readonly _tag: RIOTag.Pure
   readonly value: A
 }
 ```
@@ -246,7 +244,7 @@ export interface Pure<A> {
 
 ```ts
 export interface Raised<E> {
-  readonly _tag: 'raised'
+  readonly _tag: RIOTag.Raised
   readonly error: Cause<E>
 }
 ```
@@ -257,7 +255,7 @@ export interface Raised<E> {
 
 ```ts
 export interface Suspended<R, E, A> {
-  readonly _tag: 'suspended'
+  readonly _tag: RIOTag.Suspended
   readonly thunk: Lazy<RIO<R, E, A>>
 }
 ```
@@ -360,6 +358,14 @@ export const accessRuntime: RIO<DefaultR, never, Runtime> = ...
 
 ```ts
 export const instances: Monad3<URI> & MonadThrow3<URI> = ...
+```
+
+# mapWith (constant)
+
+**Signature**
+
+```ts
+export const mapWith = ...
 ```
 
 # never (constant)
@@ -619,9 +625,9 @@ Weaker form of bracketExit where release does not receive the exit status of use
 **Signature**
 
 ```ts
-export function bracket<R, E, A, B>(acquire: RIO<R, E, A>,
-    release: FunctionN<[A], RIO<R, E, unknown>>,
-    use: FunctionN<[A], RIO<R, E, B>>): RIO<R, E, B> { ... }
+export function bracket<R1, R2, E1, E2, A, B>(acquire: RIO<R1, E1, A>,
+    release: FunctionN<[A], RIO<R1, E1, unknown>>,
+    use: FunctionN<[A], RIO<R2, E2, B>>): RIO<R1 & R2, E1 | E2, B> { ... }
 ```
 
 # bracketExit (function)
@@ -634,9 +640,9 @@ Release receives the exit state of use along with the resource.
 **Signature**
 
 ```ts
-export function bracketExit<R, E, A, B>(acquire: RIO<R, E, A>,
-    release: FunctionN<[A, Exit<E, B>], RIO<R, E, unknown>>,
-    use: FunctionN<[A], RIO<R, E, B>>): RIO<R, E, B> { ... }
+export function bracketExit<R1, R2, E1, E2, A, B>(acquire: RIO<R1, E1, A>, // Unifying multiple E's here is just really hard...
+    release: FunctionN<[A, Exit<E2, B>], RIO<R1, E1 | E2, unknown>>,
+    use: FunctionN<[A], RIO<R2, E2, B>>): RIO<R1 & R2, E1 | E2, B> { ... }
 ```
 
 # chain (function)
@@ -677,18 +683,6 @@ Curried function first form of chain
 
 ```ts
 export function chainWith<R2, E2, Z, A>(bind: FunctionN<[Z], RIO<R2, E2, A>>): <R1, E1>(io: RIO<R1, E1, Z>) => RIO<R1 & R2, E1 | E2, A> { ... }
-```
-
-# collectAll (function)
-
-Collect the results of many IOs.
-
-Returns an IO that will evaluate each of the inputs in sequence and collect their results in order
-
-**Signature**
-
-```ts
-export function collectAll<R, E, A>(ios: Array<RIO<R, E, A>>): RIO<R, E, A[]> { ... }
 ```
 
 # completed (function)
@@ -751,14 +745,14 @@ Lift an Option into an IO
 export function encaseOption<E, A>(o: Option<A>, onError: Lazy<E>): IO<E, A> { ... }
 ```
 
-# encaseRIO (function)
+# encaseReader (function)
 
 Lift a function from R => IO<E, A> to a RIO<R, E, A>
 
 **Signature**
 
 ```ts
-export function encaseRIO<R, E, A>(f: FunctionN<[R], IO<E, A>>): RIO<R, E, A> { ... }
+export function encaseReader<R, E, A>(f: FunctionN<[R], IO<E, A>>): RIO<R, E, A> { ... }
 ```
 
 # flatten (function)
@@ -896,7 +890,7 @@ Similar to uninterruptibleMask
 **Signature**
 
 ```ts
-export function interruptibleMask<R, E, A>(f: FunctionN<[InterruptMaskCutout<R, E, A>], RIO<R, E, A>>): RIO<R, E, A> { ... }
+export function interruptibleMask<R1, R2, E1, E2, A>(f: FunctionN<[InterruptMaskCutout<R2, E2, A>], RIO<R2, E2, A>>): RIO<R1 & R2, E1 | E2, A> { ... }
 ```
 
 # interruptibleRegion (function)
@@ -976,7 +970,7 @@ Guarantee that once ioa begins executing the finalizer will execute.
 **Signature**
 
 ```ts
-export function onComplete<R, E, A>(ioa: RIO<R, E, A>, finalizer: RIO<R, E, unknown>): RIO<R, E, A> { ... }
+export function onComplete<R1, R2, E1, E2, A>(ioa: RIO<R1, E1, A>, finalizer: RIO<R2, E2, unknown>): RIO<R1 & R2, E1 | E2, A> { ... }
 ```
 
 # onInterrupted (function)
@@ -986,7 +980,7 @@ Guarantee that once ioa begins executing if it is interrupted finalizer will exe
 **Signature**
 
 ```ts
-export function onInterrupted<R, E, A>(ioa: RIO<R, E, A>, finalizer: RIO<R, E, unknown>): RIO<R, E, A> { ... }
+export function onInterrupted<R1, R2, E1, E2, A>(ioa: RIO<R1, E1, A>, finalizer: RIO<R2, E2, unknown>): RIO<R1 & R2, E1 | E2, A> { ... }
 ```
 
 # orAbort (function)
@@ -1037,18 +1031,6 @@ Exeute two IOs in parallel and take the result of the second
 
 ```ts
 export function parApplySecond<R, E, A, B>(ioa: RIO<R, E, A>, iob: RIO<R, E, B>): RIO<R, E, B> { ... }
-```
-
-# parCollectAll (function)
-
-Collect the results of many IOs evaluated in parallel.
-
-Returns an IO that will evaluate all of the inputs in parallel and collect their results in order
-
-**Signature**
-
-```ts
-export function parCollectAll<R, E, A>(ios: Array<RIO<R, E, A>>): RIO<R, E, A[]> { ... }
 ```
 
 # parZip (function)
@@ -1175,16 +1157,6 @@ Note that interruption will not be caught unless in an uninterruptible region
 export function result<R, E, A>(io: RIO<R, E, A>): RIO<R, never, Exit<E, A>> { ... }
 ```
 
-# run (function)
-
-Run the given IO
-
-**Signature**
-
-```ts
-export function run<E, A>(io: RIO<DefaultR, E, A>, callback: FunctionN<[Exit<E, A>], void>): Lazy<void> { ... }
-```
-
 # runR (function)
 
 Run the given IO with the provided environment.
@@ -1192,34 +1164,7 @@ Run the given IO with the provided environment.
 **Signature**
 
 ```ts
-export function runR<R, E, A>(io: RIO<R, E, A>, r: R, callback: FunctionN<[Exit<E, A>], void>): Lazy<void> { ... }
-```
-
-# runToPromise (function)
-
-Run an IO returning a promise of the result.
-
-The returned promise will resolve with a success value.
-The returned promies will reject with an E, and unknown, or undefined in the case of raise, abort, or interrupt
-respectively.
-The returned promise may never complete if the provided IO never produces a value or error.
-
-**Signature**
-
-```ts
-export function runToPromise<E, A>(io: RIO<DefaultR, E, A>): Promise<A> { ... }
-```
-
-# runToPromiseExit (function)
-
-Run an IO returning a promise of the Exit
-
-The returned promise will never reject.
-
-**Signature**
-
-```ts
-export function runToPromiseExit<E, A>(io: RIO<DefaultR, E, A>): Promise<Exit<E, A>> { ... }
+export function runR<R, E, A>(io: RIO<R, E, A>, r: R, callback?: FunctionN<[Exit<E, A>], void>): Lazy<void> { ... }
 ```
 
 # runToPromiseExitR (function)
@@ -1247,24 +1192,44 @@ Allows providing an environment parameter directly
 export function runToPromiseR<R, E, A>(io: RIO<R, E, A>, r: R): Promise<A> { ... }
 ```
 
-# shift (function)
+# shiftAfter (function)
 
-Introduce a synchronous gap before io that will allow other fibers to execute (if any are pending)
+Introduce a synchronous gap after an io that will allow other fibers to execute (if any are pending)
 
 **Signature**
 
 ```ts
-export function shift<R, E, A>(io: RIO<R, E, A>): RIO<R, E, A> { ... }
+export function shiftAfter<R, E, A>(io: RIO<R, E, A>): RIO<R, E, A> { ... }
 ```
 
-# shiftAsync (function)
+# shiftAsyncAfter (function)
+
+Introduce asynchronous gap after an IO
+
+**Signature**
+
+```ts
+export function shiftAsyncAfter<R, E, A>(io: RIO<R, E, A>): RIO<R, E, A> { ... }
+```
+
+# shiftAsyncBefore (function)
 
 Introduce an asynchronous gap before IO
 
 **Signature**
 
 ```ts
-export function shiftAsync<R, E, A>(io: RIO<R, E, A>): RIO<R, E, A> { ... }
+export function shiftAsyncBefore<R, E, A>(io: RIO<R, E, A>): RIO<R, E, A> { ... }
+```
+
+# shiftBefore (function)
+
+Introduce a synchronous gap before io that will allow other fibers to execute (if any are pending)
+
+**Signature**
+
+```ts
+export function shiftBefore<R, E, A>(io: RIO<R, E, A>): RIO<R, E, A> { ... }
 ```
 
 # suspended (function)
@@ -1336,7 +1301,7 @@ interruptible status of the region above the one currently executing (which is u
 **Signature**
 
 ```ts
-export function uninterruptibleMask<R, E, A>(f: FunctionN<[InterruptMaskCutout<R, E, A>], RIO<R, E, A>>): RIO<R, E, A> { ... }
+export function uninterruptibleMask<R1, R2, E1, E2, A>(f: FunctionN<[InterruptMaskCutout<R1 & R2, E1 | E2, A>], RIO<R1 & R2, E1 | E2, A>>): RIO<R1 & R2, E1 | E2, A> { ... }
 ```
 
 # widenError (function)
