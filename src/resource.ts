@@ -116,12 +116,28 @@ export function chain<R, E, L, A>(left: Managed<R, E, L>, bind: FunctionN<[L], M
 }
 
 /**
+ * Curried form of chain
+ * @param bind 
+ */
+export function chainWith<R, E, L, A>(bind: FunctionN<[L], Managed<R, E, A>>): FunctionN<[Managed<R, E, L>], Managed<R, E, A>> {
+    return (left) => chain(left, bind);
+}
+
+/**
  * Map a resource
  * @param res 
  * @param f 
  */
 export function map<R, E, L, A>(res: Managed<R, E, L>, f: FunctionN<[L], A>): Managed<R, E, A> {
     return chain(res, (r) => pure(f(r)));
+}
+
+/**
+ * Curried form of mapWith
+ * @param f 
+ */
+export function mapWith<L, A>(f: FunctionN<[L], A>): <R, E>(res: Managed<R, E, L>) => Managed<R, E, A> {
+    return<R, E>(res: Managed<R, E, L>) => map(res, f);
 }
 
 /**
