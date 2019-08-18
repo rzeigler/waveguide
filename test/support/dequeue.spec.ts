@@ -14,7 +14,6 @@
 
 import { expect } from "chai";
 import fc, { Arbitrary, Command } from "fast-check";
-import * as fn from "fp-ts/lib/function";
 import * as O from "fp-ts/lib/Option";
 import { none, some } from "fp-ts/lib/Option";
 import * as p from "fp-ts/lib/pipeable";
@@ -91,7 +90,7 @@ describe("Dequeue", () => {
     const pushCommandArb: Arbitrary<Command<Model, Real>> = fc.nat()
         .map((n) => {
             return {
-                check(m: Model): boolean {
+                check(_m: Model): boolean {
                     return true;
                 },
                 run(m: Model, r: Real): void {
@@ -105,7 +104,7 @@ describe("Dequeue", () => {
         });
 
     const pullCommandArb: Arbitrary<Command<Model, Real>> = fc.constant({
-        check(m: Model): boolean {
+        check(_m: Model): boolean {
             return true;
         },
         run(m: Model, r: Real): void {
@@ -133,7 +132,7 @@ describe("Dequeue", () => {
     const offerCommandArb: Arbitrary<Command<Model, Real>> = fc.nat()
         .map((n) => {
             return {
-                check(m: Model): boolean {
+                check(_m: Model): boolean {
                     return true;
                 },
                 run(m: Model, r: Real): void {
@@ -147,7 +146,7 @@ describe("Dequeue", () => {
         });
 
     const takeCommandArb: Arbitrary<Command<Model, Real>> = fc.constant({
-        check(m: Model): boolean {
+        check(_m: Model): boolean {
             return true;
         },
         run(m: Model, r: Real): void {

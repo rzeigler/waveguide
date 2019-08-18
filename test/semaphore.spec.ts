@@ -62,7 +62,7 @@ describe("semaphore", () => {
                       io.chain(io.fork(io.applySecond(sem.acquireN(2), gate.set(true))),
                           (child) =>
                               io.chain(io.applySecond(child.interrupt, child.wait),
-                                  (exit) => io.zip(sem.available, gate.get)
+                                  (_exit) => io.zip(sem.available, gate.get)
                               )
                       )
               )
