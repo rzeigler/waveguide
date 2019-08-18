@@ -35,3 +35,7 @@ Fastest is FIO
 ```
 waveguide x 5,217 ops/sec ±0.93% (85 runs sampled)
 FIO x 10,250 ops/sec ±3.00% (78 runs sampled)
+Fluture x 4,580 ops/sec ±8.91% (69 runs sampled)
+bluebird x 6,212 ops/sec ±0.63% (86 runs sampled)
+Fastest is FIO
+```
