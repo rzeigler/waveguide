@@ -22,6 +22,7 @@ import * as io from "./io";
 
 export enum ManagedTag {
     Pure,
+    Encase,
     Bracket,
     Suspended,
     Chain
@@ -34,6 +35,7 @@ export enum ManagedTag {
  */
 export type Managed<R, E, A> =
   Pure<A> |
+  Encase<R, E, A> |
   Bracket<R, E, A> |
   Suspended<R, E, A>  |
   Chain<R, E, any, A>; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -58,6 +60,22 @@ export function pure<A>(value: A): Pure<A> {
         value
     };
 }
+
+export interface Encase<R, E, A> {
+    readonly _tag: ManagedTag.Encase;
+    readonly acquire: RIO<R, E, A>;
+}
+
+/**
+ * Create a Resource by wrapping an IO producing a value that does not need to be disposed
+ * 
+ * @param res 
+ * @param f 
+ */
+export function encaseRIO<R, E, A>(rio: RIO<R, E, A>): Encase<R, E, A> {
+    return { _tag: ManagedTag.Encase, acquire: rio };
+}
+
 
 export interface Bracket<R, E, A> {
     readonly _tag: ManagedTag.Bracket;
@@ -193,16 +211,6 @@ export function fiber<R, E, A>(rio: RIO<R, E, A>): Managed<R, never, Fiber<E, A>
 }
 
 /**
- * Create a Resource by wrapping an IO producing a value that does not need to be disposed
- * 
- * @param res 
- * @param f 
- */
-export function encaseRIO<R, E, A>(rio: RIO<R, E, A>): Managed<R, E, A> {
-    return bracket(rio, () => io.unit);
-}
-
-/**
  * Use a resource to produce a program that can be run.s
  * @param res 
  * @param f 
@@ -211,6 +219,8 @@ export function use<R, E, A, B>(res: Managed<R, E, A>, f: FunctionN<[A], RIO<R, 
     switch (res._tag) {
         case ManagedTag.Pure:
             return f(res.value);
+        case ManagedTag.Encase:
+            return io.chain(res.acquire, f);
         case ManagedTag.Bracket:
             return io.bracket(res.acquire, res.release, f);
         case ManagedTag.Suspended:
