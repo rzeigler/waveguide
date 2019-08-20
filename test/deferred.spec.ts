@@ -29,8 +29,9 @@ describe("Deferred", () => {
         )
     );
     it("can proxy errors", () =>
-        expectExit(io.chain(makeDeferred<string, number>(),
-            (def) => io.applySecond(def.error("boom"), def.wait)),
+        expectExit(
+            io.chain(makeDeferred<string, number>(),
+                (def) => io.applySecond(def.error("boom"), def.wait)),
             raise("boom")
         )
     )
