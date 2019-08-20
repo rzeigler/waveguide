@@ -14,7 +14,7 @@
 
 import fc from "fast-check";
 import { makeDeferred  } from "../src/deferred";
-import { done, ExitTag } from "../src/exit";
+import { done, ExitTag, raise } from "../src/exit";
 import * as io from "../src/io";
 import { eqvIO, expectExit, expectExitIn } from "./tools.spec";
 
@@ -28,6 +28,12 @@ describe("Deferred", () => {
             io.pure(42)
         )
     );
+    it("can proxy errors", () =>
+        expectExit(io.chain(makeDeferred<string, number>(),
+            (def) => io.applySecond(def.error("boom"), def.wait)),
+            raise("boom")
+        )
+    )
     it("multiple sets fail", () =>
         expectExitIn(
             io.chain(makeDeferred<never, number>(),
