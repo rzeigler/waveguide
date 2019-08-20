@@ -19,6 +19,8 @@ import { Monoid } from "fp-ts/lib/Monoid";
 import { RIO } from "./io";
 import { Fiber } from "./fiber";
 import * as io from "./io";
+import { Applicative3 } from "fp-ts/lib/Applicative";
+import { Functor3 } from "fp-ts/lib/Functor";
 
 export enum ManagedTag {
     Pure,
@@ -249,7 +251,7 @@ declare module "fp-ts/lib/HKT" {
         Resource: Managed<R, E, A>;
     }
 }
-export const instances: Monad3<URI> = {
+export const instances: Functor3<URI> & Applicative3<URI> & Monad3<URI> = {
     URI,
     of: pure,
     map,

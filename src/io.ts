@@ -14,7 +14,7 @@
 
 import { Semigroup } from "fp-ts/lib/Semigroup"
 import { Monoid } from "fp-ts/lib/Monoid";
-import { Applicative3 } from "fp-ts/lib/Applicative";
+import { Applicative3, Applicative } from "fp-ts/lib/Applicative";
 import { Either, left, right } from "fp-ts/lib/Either";
 import * as either from "fp-ts/lib/Either";
 import { constant, flow, FunctionN, identity, Lazy } from "fp-ts/lib/function";
@@ -30,6 +30,7 @@ import { Fiber, makeFiber } from "./fiber";
 import { makeRef, Ref } from "./ref";
 import { Runtime } from "./runtime";
 import { MonadThrow3 } from "fp-ts/lib/MonadThrow";
+import { Functor3 } from "fp-ts/lib/Functor";
 
 export type DefaultR = {}; // eslint-disable-line @typescript-eslint/prefer-interface
 
@@ -1174,15 +1175,15 @@ export function runToPromiseExitR<R, E, A>(io: RIO<R, E, A>, r: R): Promise<Exit
     return new Promise((result) => runR(io, r, result))
 }
 
-export const URI = "IO";
+export const URI = "RIO";
 export type URI = typeof URI;
 declare module "fp-ts/lib/HKT" {
     interface URItoKind3<R, E, A> {
-        IO: RIO<R, E, A>;
+        RIO: RIO<R, E, A>;
     }
 }
 
-export const instances: Monad3<URI> & MonadThrow3<URI> = {
+export const instances: Functor3<URI> & Applicative3<URI> & Monad3<URI> & MonadThrow3<URI> = {
     URI,
     map,
     of: pure,
@@ -1191,7 +1192,7 @@ export const instances: Monad3<URI> & MonadThrow3<URI> = {
     throwError: <R, E, A>(e: E): RIO<R, E, A> => raiseError(e)
 } as const;
 
-export const parInstances: Applicative3<URI> = {
+export const parInstances:  Functor3<URI> & Applicative3<URI> = {
     URI,
     map,
     of: pure,
