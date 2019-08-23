@@ -36,7 +36,7 @@ export enum ManagedTag {
  * This is a friendly monadic wrapper around bracketExit.
  */
 export type Managed<R, E, A> =
-  Pure<A> |
+  Pure<R, E, A> |
   Encase<R, E, A> |
   Bracket<R, E, A> |
   Suspended<R, E, A>  |
@@ -47,7 +47,7 @@ export type Managed<R, E, A> =
  */
 export type Resource<E, A> = Managed<io.DefaultR, E, A>;
 
-export interface Pure<A> {
+export interface Pure<R, E, A> {
     readonly _tag: ManagedTag.Pure;
     readonly value: A;
 }
@@ -56,7 +56,7 @@ export interface Pure<A> {
  * Lift a pure value into a resource
  * @param value 
  */
-export function pure<A>(value: A): Pure<A> {
+export function pure<A>(value: A): Managed<io.DefaultR, never, A> {
     return {
         _tag: ManagedTag.Pure,
         value
@@ -157,7 +157,7 @@ export function chainTapWith<R, E, A>(bind: FunctionN<[A], Managed<R, E, unknown
  * @param f 
  */
 export function map<R, E, L, A>(res: Managed<R, E, L>, f: FunctionN<[L], A>): Managed<R, E, A> {
-    return chain(res, (r) => pure(f(r)));
+    return chain(res, (r) => pure(f(r)) as Managed<R, E, A>);
 }
 
 /**
@@ -225,7 +225,7 @@ export function consume<R, E, A, B>(f: FunctionN<[A], RIO<R, E, B>>): FunctionN<
  * @param rio 
  */
 export function fiber<R, E, A>(rio: RIO<R, E, A>): Managed<R, never, Fiber<E, A>> {
-    return bracket(io.fork(rio), (fiber) => fiber.interrupt);
+    return bracket(io.fork(rio), (fiber) => fiber.interrupt as RIO<R, never, void>);
 }
 
 /**
@@ -255,8 +255,8 @@ export function use<R, E, A, B>(res: Managed<R, E, A>, f: FunctionN<[A], RIO<R, 
  * @param res 
  * @param rio 
  */
-export function provideTo<R, E, A, B>(res: Managed<R, E, A>, rio: RIO<A, E, B>): RIO<io.DefaultR, E, B> {
-    return use(res, (r) => io.provideEnv(r, rio));
+export function provideTo<E, A, B>(res: Resource<E, A>, rio: RIO<A, E, B>): RIO<io.DefaultR, E, B> {
+    return use(res, (r) => io.provideEnv(rio, r));
 }
 
 export const URI = "Resource";
@@ -267,9 +267,9 @@ declare module "fp-ts/lib/HKT" {
         Resource: Managed<R, E, A>;
     }
 }
-export const instances: Functor3<URI> & Applicative3<URI> & Monad3<URI> = {
+export const instances: Monad3<URI> = {
     URI,
-    of: pure,
+    of: <R, E, A>(a: A) => pure(a),
     map,
     ap: ap_,
     chain

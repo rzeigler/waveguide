@@ -22,7 +22,7 @@ export interface Deferred<E, A> {
     interrupt: RIO<DefaultR, never, void>;
     done(a: A): RIO<DefaultR, never, void>;
     error(e: E): RIO<DefaultR, never, void>;
-    from(source: RIO<DefaultR, E, A>): RIO<DefaultR, never, void>;
+    from<R>(source: RIO<R, E, A>): RIO<R, never, void>;
 }
 
 export function makeDeferred<E, A, E2 = never>(): RIO<DefaultR, E2, Deferred<E, A>> {
@@ -43,8 +43,13 @@ export function makeDeferred<E, A, E2 = never>(): RIO<DefaultR, E2, Deferred<E, 
         const complete = (exit: Exit<E, A>): RIO<DefaultR, never, void> => io.sync(() => {
             c.complete(io.completed(exit));
         });
-        const from = (source: RIO<DefaultR, E, A>): RIO<DefaultR, never, void> =>
-            io.onInterrupted(io.chain(io.result(source), complete), interrupt);
+        const from = <R>(source: RIO<R, E, A>): RIO<R, never, void> => {
+            const completed = io.chain<R, never, Exit<E, A>, void>(io.result(source), complete);
+            const interruptor = interrupt as RIO<R, never, void>;
+            return io.onInterrupted(completed, interruptor);
+        }
+
+            // io.onInterrupted<R, E, A>(io.chain<R, E, Exit<E, A>, void>(io.result(source), complete), interrupt);
         return {
             wait,
             interrupt,

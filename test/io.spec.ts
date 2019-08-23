@@ -484,31 +484,31 @@ describe("io", () => {
     describe("#provide", function() {
         it("should provide an environment", () => {
             return eqvIO(
-                io.provideEnv(42, io.accessEnv()),
+                io.provideEnv(io.accessEnv(), 42),
                 io.pure(42)
             )
         });
         it("should cleanup following details", () => {
             return eqvIO(
-                io.applySecond(io.provideEnv(42, io.pure(11)), io.accessEnv<DefaultR>()),
+                io.applySecond(io.provideEnv(io.pure(11), 42), io.accessEnv<DefaultR>()),
                 io.pure({})
             );
         });
         it("should allow for nesting", () => {
             return eqvIO(
-                io.provideEnv(42, 
+                io.provideEnv(
                     io.zip(
-                        io.provideEnv(43,io.accessEnv()),
+                        io.provideEnv(io.accessEnv(), 43),
                         io.accessEnv()
-                    )
-                        
+                    ),
+                    42
                 ),
                 io.pure([43, 42])
             );
         });
         it("should not leak the environment state on failure", () => {
             return eqvIO(
-                io.applySecond(io.result(io.provideEnv(42, io.raiseError("boom"))), io.accessEnv<DefaultR>()),
+                io.applySecond(io.result(io.provideEnv(io.raiseError("boom"), 42)), io.accessEnv<DefaultR>()),
                 io.pure({})
             )
         });

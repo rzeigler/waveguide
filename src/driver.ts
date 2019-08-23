@@ -62,7 +62,7 @@ const makeInterruptFrame = (interruptStatus: MutableStack<boolean>): InterruptFr
         _tag: "interrupt-frame",
         apply(u: unknown) {
             interruptStatus.pop();
-            return io.pure(u);
+            return io.pure(u) as UnkIO;
         },
         exitRegion() {
             interruptStatus.pop();
@@ -81,7 +81,7 @@ const makeEnvironmentFrame = (environmentStack: MutableStack<any>): EnvironmentF
         _tag: "environment-frame",
         apply(u: unknown) {
             environmentStack.pop();
-            return io.pure(u)
+            return io.pure(u) as UnkIO;
         },
         exitRegion() {
             environmentStack.pop();
@@ -247,7 +247,7 @@ export function makeDriver<R, E, A>(runtime: Runtime = defaultRuntime): Driver<R
                         current = current.inner;
                         break;
                     case RIOTag.AccessEnv:
-                        current = io.pure(environmentStack.peek());
+                        current = io.pure(current.f(environmentStack.peek())) as UnkIO;
                         break;
                     case RIOTag.InterruptibleRegion:
                         interruptRegionStack.push(current.flag);
@@ -255,17 +255,17 @@ export function makeDriver<R, E, A>(runtime: Runtime = defaultRuntime): Driver<R
                         current = current.inner;
                         break;
                     case RIOTag.AccessRuntime:
-                        current = io.pure(runtime);
+                        current = io.pure(current.f(runtime)) as UnkIO;
                         break;
                     case RIOTag.AccessInterruptible:
-                        current = io.pure(isInterruptible());
+                        current = io.pure(current.f(isInterruptible())) as UnkIO;
                         break;
                     default:
                         throw new Error(`Die: Unrecognized current type ${current}`);
                 }
 
             } catch (e) {
-                current = io.raiseAbort(e);
+                current = io.raiseAbort(e) as UnkIO;
             }
         }
         // If !current then the interrupt came to late and we completed everything
@@ -280,7 +280,7 @@ export function makeDriver<R, E, A>(runtime: Runtime = defaultRuntime): Driver<R
         }
         started = true;
         environmentStack.push(r);
-        runtime.dispatch(() => loop(run));
+        runtime.dispatch(() => loop(run as UnkIO));
     }
 
     function interrupt(): void {

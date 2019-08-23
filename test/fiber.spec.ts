@@ -19,6 +19,7 @@ import { done, interrupt } from "../src/exit";
 import * as io from "../src/io";
 import { makeRef } from "../src/ref";
 import { arbEitherIO, eqvIO, expectExit } from "./tools.spec";
+import { Fiber } from "../src/fiber";
 
 describe("fiber", () => {
     it("fibers are joinable", () =>
@@ -50,7 +51,7 @@ describe("fiber", () => {
         const fiber = 
             io.accessEnv<string>()
         const host = 
-            io.provideEnv("hello", io.chain(io.fork(fiber), (f) => f.join));
+            io.provideEnv(io.chain<string, never, Fiber<never, string>, string>(io.fork(fiber), (f) => f.join), "hello");
         return expectExit(host, done("hello"));
     });
     describe("properties", function() {

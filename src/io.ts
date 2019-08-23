@@ -32,6 +32,7 @@ import { Runtime } from "./runtime";
 import { MonadThrow3 } from "fp-ts/lib/MonadThrow";
 import { Functor3 } from "fp-ts/lib/Functor";
 
+// We don't care about the environment so we assignment between
 export type DefaultR = {}; // eslint-disable-line @typescript-eslint/prefer-interface
 
 // Some utilities
@@ -62,26 +63,28 @@ export enum RIOTag {
     AccessRuntime
 }
 
+export type SuitableFor<J extends RIOTag, K extends RIOTag, V> = J extends K ? (K extends J ? V : never) : never
+
 /**
  * A description of an effect to perform
  */
 export type RIO<R, E, A> =
-    Pure<A> |
-    Raised<E> |
-    Completed<E, A> |
+    Pure<R, E, A> |
+    Raised<R, E, A> |
+    Completed<R, E, A> |
     Suspended<R, E, A> |
     Async<E, A> |
     Chain<R, E, any, A> | // eslint-disable-line @typescript-eslint/no-explicit-any
-    AccessEnv<R> |
+    AccessEnv<R, E, A> |
     ProvideEnv<any, E, A> | // eslint-disable-line @typescript-eslint/no-explicit-any
     Collapse<R, any, E, any, A> | // eslint-disable-line @typescript-eslint/no-explicit-any
     InterruptibleRegion<R, E, A> |
-    (boolean extends A ? AccessInterruptible : never) |
-    (Runtime extends A ? AccessRuntime : never);
+    AccessInterruptible<R, E, A> |
+    AccessRuntime<R, E, A>;
 
 export type IO<E, A> = RIO<DefaultR, E, A>;
 
-export interface Pure<A> {
+export interface Pure<R, E, A> {
     readonly _tag: RIOTag.Pure;
     readonly value: A;
 }
@@ -97,7 +100,7 @@ export function pure<A>(a: A): RIO<DefaultR, never, A> {
     };
 }
 
-export interface Raised<E> {
+export interface Raised<R, E, A> {
     readonly _tag: RIOTag.Raised;
     readonly error: Cause<E>;
 }
@@ -133,7 +136,7 @@ export function raiseAbort(u: unknown): RIO<DefaultR, never, never> {
  */
 export const raiseInterrupt: RIO<DefaultR, never, never> = raised(ex.interrupt);
 
-export interface Completed<E, A> {
+export interface Completed<R, E, A> {
     readonly _tag: RIOTag.Completed;
     readonly exit: Exit<E, A>;
 }
@@ -245,15 +248,16 @@ export function chain<R, E, A, B>(inner: RIO<R, E, A>, bind: FunctionN<[A], RIO<
     };
 }
 
-export interface AccessEnv<R> {
+export interface AccessEnv<R, E, A> {
     readonly _tag: RIOTag.AccessEnv;
+    readonly f: FunctionN<[R], A>
 }
 
 /**
  * Create an IO that accesses its environment
  */
 export function accessEnv<R>(): RIO<R, never, R> {
-    return { _tag: RIOTag.AccessEnv }
+    return { _tag: RIOTag.AccessEnv, f: identity }
 }
 
 export interface ProvideEnv<R, E, A> {
@@ -267,7 +271,7 @@ export interface ProvideEnv<R, E, A> {
  * @param f 
  */
 export function encaseReader<R, E, A>(f: FunctionN<[R], IO<E, A>>): RIO<R, E, A> {
-    return chain(accessEnv<R>(), f);
+    return chain(accessEnv<R>(), (r) => f(r) as RIO<R, E, A>);
 }
 
 /**
@@ -297,7 +301,7 @@ export function encaseOption<E, A>(o: Option<A>, onError: Lazy<E>): IO<E, A> {
  * @param r 
  * @param io 
  */
-export function provideEnv<R, E, A>(r: R, io: RIO<R, E, A>): RIO<DefaultR, E, A> {
+export function provideEnv<R, E, A>(io: RIO<R, E, A>, r: R): RIO<DefaultR, E, A> {
     return {
         _tag: RIOTag.ProvideEnv,
         r,
@@ -311,7 +315,7 @@ export function provideEnv<R, E, A>(r: R, io: RIO<R, E, A>): RIO<DefaultR, E, A>
  * @param io 
  */
 export function contramapEnvM<R1, R2, E, A>(contra: RIO<R1, E, R2>, io: RIO<R2, E, A>): RIO<R1, E, A> {
-    return chain(contra, (r2) => provideEnv(r2, io));
+    return chain(contra, (r2) => provideEnv(io, r2) as RIO<R1, E, A>);
 }
 
 /**
@@ -379,30 +383,32 @@ export function foldExitWith<R, E1, E2, A1, A2>(failure: FunctionN<[Cause<E1>], 
     return (io) => foldExit(io, failure, success);
 }
 
-export interface AccessInterruptible {
+export interface AccessInterruptible<R, E, A> {
     readonly _tag: RIOTag.AccessInterruptible;
+    readonly f: FunctionN<[boolean], A>;
 }
 
 /**
  * Get the interruptible state of the current fiber
  */
-export const accessInterruptible: RIO<DefaultR, never, boolean> = { _tag: RIOTag.AccessInterruptible };
+export const accessInterruptible: RIO<DefaultR, never, boolean> = { _tag: RIOTag.AccessInterruptible, f: identity };
 
-export interface AccessRuntime {
+export interface AccessRuntime<R, E, A> {
     readonly _tag: RIOTag.AccessRuntime;
+    readonly f: FunctionN<[Runtime], A>;
 }
 
 /**
  * Get the runtime of the current fiber
  */
-export const accessRuntime: RIO<DefaultR, never, Runtime> = { _tag: RIOTag.AccessRuntime };
+export const accessRuntime: RIO<DefaultR, never, Runtime> = { _tag: RIOTag.AccessRuntime, f: identity };
 
 /**
  * Access the runtime then provide it to the provided function
  * @param f 
  */
 export function withRuntime<R, E, A>(f: FunctionN<[Runtime], RIO<R, E, A>>): RIO<R, E, A> {
-    return chain(accessRuntime, f);
+    return chain(accessRuntime as RIO<R, E, Runtime>, f);
 }
 
 /**
@@ -410,8 +416,8 @@ export function withRuntime<R, E, A>(f: FunctionN<[Runtime], RIO<R, E, A>>): RIO
  * @param io
  * @param f
  */
-export function map<R, E, A, B>(io: RIO<R, E, A>, f: FunctionN<[A], B>): RIO<R, E, B> {
-    return chain(io, flow(f, pure));
+export function map<R, E, A, B>(base: RIO<R, E, A>, f: FunctionN<[A], B>): RIO<R, E, B> {
+    return chain<R, E, A, B>(base, flow(f, pure));
 }
 
 /**
@@ -498,7 +504,7 @@ export function chainErrorWith<R, E1, E2, A>(f: FunctionN<[E1], RIO<R, E2, A>>):
  * @param f
  */
 export function mapError<R, E1, E2, A>(io: RIO<R, E1, A>, f: FunctionN<[E1], E2>): RIO<R, E2, A> {
-    return chainError(io, flow(f, raiseError));
+    return chainError<R, E1, E2, A>(io, flow(f, raiseError));
 }
 
 /**
@@ -518,7 +524,7 @@ export function mapErrorWith<R, E1, E2>(f: FunctionN<[E1], E2>): <A>(io: RIO<R, 
 export function bimap<R, E1, E2, A, B>(io: RIO<R, E1, A>,
     leftMap: FunctionN<[E1], E2>,
     rightMap: FunctionN<[A], B>): RIO<R, E2, B> {
-    return foldExit(io,
+    return foldExit<R, E1, E2, A, B>(io,
         (cause) => cause._tag === ex.ExitTag.Raise ? raiseError(leftMap(cause.error)) : completed(cause),
         flow(rightMap, pure)
     );
@@ -623,11 +629,19 @@ export function apWith_<R, E, A, B>(iof: RIO<R, E, FunctionN<[A], B>>): Function
  * @param io 
  */
 export function flip<R, E, A>(io: RIO<R, E, A>): RIO<R, A, E> {
-    return foldExit(
+    return foldExit<R, E, A, A, E>(
         io,
         (error) => error._tag === ex.ExitTag.Raise ? pure(error.error) : completed(error),
         raiseError
     );
+}
+
+/**
+ * Execute the provided IO forever (or until it errors)
+ * @param io 
+ */
+export function forever<R, E, A>(io: RIO<R, E, A>): RIO<R, E, A> {
+    return chain(io, () => forever(io));
 }
 
 /**
@@ -679,7 +693,7 @@ export function after(ms: number): RIO<DefaultR, never, void> {
 export type InterruptMaskCutout<R, E, A> = FunctionN<[RIO<R, E, A>], RIO<R, E, A>>;
 
 function makeInterruptMaskCutout<R, E, A>(state: boolean): InterruptMaskCutout<R, E, A> {
-    return (inner) => interruptibleRegion(inner, state);
+    return (inner: RIO<R, E, A>) => interruptibleRegion(inner, state);
 }
 
 /**
@@ -690,9 +704,11 @@ function makeInterruptMaskCutout<R, E, A>(state: boolean): InterruptMaskCutout<R
  * @param f 
  */
 export function uninterruptibleMask<R, E, A>(f: FunctionN<[InterruptMaskCutout<R, E, A>], RIO<R, E, A>>): RIO<R, E, A> {
-    return chain(accessInterruptible,
-        (flag) => uninterruptible(f(makeInterruptMaskCutout(flag)))
-    );
+    return chain(accessInterruptible as RIO<R, E, boolean>,
+        (flag) => {
+            const cutout = makeInterruptMaskCutout<R, E, A>(flag);
+            return uninterruptible(f(cutout));
+        });
 }
 
 /**
@@ -702,7 +718,7 @@ export function uninterruptibleMask<R, E, A>(f: FunctionN<[InterruptMaskCutout<R
  * @param f 
  */
 export function interruptibleMask<R, E, A>(f: FunctionN<[InterruptMaskCutout<R, E, A>], RIO<R, E, A>>): RIO<R, E, A> {
-    return chain(accessInterruptible,
+    return chain(accessInterruptible as RIO<R, E, boolean>,
         (flag) => interruptible(f(makeInterruptMaskCutout(flag)))
     );
 }
@@ -731,18 +747,27 @@ function combineFinalizerExit<E, A>(fiberExit: Exit<E, A>, releaseExit: Exit<E, 
  * @param use 
  */
 
-export function bracketExit<R, E, A, B>(acquire: RIO<R, E, A>, // Unifying multiple E's here is just really hard...
+export function bracketExit<R, E, A, B>(acquire: RIO<R, E, A>,
     release: FunctionN<[A, Exit<E, B>], RIO<R, E, unknown>>,
     use: FunctionN<[A], RIO<R, E, B>>): RIO<R, E, B> {
-    return uninterruptibleMask((cutout) => {
-        return chain(acquire,
-            (a) => pipe(a, use, cutout, result, chainWith(
-                (exit) => pipe(release(a, exit), result, chainWith(
-                    (finalize) => completed(combineFinalizerExit(exit, finalize))
-                ))
-            ))
+    
+    return uninterruptibleMask<R, E, B>((cutout) => 
+        chain(acquire,
+            (a) => chain<R, E, Exit<E, B>, B>(result(cutout(use(a))),
+                (exit) => chain<R, E, Exit<E, unknown>, B>(result(release(a, exit)),
+                    (finalize) => completed(combineFinalizerExit(exit, finalize)))
+            )
         )
-    });
+    )
+    // return uninterruptibleMask((cutout) => {
+    //     return chain(acquire,
+    //         (a) => pipe(a, use, cutout, result, chainWith(
+    //             (exit) => pipe(release(a, exit), (finExit) => result(finExit) as RIO<R, E, Exit<E, unknown>, chainWith(
+    //                 (finalize) => completed(combineFinalizerExit(exit, finalize))
+    //             ))
+    //         ))
+    //     )
+    // });
 }
 
 /**
@@ -763,20 +788,12 @@ export function bracket<R, E, A, B>(acquire: RIO<R, E, A>,
  * @param finalizer 
  */
 export function onComplete<R, E, A>(ioa: RIO<R, E, A>, finalizer: RIO<R, E, unknown>): RIO<R, E, A> {
-    return uninterruptibleMask((cutout) =>
-        pipe(
-            result(cutout(ioa)),
-            chainWith((exit) =>
-                pipe(
-                    finalizer,
-                    result,
-                    chainWith((finalize) =>
-                        completed(combineFinalizerExit(exit, finalize))
-                    )
-                )
-            )
+    return uninterruptibleMask<R, E, A>((cutout) => 
+        chain<R, E, Exit<E, A>, A>(result(cutout(ioa)),
+            (exit) => chain<R, E, Exit<E, unknown>, A>(result(finalizer),
+                (finalize) => completed(combineFinalizerExit(exit, finalize))
         )
-    );
+    ));
 }
 
 /**
@@ -785,20 +802,12 @@ export function onComplete<R, E, A>(ioa: RIO<R, E, A>, finalizer: RIO<R, E, unkn
  * @param finalizer 
  */
 export function onInterrupted<R, E, A>(ioa: RIO<R, E, A>, finalizer: RIO<R, E, unknown>): RIO<R, E, A> {
-    return uninterruptibleMask((cutout) =>
-        pipe(
-            result(cutout(ioa)),
-            chainWith((exit) =>
-                exit._tag === ex.ExitTag.Interrupt ?
-                    pipe(
-                        finalizer,
-                        result,
-                        chainWith((finalize) =>
-                            completed(combineFinalizerExit(exit, finalize))
-                        )
-                    ) :
-                    completed(exit)
-            )
+    return uninterruptibleMask<R, E, A>((cutout) => 
+        chain<R, E, Exit<E, A>, A>(result(cutout(ioa)),
+            (exit) => exit._tag === ex.ExitTag.Interrupt ? 
+                chain<R, E, Exit<E, unknown>, A>(result(finalizer),
+                    (finalize) => completed(combineFinalizerExit(exit, finalize))) : 
+                completed(exit)
         )
     );
 }
@@ -820,7 +829,7 @@ export const shifted: RIO<DefaultR, never, void> =
  * @param io 
  */
 export function shiftBefore<R, E, A>(io: RIO<R, E, A>): RIO<R, E, A> {
-    return applySecond(shifted, io);
+    return applySecond(shifted as RIO<R, E, void>, io);
 }
 
 /**
@@ -828,7 +837,7 @@ export function shiftBefore<R, E, A>(io: RIO<R, E, A>): RIO<R, E, A> {
  * @param io 
  */
 export function shiftAfter<R, E, A>(io: RIO<R, E, A>): RIO<R, E, A> {
-    return applyFirst(io, shifted);
+    return applyFirst(io, shifted as RIO<R, E, void>);
 }
 
 /**
@@ -837,7 +846,7 @@ export function shiftAfter<R, E, A>(io: RIO<R, E, A>): RIO<R, E, A> {
 export const shiftedAsync: RIO<DefaultR, never, void> =
     pipe(
         accessRuntime,
-        chainWith((runtime: Runtime) => 
+        chainWith((runtime: Runtime) =>
             asyncTotal<void>((callback) => {
                 return runtime.dispatchLater(() => callback(undefined), 0);
             })
@@ -850,7 +859,7 @@ export const shiftedAsync: RIO<DefaultR, never, void> =
  * @param io 
  */
 export function shiftAsyncBefore<R, E, A>(io: RIO<R, E, A>): RIO<R, E, A> {
-    return applySecond(shiftedAsync, io);
+    return applySecond(shiftedAsync as RIO<R, E, void>, io);
 }
 
 /**
@@ -858,7 +867,7 @@ export function shiftAsyncBefore<R, E, A>(io: RIO<R, E, A>): RIO<R, E, A> {
  * @param io 
  */
 export function shiftAsyncAfter<R, E, A>(io: RIO<R, E, A>): RIO<R, E, A> {
-    return applyFirst(io, shiftedAsync);
+    return applyFirst(io, shiftedAsync as RIO<R, E, void>);
 }
 
 /**
@@ -880,7 +889,7 @@ export const never: RIO<DefaultR, never, never> = asyncTotal(() => {
  * @param ms 
  */
 export function delay<R, E, A>(inner: RIO<R, E, A>, ms: number): RIO<R, E, A> {
-    return applySecond(after(ms), inner);
+    return applySecond(after(ms) as RIO<R, E, void>, inner);
 }
 
 /**
@@ -906,12 +915,13 @@ function completeLatched<R, E1, E2, A, B, C>(latch: Ref<boolean>,
     channel: Deferred<E2, C>,
     combine: FunctionN<[Exit<E1, A>, Fiber<E1, B>], RIO<R, E2, C>>,
     other: Fiber<E1, B>): FunctionN<[Exit<E1, A>], RIO<R, never, void>> {
-    return (exit) =>
-        flatten(
-            latch.modify((flag) => flag ?
-                [unit, flag] as const :
-                [channel.from(combine(exit, other)), true] as const)
-        );
+    return (exit) => {
+        const act: RIO<R, never, RIO<R, never, void>> = latch.modify((flag) => !flag ? 
+            [channel.from<R>(combine(exit, other)), true] as const : 
+            [unit as RIO<R, never, void>, flag] as const 
+        )
+        return flatten(act);
+    }
 }
 
 /**
@@ -926,14 +936,14 @@ function completeLatched<R, E1, E2, A, B, C>(latch: Ref<boolean>,
 export function raceFold<R, E1, E2, A, B, C>(first: RIO<R, E1, A>, second: RIO<R, E1, B>,
     onFirstWon: FunctionN<[Exit<E1, A>, Fiber<E1, B>], RIO<R, E2, C>>,
     onSecondWon: FunctionN<[Exit<E1, B>, Fiber<E1, A>], RIO<R, E2, C>>): RIO<R, E2, C> {
-    return uninterruptibleMask((cutout) =>
-        chain(makeRef(false),
-            (latch) => chain(makeDeferred<E2, C>(),
+    return uninterruptibleMask<R, E2, C>((cutout) =>
+        chain<R, E2, Ref<boolean>, C>(makeRef<boolean>(false),
+            (latch) => chain<R, E2, Deferred<E2, C>, C>(makeDeferred<E2, C>(),
                 (channel) => chain(fork(first),
                     (fiber1) => chain(fork(second),
-                        (fiber2) => chain(fork(chain(fiber1.wait, completeLatched(latch, channel, onFirstWon, fiber2))),
-                            () => chain(fork(chain(fiber2.wait, completeLatched(latch, channel, onSecondWon, fiber1))),
-                                () => onInterrupted(cutout(channel.wait), applySecond(fiber1.interrupt, fiber2.interrupt))
+                        (fiber2) => chain(fork(chain(fiber1.wait as RIO<R, never,Exit<E1, A>>, completeLatched(latch, channel, onFirstWon, fiber2))),
+                            () => chain(fork(chain(fiber2.wait as RIO<R, never, Exit<E1, B>>, completeLatched(latch, channel, onSecondWon, fiber1))),
+                                () => onInterrupted(cutout(channel.wait), applySecond(fiber1.interrupt, fiber2.interrupt) as RIO<R, never, void>)
                             )
                         )
                     )
@@ -954,10 +964,10 @@ export function timeoutFold<R, E1, E2, A, B>(source: RIO<R, E1, A>,
     ms: number,
     onTimeout: FunctionN<[Fiber<E1, A>], RIO<R, E2, B>>,
     onCompleted: FunctionN<[Exit<E1, A>], RIO<R, E2, B>>): RIO<R, E2, B> {
-    return raceFold(
+    return raceFold<R, E1, E2, A, void, B>(
         source,
         after(ms),
-        (exit, delayFiber) => applySecond(delayFiber.interrupt, onCompleted(exit)),
+        (exit, delayFiber) => applySecond(delayFiber.interrupt as RIO<R, never, void>, onCompleted(exit)),
         (_, fiber) => onTimeout(fiber)
     );
 }
@@ -972,7 +982,7 @@ function interruptLoser<R, E, A>(exit: Exit<E, A>, loser: Fiber<E, A>): RIO<R, E
  * @param io2 
  */
 export function raceFirst<R, E, A>(io1: RIO<R, E, A>, io2: RIO<R, E, A>): RIO<R, E, A> {
-    return raceFold(io1, io2, interruptLoser, interruptLoser);
+    return raceFold<R, E, E, A, A, A>(io1, io2, interruptLoser, interruptLoser);
 }
 
 
@@ -991,7 +1001,7 @@ function fallbackToLoser<R, E, A>(exit: Exit<E, A>, loser: Fiber<E, A>): RIO<R, 
  * @param io2 
  */
 export function race<R, E, A>(io1: RIO<R, E, A>, io2: RIO<R, E, A>): RIO<R, E, A> {
-    return raceFold(io1, io2, fallbackToLoser, fallbackToLoser);
+    return raceFold<R, E, E, A, A, A>(io1, io2, fallbackToLoser, fallbackToLoser);
 }
 
 /**
@@ -1001,7 +1011,7 @@ export function race<R, E, A>(io1: RIO<R, E, A>, io2: RIO<R, E, A>): RIO<R, E, A
  * @param f 
  */
 export function parZipWith<R, E, A, B, C>(ioa: RIO<R, E, A>, iob: RIO<R, E, B>, f: FunctionN<[A, B], C>): RIO<R, E, C> {
-    return raceFold(ioa, iob,
+    return raceFold<R, E, E, A, B, C>(ioa, iob,
         (aExit, bFiber) => zipWith(completed(aExit), bFiber.join, f),
         (bExit, aFiber) => zipWith(aFiber.join, completed(bExit), f)
     );
@@ -1057,7 +1067,7 @@ export function parAp_<R, E, A, B>(iof: RIO<R, E, FunctionN<[A], B>>, ioa: RIO<R
  * @param io 
  */
 export function orAbort<R, E, A>(io: RIO<R, E, A>): RIO<R, never, A> {
-    return chainError(io, (e) => raiseAbort(e));
+    return chainError(io, (e) => raiseAbort(e) as RIO<R, never, never>);
 }
 
 /**
@@ -1068,7 +1078,7 @@ export function orAbort<R, E, A>(io: RIO<R, E, A>): RIO<R, never, A> {
  * @param ms 
  */
 export function timeoutOption<R, E, A>(source: RIO<R, E, A>, ms: number): RIO<R, E, Option<A>> {
-    return timeoutFold(
+    return timeoutFold<R, E, E, A, Option<A>>(
         source,
         ms,
         (actionFiber) => applySecond(actionFiber.interrupt, pure(none)),
@@ -1137,8 +1147,8 @@ export function widenErr<T, E2>(input: WidenErrFrom<T, E2>): WidenErrTo<T, E2> {
     return input as unknown as WidenErrTo<T, E2>
 }
 
-export type WidenEnvFrom<T, R2> = T extends RIO<infer R, infer E, infer A> ? (R2 extends R ? RIO<R, E, A> : never): never
-export type WidenEnvTo<T, R2> = T extends RIO<infer R, infer E, infer A> ? (R2 extends R ? RIO<R2, E, A> : never): never
+export type WidenEnvFrom<T, R2> = T extends RIO<infer R, infer E, infer A> ? (R2 extends R ? RIO<R, E, A> : never) : never
+export type WidenEnvTo<T, R2> = T extends RIO<infer R, infer E, infer A> ? (R2 extends R ? RIO<R2, E, A> : never) : never
 
 /**
  * Using WidenEnvFrom and WidenEnvTo encode contravariance of the R type param
@@ -1148,6 +1158,10 @@ export type WidenEnvTo<T, R2> = T extends RIO<infer R, infer E, infer A> ? (R2 e
 export function widenEnv<T, R2>(input: WidenEnvFrom<T, R2>): WidenEnvTo<T, R2> {
     return input as unknown as WidenEnvTo<T, R2>
 }
+
+
+// const p = pure(1);
+// const p2: RIO<string, never, number> = widenEnv<typeof p, string>(p);
 
 /**
  * Run the given IO with the provided environment.
@@ -1237,4 +1251,3 @@ export function getMonoid<R, E, A>(m: Monoid<A>): Monoid<RIO<R, E, A>> {
         empty: pure(m.empty)
     }
 }
-

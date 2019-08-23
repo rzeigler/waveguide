@@ -143,9 +143,11 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
                 io.bracketExit(ticketN(n), ticketExit, ticketUse)
         );
 
-    const withPermitsN = <R, E, A>(n: number, inner: RIO<R, E, A>): RIO<R, E, A> =>
-        // hrm... why downcast necessary?
-        io.bracket(io.interruptible(acquireN<E>(n)), constant(releaseN(n) as RIO<R, E, unknown>), () => inner);
+    const withPermitsN = <R, E, A>(n: number, inner: RIO<R, E, A>): RIO<R, E, A> => {
+        const acquire = io.interruptible(acquireN<E>(n)) as RIO<R, E, void>;
+        const release = releaseN(n) as RIO<R, E, void>;
+        return io.bracket(acquire, constant(release), () => inner);
+    }
 
     const available = io.map(ref.get, e.fold((q) => -1 * q.size(), identity));
 
