@@ -140,7 +140,7 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
             sanityCheck(n),
             n === 0 ? 
                 io.unit : 
-                io.bracketExit<DefaultR, DefaultR, never, never, Ticket<void>, void>(ticketN(n), ticketExit, ticketUse)
+                io.bracketExit(ticketN(n), ticketExit, ticketUse)
         );
 
     const withPermitsN = <R, E, A>(n: number, inner: RIO<R, E, A>): RIO<R, E, A> =>
