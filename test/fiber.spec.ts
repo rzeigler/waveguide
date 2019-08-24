@@ -16,7 +16,7 @@ import fc from "fast-check";
 import { pipe } from "fp-ts/lib/pipeable";
 import { makeDeferred } from "../src/deferred";
 import { done, interrupt } from "../src/exit";
-import * as io from "../src/io";
+import * as io from "../src/wave";
 import { makeRef } from "../src/ref";
 import { arbEitherIO, eqvIO, expectExit } from "./tools.spec";
 import { Fiber } from "../src/fiber";

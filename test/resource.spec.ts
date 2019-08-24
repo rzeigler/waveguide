@@ -13,12 +13,12 @@
 // limitations under the License.
 
 import { done } from "../src/exit";
-import * as io from "../src/io";
+import * as io from "../src/wave";
 import { makeRef, Ref } from "../src/ref";
 import { Managed } from "../src/resource";
 import * as rsc from "../src/resource";
 import { expectExit } from "./tools.spec";
-import { DefaultR } from "../src/io";
+import { DefaultR } from "../src/wave";
 
 describe("Resource", () => {
     it("should bracket as expected", () => {

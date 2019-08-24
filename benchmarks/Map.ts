@@ -9,7 +9,7 @@ import {FIO} from "fearless-io"
 
 import {inc} from "./internals/Inc"
 import {RunSuite} from "./internals/RunSuite"
-import * as wave from "../src/io";
+import * as wave from "../src/wave";
 
 RunSuite("Map", {
     bluebird: () => Promise.resolve(BigInt(10)).then(inc),

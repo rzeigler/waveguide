@@ -18,8 +18,8 @@ import { left, right } from "fp-ts/lib/Either";
 import { FunctionN, identity } from "fp-ts/lib/function";
 import { pipe } from "fp-ts/lib/pipeable";
 import {abort, done, interrupt, raise } from "../src/exit";
-import { RIO, DefaultR } from "../src/io";
-import * as io from "../src/io";
+import { RIO, DefaultR } from "../src/wave";
+import * as io from "../src/wave";
 import { makeRef } from "../src/ref";
 import {
     arbConstIO,

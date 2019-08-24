@@ -7,8 +7,8 @@ import * as Fluture from "fluture"
 import {FIO, UIO} from "fearless-io"
 
 import {RunSuite} from "./internals/RunSuite"
-import * as wave from "../src/io";
-import { IO } from "../src/io";
+import * as wave from "../src/wave";
+import { IO } from "../src/wave";
 
 /**
  * Normal Fibonacci Implementation

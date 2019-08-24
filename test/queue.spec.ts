@@ -17,7 +17,7 @@ import { Do } from "fp-ts-contrib/lib/Do";
 import { array } from "fp-ts/lib/Array";
 import { eqString } from "fp-ts/lib/Eq";
 import { pipe } from "fp-ts/lib/pipeable";
-import * as io from "../src/io";
+import * as io from "../src/wave";
 import { boundedQueue, unboundedQueue } from "../src/queue";
 import { assertEq } from "./tools.spec";
 

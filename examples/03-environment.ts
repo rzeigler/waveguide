@@ -31,8 +31,8 @@ import * as https from "https"
 import * as http from "http";
 import * as resource from "../src/resource";
 import { Resource } from "../src/resource";
-import * as wave from "../src/io";
-import { RIO } from "../src/io";
+import * as wave from "../src/wave";
+import { RIO } from "../src/wave";
 import { log } from "../src/console";
 import { main } from "./common";
 

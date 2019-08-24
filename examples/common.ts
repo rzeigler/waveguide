@@ -15,8 +15,8 @@
 // This is a file for code that has already been introduced in example modules
 // so it is only replicated 2x
 
-import * as wave from "../src/io";
-import { IO } from "../src/io";
+import * as wave from "../src/wave";
+import { IO } from "../src/wave";
 import { Resource } from "../src/resource";
 import * as fs from "fs";
 import { left, right } from "fp-ts/lib/Either";
@@ -111,7 +111,7 @@ export const read = (handle: number, length: number): IO<NodeJS.ErrnoException, 
 import * as https from "https"
 import * as http from "http";
 import * as resource from "../src/resource";
-import { RIO } from "../src/io";
+import { RIO } from "../src/wave";
     
 export const agent: Resource<never, https.Agent> = resource.bracket(
     wave.sync(() => new https.Agent()),

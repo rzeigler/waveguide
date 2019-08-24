@@ -13,8 +13,8 @@
 // limitations under the License.
 
 import { Exit } from "./exit";
-import { RIO, DefaultR } from "./io";
-import * as io from "./io";
+import { RIO, DefaultR } from "./wave";
+import * as io from "./wave";
 import { Completable, completable} from "./support/completable";
 
 export interface Deferred<E, A> {

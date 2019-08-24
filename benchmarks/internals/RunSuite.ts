@@ -6,8 +6,8 @@
 import {Suite} from "benchmark"
 import {FutureInstance} from "fluture"
 
-import { IO } from "../../src/io";
-import * as wave from "../../src/io";
+import { IO } from "../../src/wave";
+import * as wave from "../../src/wave";
 import {noop} from "fearless-io/src/internals/Noop"
 import {UIO} from "fearless-io"
 import {defaultRuntime} from "fearless-io/src/runtimes/DefaultRuntime"

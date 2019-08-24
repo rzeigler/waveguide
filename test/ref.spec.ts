@@ -14,7 +14,7 @@
 
 import fc from "fast-check";
 import { array } from "fp-ts/lib/Array";
-import * as io from "../src/io";
+import * as io from "../src/wave";
 import { makeRef } from "../src/ref";
 import { eqvIO } from "./tools.spec";
 

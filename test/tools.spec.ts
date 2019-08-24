@@ -19,8 +19,8 @@ import fc, { Arbitrary } from "fast-check";
 import { Eq } from "fp-ts/lib/Eq";
 import { constTrue, FunctionN, identity } from "fp-ts/lib/function";
 import { done, Exit } from "../src/exit";
-import { asyncTotal, completed, DefaultR, RIO, pure, raiseAbort, raiseError, runToPromiseExitR, suspended, unit } from "../src/io";
-import * as io from "../src/io";
+import { asyncTotal, completed, DefaultR, RIO, pure, raiseAbort, raiseError, runToPromiseExitR, suspended, unit } from "../src/wave";
+import * as io from "../src/wave";
 
 
 export function expectExitIn<E, A, B>(ioa: RIO<DefaultR, E, A>, f: FunctionN<[Exit<E, A>], B>, expected: B): Promise<void> {

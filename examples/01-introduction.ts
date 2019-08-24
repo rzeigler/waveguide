@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as wave from "../src/io"
-import { IO } from "../src/io";
+import * as wave from "../src/wave"
+import { IO } from "../src/wave";
 import { log } from "../src/console";
 import * as fs from "fs";
 import { left, right } from "fp-ts/lib/Either";

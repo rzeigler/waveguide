@@ -17,7 +17,7 @@ import { Do } from "fp-ts-contrib/lib/Do";
 import { array } from "fp-ts/lib/Array";
 import { pipe } from "fp-ts/lib/pipeable";
 import { done, ExitTag } from "../src/exit";
-import * as io from "../src/io";
+import * as io from "../src/wave";
 import { makeRef } from "../src/ref";
 import { makeSemaphore } from "../src/semaphore";
 import { expectExit } from "./tools.spec";

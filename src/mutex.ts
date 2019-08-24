@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { RIO, DefaultR } from "./io";
-import * as io from "./io";
+import { RIO, DefaultR } from "./wave";
+import * as io from "./wave";
 import { makeSemaphore } from "./semaphore";
 
 export interface Mutex {

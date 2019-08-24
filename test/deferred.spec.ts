@@ -15,7 +15,7 @@
 import fc from "fast-check";
 import { makeDeferred  } from "../src/deferred";
 import { done, ExitTag, raise } from "../src/exit";
-import * as io from "../src/io";
+import * as io from "../src/wave";
 import { eqvIO, expectExit, expectExitIn } from "./tools.spec";
 
 describe("Deferred", () => {

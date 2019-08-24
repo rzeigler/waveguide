@@ -16,9 +16,9 @@ import { FunctionN, constant } from "fp-ts/lib/function";
 import { Monad3 } from "fp-ts/lib/Monad";
 import { Semigroup } from "fp-ts/lib/Semigroup";
 import { Monoid } from "fp-ts/lib/Monoid";
-import { RIO } from "./io";
+import { RIO } from "./wave";
 import { Fiber } from "./fiber";
-import * as io from "./io";
+import * as io from "./wave";
 import { Applicative3 } from "fp-ts/lib/Applicative";
 import { Functor3 } from "fp-ts/lib/Functor";
 

@@ -14,8 +14,8 @@
 /* eslint no-console:off */
 
 import { pipe } from "fp-ts/lib/pipeable";
-import * as wave from "../src/io";
-import { IO } from "../src/io";
+import * as wave from "../src/wave";
+import { IO } from "../src/wave";
 import { log } from "../src/console";
 import { Lazy } from "fp-ts/lib/function";
 

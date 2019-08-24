@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import { Exit, ExitTag } from "./exit";
-import { RIO, DefaultR, unit } from "./io";
+import { RIO, DefaultR, unit } from "./wave";
 
 export function ticketExit<A>(ticket: Ticket<A>, exit: Exit<never, A>): RIO<DefaultR, never, void> {
     if (exit._tag === ExitTag.Interrupt) {

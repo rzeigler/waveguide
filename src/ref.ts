@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import { FunctionN } from "fp-ts/lib/function";
-import { RIO, sync, DefaultR } from "./io";
+import { RIO, sync, DefaultR } from "./wave";
 
 export interface Ref<A> {
     readonly get: RIO<DefaultR, never, A>;

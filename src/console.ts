@@ -14,7 +14,7 @@
 /* eslint no-console:off */
 /* eslint @typescript-eslint/no-explicit-any:off */
 
-import { RIO, DefaultR, sync } from "./io";
+import { RIO, DefaultR, sync } from "./wave";
 
 
 

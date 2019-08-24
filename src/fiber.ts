@@ -15,8 +15,8 @@
 import { fold as foldOption, fromNullable, isSome, none, Option, some } from "fp-ts/lib/Option";
 import { Driver, makeDriver } from "./driver";
 import { Exit } from "./exit";
-import { RIO, DefaultR } from "./io";
-import * as io from "./io";
+import { RIO, DefaultR } from "./wave";
+import * as io from "./wave";
 import { Runtime } from "./runtime";
 
 export interface Fiber<E, A> {

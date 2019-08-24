@@ -5,7 +5,7 @@ import {Promise} from "bluebird"
 import * as Fluture from "fluture"
 
 import {FIO} from "fearless-io"
-import * as wave from "../src/io";
+import * as wave from "../src/wave";
 
 import {RunSuite} from "./internals/RunSuite"
 
