@@ -81,7 +81,10 @@ function compare(q: string): RIO<https.Agent, Error, CompareInfo> {
 const rt: RIO<https.Agent, Error, void> =
     pipe(
         compare("referential+transparency"),
-        wave.chainWith((results) => consoleIO.log(`${results[0][0].host} took ${results[0][1]}, ${results[1][0].host} took ${results[1][1]}`)),
+        wave.chainWith((results) => {
+            const l = consoleIO.log(`${results[0][0].host} took ${results[0][1]}, ${results[1][0].host} took ${results[1][1]}`);
+            return wave.bivary<typeof l, https.Agent, Error>(l);
+        }),
         wave.chainErrorWith((e) => consoleIO.error(e.toString()))
     );
 

@@ -63,7 +63,6 @@ export enum RIOTag {
     AccessRuntime
 }
 
-export type SuitableFor<J extends RIOTag, K extends RIOTag, V> = J extends K ? (K extends J ? V : never) : never
 
 /**
  * A description of an effect to perform
@@ -83,6 +82,48 @@ export type RIO<R, E, A> =
     AccessRuntime<R, E, A>;
 
 export type IO<E, A> = RIO<DefaultR, E, A>;
+
+export type ParamCovaryE<T, E2> = 
+    T extends RIO<infer R, never, infer A> ? T : 
+        T extends RIO<infer R, infer E, infer A> ? (E extends E2 ? T : never) : never
+export type ReturnCovaryE<T, E2> =
+    T extends RIO<infer R, never, infer A> ? RIO<R, E2, A> : 
+        T extends RIO<infer R, infer E, infer A> ? (E extends E2 ? RIO<R, E2, A> : never) : never
+
+/**
+ * Perform a safe widening of the E parameter of an RIO.
+ * 
+ * A witness of the encoded covariance of the E parameter.
+ */
+export function covaryE<T, E2>(input: ParamCovaryE<T, E2>): ReturnCovaryE<T, E2> {
+    return input as unknown as ReturnCovaryE<T, E2>
+}
+
+export type ParamContravaryR<T, R2> = T extends RIO<infer R, infer E, infer A> ? (R2 extends R ? T : never) : never;
+export type ReturnContravaryR<T, R2> = T extends RIO<infer R, infer E, infer A> ? (R2 extends R ? RIO<R2, E, A> : never) : never;
+
+/**
+ * Perform a safe widening of the R parameter of a RIO
+ * 
+ * Witness of the encoded contravariance of the R parameter.
+ * Bypasses the fact that only functions are normally contravariant in their inputs
+ * @param input 
+ * 
+ * @example
+    const p: IO<string, number> = raiseAbort("boom");
+    const p2: RIO<string, string, number> = contravaryR<typeof p, string>(p)
+ */
+export function contravaryR<T, R2>(input: ParamContravaryR<T, R2>): ReturnContravaryR<T, R2> {
+    return input as unknown as ReturnContravaryR<T, R2>;
+}
+
+export type ParamBivary<T, R2, E2> = T extends ParamContravaryR<T, R2> ? (T extends ParamCovaryE<T, E2> ? T : never) : never;
+export type ReturnBivary<T, R2, E2> = never;
+
+export function bivary<T, R2, E2>(input: ParamBivary<T, R2, E2>): ReturnBivary<T, R2, E2> {
+    return input as unknown as ReturnBivary<T, R2, E2>;
+}
+
 
 export interface Pure<R, E, A> {
     readonly _tag: RIOTag.Pure;

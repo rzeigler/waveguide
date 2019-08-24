@@ -87,7 +87,10 @@ function fetch(url: string): RIO<https.Agent, Error, Buffer> {
 const needsAgent: RIO<https.Agent, never, void> = 
     pipe(
         fetch("https://www.google.com"),
-        wave.chainWith((buffer) => log(buffer.toString("utf-8").length.toString())),
+        wave.chainWith((buffer) => {
+            const l: wave.RIO<wave.DefaultR, never, void> = log(buffer.toString("utf-8").length.toString());
+            return wave.bivary<typeof l, https.Agent, Error>(l);
+        }),
         wave.chainErrorWith((e) => log(e.toString()))
     )
 
