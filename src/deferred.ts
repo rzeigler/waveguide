@@ -48,8 +48,6 @@ export function makeDeferred<E, A, E2 = never>(): RIO<DefaultR, E2, Deferred<E, 
             const interruptor = interrupt as RIO<R, never, void>;
             return io.onInterrupted(completed, interruptor);
         }
-
-            // io.onInterrupted<R, E, A>(io.chain<R, E, Exit<E, A>, void>(io.result(source), complete), interrupt);
         return {
             wait,
             interrupt,

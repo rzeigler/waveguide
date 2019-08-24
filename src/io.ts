@@ -14,7 +14,7 @@
 
 import { Semigroup } from "fp-ts/lib/Semigroup"
 import { Monoid } from "fp-ts/lib/Monoid";
-import { Applicative3, Applicative } from "fp-ts/lib/Applicative";
+import { Applicative3 } from "fp-ts/lib/Applicative";
 import { Either, left, right } from "fp-ts/lib/Either";
 import * as either from "fp-ts/lib/Either";
 import { constant, flow, FunctionN, identity, Lazy } from "fp-ts/lib/function";
@@ -250,7 +250,7 @@ export function chain<R, E, A, B>(inner: RIO<R, E, A>, bind: FunctionN<[A], RIO<
 
 export interface AccessEnv<R, E, A> {
     readonly _tag: RIOTag.AccessEnv;
-    readonly f: FunctionN<[R], A>
+    readonly f: FunctionN<[R], A>;
 }
 
 /**
@@ -750,8 +750,8 @@ function combineFinalizerExit<E, A>(fiberExit: Exit<E, A>, releaseExit: Exit<E, 
 export function bracketExit<R, E, A, B>(acquire: RIO<R, E, A>,
     release: FunctionN<[A, Exit<E, B>], RIO<R, E, unknown>>,
     use: FunctionN<[A], RIO<R, E, B>>): RIO<R, E, B> {
-    
-    return uninterruptibleMask<R, E, B>((cutout) => 
+
+    return uninterruptibleMask<R, E, B>((cutout) =>
         chain(acquire,
             (a) => chain<R, E, Exit<E, B>, B>(result(cutout(use(a))),
                 (exit) => chain<R, E, Exit<E, unknown>, B>(result(release(a, exit)),
@@ -788,12 +788,12 @@ export function bracket<R, E, A, B>(acquire: RIO<R, E, A>,
  * @param finalizer 
  */
 export function onComplete<R, E, A>(ioa: RIO<R, E, A>, finalizer: RIO<R, E, unknown>): RIO<R, E, A> {
-    return uninterruptibleMask<R, E, A>((cutout) => 
+    return uninterruptibleMask<R, E, A>((cutout) =>
         chain<R, E, Exit<E, A>, A>(result(cutout(ioa)),
             (exit) => chain<R, E, Exit<E, unknown>, A>(result(finalizer),
                 (finalize) => completed(combineFinalizerExit(exit, finalize))
-        )
-    ));
+            )
+        ));
 }
 
 /**
@@ -802,11 +802,11 @@ export function onComplete<R, E, A>(ioa: RIO<R, E, A>, finalizer: RIO<R, E, unkn
  * @param finalizer 
  */
 export function onInterrupted<R, E, A>(ioa: RIO<R, E, A>, finalizer: RIO<R, E, unknown>): RIO<R, E, A> {
-    return uninterruptibleMask<R, E, A>((cutout) => 
+    return uninterruptibleMask<R, E, A>((cutout) =>
         chain<R, E, Exit<E, A>, A>(result(cutout(ioa)),
-            (exit) => exit._tag === ex.ExitTag.Interrupt ? 
+            (exit) => exit._tag === ex.ExitTag.Interrupt ?
                 chain<R, E, Exit<E, unknown>, A>(result(finalizer),
-                    (finalize) => completed(combineFinalizerExit(exit, finalize))) : 
+                    (finalize) => completed(combineFinalizerExit(exit, finalize))) :
                 completed(exit)
         )
     );
@@ -916,9 +916,9 @@ function completeLatched<R, E1, E2, A, B, C>(latch: Ref<boolean>,
     combine: FunctionN<[Exit<E1, A>, Fiber<E1, B>], RIO<R, E2, C>>,
     other: Fiber<E1, B>): FunctionN<[Exit<E1, A>], RIO<R, never, void>> {
     return (exit) => {
-        const act: RIO<R, never, RIO<R, never, void>> = latch.modify((flag) => !flag ? 
-            [channel.from<R>(combine(exit, other)), true] as const : 
-            [unit as RIO<R, never, void>, flag] as const 
+        const act: RIO<R, never, RIO<R, never, void>> = latch.modify((flag) => !flag ?
+            [channel.from<R>(combine(exit, other)), true] as const :
+            [unit as RIO<R, never, void>, flag] as const
         )
         return flatten(act);
     }
@@ -941,7 +941,7 @@ export function raceFold<R, E1, E2, A, B, C>(first: RIO<R, E1, A>, second: RIO<R
             (latch) => chain<R, E2, Deferred<E2, C>, C>(makeDeferred<E2, C>(),
                 (channel) => chain(fork(first),
                     (fiber1) => chain(fork(second),
-                        (fiber2) => chain(fork(chain(fiber1.wait as RIO<R, never,Exit<E1, A>>, completeLatched(latch, channel, onFirstWon, fiber2))),
+                        (fiber2) => chain(fork(chain(fiber1.wait as RIO<R, never, Exit<E1, A>>, completeLatched(latch, channel, onFirstWon, fiber2))),
                             () => chain(fork(chain(fiber2.wait as RIO<R, never, Exit<E1, B>>, completeLatched(latch, channel, onSecondWon, fiber1))),
                                 () => onInterrupted(cutout(channel.wait), applySecond(fiber1.interrupt, fiber2.interrupt) as RIO<R, never, void>)
                             )

@@ -143,14 +143,6 @@ export function chainWith<R, E, L, A>(bind: FunctionN<[L], Managed<R, E, A>>): F
     return (left) => chain(left, bind);
 }
 
-export function chainTap<R, E, A>(left: Managed<R, E, A>, bind: FunctionN<[A], Managed<R, E, unknown>>): Managed<R, E, A> {
-    return chain(left, (a) => as(bind(a), a));
-}
-
-export function chainTapWith<R, E, A>(bind: FunctionN<[A], Managed<R, E, unknown>>): FunctionN<[Managed<R, E, A>], Managed<R, E, A>> {
-    return (inner) => chainTap(inner, bind);
-}
-
 /**
  * Map a resource
  * @param res 
@@ -193,21 +185,62 @@ export function zip<R, E, A, B>(resa: Managed<R, E, A>, resb: Managed<R, E, B>):
     return zipWith(resa, resb, (a, b) => [a, b] as const);
 }
 
+/**
+ * Apply the function produced by resfab to the value produced by resa to produce a new resource.
+ * @param resa 
+ * @param resfab 
+ */
 export function ap<R, E, A, B>(resa: Managed<R, E, A>, resfab: Managed<R, E, FunctionN<[A], B>>): Managed<R, E, B> {
     return zipWith(resa, resfab, (a, f) => f(a));
 }
 
+/**
+ * Flipped version of ap
+ * @param resfab 
+ * @param resa 
+ */
 export function ap_<R, E, A, B>(resfab: Managed<R, E, FunctionN<[A], B>>, resa: Managed<R, E, A>): Managed<R, E, B> {
     return zipWith(resfab, resa, (f, a) => f(a));
 }
 
+/**
+ * Map a resource to a static value
+ * 
+ * This creates a resource of the provided constant b where the produced A has the same lifetime internally
+ * @param fa 
+ * @param b 
+ */
 export function as<R, E, A, B>(fa: Managed<R, E, A>, b: B): Managed<R, E, B> {
     return map(fa, constant(b));
 }
 
+
+/**
+ * Curried form of as
+ * @param b 
+ */
 export function to<B>(b: B): <R, E, A>(fa: Managed<R, E, A>) => Managed<R, E, B> {
     return (fa) => as(fa, b);
 }
+
+/**
+ * Construct a new 'hidden' resource using the produced A with a nested lifetime
+ * Useful for performing initialization and cleanup that clients don't need to see
+ * @param left 
+ * @param bind 
+ */
+export function chainTap<R, E, A>(left: Managed<R, E, A>, bind: FunctionN<[A], Managed<R, E, unknown>>): Managed<R, E, A> {
+    return chain(left, (a) => as(bind(a), a));
+}
+
+/**
+ * Curried form of chainTap
+ * @param bind 
+ */
+export function chainTapWith<R, E, A>(bind: FunctionN<[A], Managed<R, E, unknown>>): FunctionN<[Managed<R, E, A>], Managed<R, E, A>> {
+    return (inner) => chainTap(inner, bind);
+}
+
 
 /**
  * Curried data last form of use

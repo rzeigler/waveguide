@@ -23,7 +23,7 @@ export interface Deferred<E, A> {
   interrupt: RIO<DefaultR, never, void>
   done(a: A): RIO<DefaultR, never, void>
   error(e: E): RIO<DefaultR, never, void>
-  from(source: RIO<DefaultR, E, A>): RIO<DefaultR, never, void>
+  from<R>(source: RIO<R, E, A>): RIO<R, never, void>
 }
 ```
 

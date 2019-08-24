@@ -10,11 +10,71 @@ has_toc: false
 ## Getting Started
 ```
 import * as wave from "waveguide/lib/io"
-import { IO } from "waveguide/lib/io"
+import { RIO } from "waveguide/lib/io"
 ```
 
-## Quick examples
+## Overview of RIO
+The core data type in waveguide is the `RIO<R, E, A>`.
+You may think of a `RIO<R, E, A>` as a description of an action that, given some environment `R`, may produce a value `A` or fail with error `E`
+In this way, RIO's are very similar to `(r: R) => Promise<A>` but with a typed error channel.
+Additionally, RIO's are always lazy. 
+The action described by a RIO will never occur until it is explicitly started by using one of the run combinators.
+Additionally, RIO has pervasive support for interruption and resource safety.
+A running RIO may be interrupted and it will terminate as soon as it leaves an uninterruptible section (and all acquired resources are cleaned up).
+There is also a type alias `IO<E, A>` which requires an empty environment.
+
+### Constructing an IO
+There are a number of ways of constructing IOs exported from the /lib/io module
+They include
+    - `pure` -- create a successful IO
+    - `raiseError` -- create a failed IO
+    - `async` -- create an asynchronous effect based on callbacks
+    - `sync` -- create a synchronous efffect
+
+### Using an IO
 For a quick overview of what IO can do see the [tutorial](https://github.com/rzeigler/waveguide/blob/master/examples/)
+`RIO<R, E, A>` is a monad and exposes the relevant functions in a naming scheme similar to [fp-ts](https://github.com/gcanti/fp-ts/) along with typeclass instances for Monad and parallel Applicative.
+These instances are the exports io and par respectively from /lib/io.
+
+As mentioend perviously, RIOs are lazy so they don't actually do anything until they are interpreted.
+`unsafeRunR` will begin running a fiber and returns a cancellation action.
+`unsafeRunToPromiseR` will return a promise of the result of the fiber, rejecting if a failure is encountered.
+`unsafeRunToPromiseTotalR` will return a promise of an `Exit<E, A>` for the result of evaluation. This promis will not reject.
+Once an IO is launched its runloop will execute synchronous effects continuously until an asynchronous boundary is hit.
+If this is undesirable insert `io.shift` or `io.shiftAsync` calls at appropriate points.
+IO can be used to perform long-running tasks without resorting to service workers on the main thread in this way.
+
+
+### Resources
+Any RIO<E, A> may be safely used as a resource acquisition using the `bracket` or `bracketExit` combinators.
+Once the resource is acquired, the release action will always happen. 
+`bracketExit` is a more powerful form of `bracket` where the `Exit` of the resource use action is also available.
+If all you need is to ensure that an acquired resource is cleaned up, there is also the Resource data type which forms a Monad for nesting resource scopes.
+
+### Fibers
+An `IO<E, A>` may be converted to a fiber using `fork()`.
+The result being an `IO<never, Fiber<E, A>>`.
+The IO action is now running in the background and can be interrupted, waited, or joined.
+`interrupt` sends an interrupt to a fiber causing it to halt once it leaves any critical sections it may be in.
+`join` will halt the progress of the current fiber until the result of the target fiber is known.
+`wait` will await the termination of a fiber either by interruption or completion and produce the Exit status. 
+
+## Concurrency Abstractions
+Waveguide also provides Ref (synchronous mutable cell), Deferred (set once asynchronous cell), Semaphore, and an asynchronous queue implementation.
+
+## Managed
+Waveguide also contains a `Managed<R, E, A>` type as a friendly wrapper around using bracket.
+`Managed<R, E, A>` is a data type that can produce a resource of `A` given an environment of `R` that is available for the duration of its `use` invocation.
+`Managed` forms a monad in A where chain produces a new resource that has a scoped lifetime smaller than that of the resource it is devied from.
+For example, `resource.chain(ra, (a) => createb(a))`
+In this case, invoking `resource.use(rb, useB)` will:
+    1) acquire a
+    2) use a to acquire b
+    3) use b to call useB
+    4) release b
+    5) release a.
+    6) produce the value of useB
+
 
 ## A Note On Function Naming
 waveguide uses a slightly different naming convention from fp-ts.
@@ -30,47 +90,3 @@ It also exports a corresponding set of data last curried functions with the `Wit
     * mapWith
     * chainErrorWith
 Combinators that take multiple RIOs are different. Don't be confused by `zipWith` for instance.
-
-
-## Constructing an IO
-There are a number of ways of constructing IOs exported from the /lib/io module
-They include
-    - `succeed` -- create a successful IO
-    - `failed` -- create a failed IO
-    - `async` -- create an asynchronous effect based on callbacks
-    - `suspend` -- create a synchronous efffect
-There are also a number of functions to construct IOs from Promises and fp-ts tasks
-
-## Using an IO
-`IO<E, A>` is a monad and exposes the relevant functions in a naming scheme similar to [fp-ts](https://github.com/gcanti/fp-ts/) along with typeclass instances for Monad and parallel Applicative.
-These instances are the exports io and par respectively from /lib/io
-Furthermore, there are a several resource acquisition functions such as `bracket` and `onComplete` which guarantee IO actions happen in the fact of errors or interuption.
-These respect interruptible state
-
-## Resources
-Any RIO<E, A> may be safely used as a resource acquisition using the `bracket` or `bracketExit` combinators.
-Once the resource is acquired, the release action will always happen. 
-`bracketExit` is a more powerful form of `bracket` where the `Exit` of the resource use action is also available.
-If all you need is to ensure that an acquired resource is cleaned up, there is also the Resource data type which forms a Monad for nesting resource scopes.
-
-## Fibers
-An `IO<E, A>` may be converted to a fiber using `fork()`.
-The result being an `IO<never, Fiber<E, A>>`.
-The IO action is now running in the background and can be interrupted, waited, or joined.
-`interrupt` sends an interrupt to a fiber causing it to halt once it leaves any critical sections it may be in.
-`join` will halt the progress of the current fiber until the result of the target fiber is known.
-`wait` will await the termination of a fiber either by interruption or completion and produce the Exit status. 
-
-
-## Running
-IOs are lazy so they don't actually do anything until they are interpreted.
-`unsafeRunR` will begin running a fiber and returns a cancellation action.
-`unsafeRunToPromiseR` will return a promise of the result of the fiber, rejecting if a failure is encountered.
-`unsafeRunToPromiseTotalR` will return a promise of an `Exit<E, A>` for the result of evaluation. This promis will not reject.
-Once an IO is launched its runloop will execute synchronous effects continuously until an asynchronous boundary is hit.
-If this is undesirable insert `io.shift` or `io.shiftAsync` calls at appropriate points.
-IO can be used to perform long-running tasks without resorting to service workers on the main thread in this way.
-
-
-## Concurrency Abstractions
-Waveguide also provides Ref (synchronous mutable cell), Deferred (set once asynchronous cell), Semaphore, and an asynchronous queue implementation.
