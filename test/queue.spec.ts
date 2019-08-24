@@ -32,7 +32,7 @@ describe("ConcurrentQueue", function() {
                 fc.nat(100),
                 fc.nat(100),
                 (ops, delayWrite, delayRead) =>
-                    io.runToPromiseR(Do(io.instances)
+                    io.runToPromise(Do(io.instances)
                         .bind("q", unboundedQueue<string>())
                         .bindL("writeFiber",
                             ({q}) =>
@@ -54,7 +54,7 @@ describe("ConcurrentQueue", function() {
                         )
                         .doL(({writeFiber}) => writeFiber.wait)
                         .doL(({readFiber}) => readFiber.join)
-                        .return(() => undefined), {}
+                        .return(() => undefined)
                     )
             )
         )
@@ -67,7 +67,7 @@ describe("ConcurrentQueue", function() {
                 fc.nat(100),
                 fc.nat(100),
                 (ops, queueSize, delayWrite, delayRead) =>
-                    io.runToPromiseR(Do(io.instances)
+                    io.runToPromise(Do(io.instances)
                         .bind("q", boundedQueue<string>(queueSize))
                         .bindL("writeFiber",
                             ({q}) =>
@@ -87,7 +87,7 @@ describe("ConcurrentQueue", function() {
                                     io.fork))
                         .doL(({writeFiber}) => writeFiber.wait)
                         .doL(({readFiber}) => readFiber.join)
-                        .return(() => undefined), {})
+                        .return(() => undefined))
             )
         )
     );

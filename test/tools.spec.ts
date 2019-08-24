@@ -19,12 +19,12 @@ import fc, { Arbitrary } from "fast-check";
 import { Eq } from "fp-ts/lib/Eq";
 import { constTrue, FunctionN, identity } from "fp-ts/lib/function";
 import { done, Exit } from "../src/exit";
-import { asyncTotal, completed, DefaultR, RIO, pure, raiseAbort, raiseError, runToPromiseExitR, suspended, unit } from "../src/wave";
+import { asyncTotal, completed, DefaultR, RIO, pure, raiseAbort, raiseError, runToPromiseExit, suspended, unit } from "../src/wave";
 import * as io from "../src/wave";
 
 
 export function expectExitIn<E, A, B>(ioa: RIO<DefaultR, E, A>, f: FunctionN<[Exit<E, A>], B>, expected: B): Promise<void> {
-    return runToPromiseExitR(ioa, {})
+    return runToPromiseExit(ioa)
         .then((result) => {
             expect(f(result)).to.deep.equal(expected);
         });
@@ -39,9 +39,9 @@ export const assertEq = <A>(S: Eq<A>) => (a1: A) => (a2: A): RIO<DefaultR, never
     S.equals(a1, a2) ? unit : raiseAbort(`${a1} <> ${a2}`);
 
 export function eqvIO<E, A>(io1: RIO<DefaultR, E, A>, io2: RIO<DefaultR, E, A>): Promise<boolean> {
-    return runToPromiseExitR(io1, {})
+    return runToPromiseExit(io1)
         .then((result1) =>
-            runToPromiseExitR(io2, {})
+            runToPromiseExit(io2)
                 .then((result2) => {
                     return expect(result1).to.deep.equal(result2);
                 })
@@ -50,7 +50,7 @@ export function eqvIO<E, A>(io1: RIO<DefaultR, E, A>, io2: RIO<DefaultR, E, A>):
 }
 
 export function exitType<E, A>(io1: RIO<DefaultR, E, A>, tag: Exit<E, A>["_tag"]): Promise<void> {
-    return runToPromiseExitR(io1, {})
+    return runToPromiseExit(io1)
         .then((result) => expect(result._tag).to.equal(tag))
         .then(() => undefined);
 }

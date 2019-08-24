@@ -15,6 +15,8 @@
 import { Semigroup } from "fp-ts/lib/Semigroup"
 import { Monoid } from "fp-ts/lib/Monoid";
 import { Applicative3 } from "fp-ts/lib/Applicative";
+import { MonadThrow3 } from "fp-ts/lib/MonadThrow";
+import { Functor3 } from "fp-ts/lib/Functor";
 import { Either, left, right } from "fp-ts/lib/Either";
 import * as either from "fp-ts/lib/Either";
 import { constant, flow, FunctionN, identity, Lazy } from "fp-ts/lib/function";
@@ -22,6 +24,7 @@ import { Monad3 } from "fp-ts/lib/Monad";
 import { none, some, Option } from "fp-ts/lib/Option";
 import * as option from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
+
 import { Deferred, makeDeferred } from "./deferred";
 import { makeDriver } from "./driver";
 import { Cause, Exit } from "./exit";
@@ -29,24 +32,10 @@ import * as ex from "./exit";
 import { Fiber, makeFiber } from "./fiber";
 import { makeRef, Ref } from "./ref";
 import { Runtime } from "./runtime";
-import { MonadThrow3 } from "fp-ts/lib/MonadThrow";
-import { Functor3 } from "fp-ts/lib/Functor";
+import { fst, snd, tuple2 } from "./support/util";
 
 // We don't care about the environment so we assignment between
 export type DefaultR = {}; // eslint-disable-line @typescript-eslint/prefer-interface
-
-// Some utilities
-function tuple2<A, B>(a: A, b: B): readonly [A, B] {
-    return [a, b] as const;
-}
-
-function fst<A>(a: A): A { // eslint-disable-line no-unused-vars
-    return a;
-}
-
-function snd<A, B>(_: A, b: B): B {
-    return b;
-}
 
 export enum RIOTag {
     Pure,
@@ -55,14 +44,11 @@ export enum RIOTag {
     Suspended,
     Async,
     Chain,
-    AccessEnv,
-    ProvideEnv,
     Collapse,
     InterruptibleRegion,
     AccessInterruptible,
     AccessRuntime
 }
-
 
 /**
  * A description of an effect to perform
@@ -74,8 +60,6 @@ export type RIO<R, E, A> =
     Suspended<R, E, A> |
     Async<E, A> |
     Chain<R, E, any, A> | // eslint-disable-line @typescript-eslint/no-explicit-any
-    AccessEnv<R, E, A> |
-    ProvideEnv<any, E, A> | // eslint-disable-line @typescript-eslint/no-explicit-any
     Collapse<R, any, E, any, A> | // eslint-disable-line @typescript-eslint/no-explicit-any
     InterruptibleRegion<R, E, A> |
     AccessInterruptible<R, E, A> |
@@ -289,32 +273,6 @@ export function chain<R, E, A, B>(inner: RIO<R, E, A>, bind: FunctionN<[A], RIO<
     };
 }
 
-export interface AccessEnv<R, E, A> {
-    readonly _tag: RIOTag.AccessEnv;
-    readonly f: FunctionN<[R], A>;
-}
-
-/**
- * Create an IO that accesses its environment
- */
-export function accessEnv<R>(): RIO<R, never, R> {
-    return { _tag: RIOTag.AccessEnv, f: identity }
-}
-
-export interface ProvideEnv<R, E, A> {
-    readonly _tag: RIOTag.ProvideEnv;
-    readonly r: R;
-    readonly inner: RIO<R, E, A>;
-}
-
-/**
- * Lift a function from R => IO<E, A> to a RIO<R, E, A>
- * @param f 
- */
-export function encaseReader<R, E, A>(f: FunctionN<[R], IO<E, A>>): RIO<R, E, A> {
-    return chain(accessEnv<R>(), (r) => f(r) as RIO<R, E, A>);
-}
-
 /**
  * Lift an Either into an IO
  * @param e 
@@ -333,41 +291,6 @@ export function encaseOption<E, A>(o: Option<A>, onError: Lazy<E>): IO<E, A> {
         option.map<A, IO<E, A>>(pure),
         option.getOrElse<IO<E, A>>(() => raiseError(onError())));
 }
-
-/**
- * Provide an environment to an RIO. 
- * 
- * This eliminates the dependency on the specific R of the input. 
- * Instead, the resulting IO has an R parameter of DefaultR
- * @param r 
- * @param io 
- */
-export function provideEnv<R, E, A>(io: RIO<R, E, A>, r: R): RIO<DefaultR, E, A> {
-    return {
-        _tag: RIOTag.ProvideEnv,
-        r,
-        inner: io
-    };
-}
-
-/**
- * Manipulate an IO by producing its environment from an IO in different environment such that it may execute in that other environment
- * @param contra 
- * @param io 
- */
-export function contramapEnvM<R1, R2, E, A>(contra: RIO<R1, E, R2>, io: RIO<R2, E, A>): RIO<R1, E, A> {
-    return chain(contra, (r2) => provideEnv(io, r2) as RIO<R1, E, A>);
-}
-
-/**
- * Manipulate an IO with by producing its environment from a different one
- * @param f 
- * @param io 
- */
-export function contramapEnv<R1, R2, E, A>(f: FunctionN<[R1], R2>, io: RIO<R2, E, A>): RIO<R1, E, A> {
-    return contramapEnvM(encaseReader((r1) => pure(f(r1))), io);
-}
-
 
 /**
  * Flatten a nested IO
@@ -1210,12 +1133,12 @@ export function widenEnv<T, R2>(input: WidenEnvFrom<T, R2>): WidenEnvTo<T, R2> {
  * @param r 
  * @param callback 
  */
-export function runR<R, E, A>(io: RIO<R, E, A>, r: R, callback?: FunctionN<[Exit<E, A>], void>): Lazy<void> {
+export function runR<R, E, A>(io: RIO<R, E, A>, callback?: FunctionN<[Exit<E, A>], void>): Lazy<void> {
     const driver = makeDriver<R, E, A>();
     if (callback) {
         driver.onExit(callback);
     }
-    driver.start(r, io);
+    driver.start(io);
     return driver.interrupt;
 }
 
@@ -1226,9 +1149,9 @@ export function runR<R, E, A>(io: RIO<R, E, A>, r: R, callback?: FunctionN<[Exit
  * @param io 
  * @param r 
  */
-export function runToPromiseR<R, E, A>(io: RIO<R, E, A>, r: R): Promise<A> {
+export function runToPromise<R, E, A>(io: RIO<R, E, A>): Promise<A> {
     return new Promise((resolve, reject) =>
-        runR(io, r, (exit) => {
+        runR(io, (exit) => {
             if (exit._tag === ex.ExitTag.Done) {
                 resolve(exit.value);
             } else if (exit._tag === ex.ExitTag.Abort) {
@@ -1250,8 +1173,8 @@ export function runToPromiseR<R, E, A>(io: RIO<R, E, A>, r: R): Promise<A> {
  * @param io 
  * @param r 
  */
-export function runToPromiseExitR<R, E, A>(io: RIO<R, E, A>, r: R): Promise<Exit<E, A>> {
-    return new Promise((result) => runR(io, r, result))
+export function runToPromiseExit<R, E, A>(io: RIO<R, E, A>): Promise<Exit<E, A>> {
+    return new Promise((result) => runR(io, result))
 }
 
 export const URI = "RIO";

@@ -73,12 +73,13 @@ function createFiber<E, A>(driver: Driver<DefaultR, E, A>, n?: string): Fiber<E,
 }
 
 export function makeFiber<R, E, A>(init: RIO<R, E, A>, name?: string): RIO<R, never, Fiber<E, A>> {
-    return io.chain(io.accessRuntime as RIO<R, never, Runtime>,
-        (runtime) => io.chain<R, never, R, Fiber<E, A>>(io.accessEnv<R>(),
-            (r) => io.sync(() => {
+    return io.chain(
+        io.accessRuntime as RIO<R, never, Runtime>,
+        (runtime) =>
+            io.sync(() => {
                 const driver = makeDriver<R, E, A>(runtime);
                 const fiber = createFiber(driver, name);
-                driver.start(r, init);
+                driver.start(init);
                 return fiber;
-            })));
+            }));
 }

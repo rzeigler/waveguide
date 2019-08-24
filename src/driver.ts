@@ -25,7 +25,7 @@ import { MutableStack, mutableStack } from "./support/mutable-stack";
 // It turns out th is is used quite often
 type UnkIO = RIO<unknown, unknown, unknown>
 
-export type RegionFrameType = InterruptFrame | EnvironmentFrame
+export type RegionFrameType = InterruptFrame;
 export type FrameType = Frame | FoldFrame | RegionFrameType;
 
 interface Frame {
@@ -70,27 +70,8 @@ const makeInterruptFrame = (interruptStatus: MutableStack<boolean>): InterruptFr
     };
 };
 
-interface EnvironmentFrame {
-    readonly _tag: "environment-frame";
-    apply(u: unknown): UnkIO;
-    exitRegion(): void;
-}
-
-const makeEnvironmentFrame = (environmentStack: MutableStack<any>): EnvironmentFrame => { // eslint-disable-line @typescript-eslint/no-explicit-any
-    return {
-        _tag: "environment-frame",
-        apply(u: unknown) {
-            environmentStack.pop();
-            return io.pure(u) as UnkIO;
-        },
-        exitRegion() {
-            environmentStack.pop();
-        }
-    }
-}
-
 export interface Driver<R, E, A> {
-    start(r: R, run: RIO<R, E, A>): void;
+    start(run: RIO<R, E, A>): void;
     interrupt(): void;
     onExit(f: FunctionN<[Exit<E, A>], void>): Lazy<void>;
     exit(): Option<Exit<E, A>>;
@@ -102,7 +83,6 @@ export function makeDriver<R, E, A>(runtime: Runtime = defaultRuntime): Driver<R
     const result: Completable<Exit<E, A>> = completable();
     const frameStack: MutableStack<FrameType> = mutableStack();
     const interruptRegionStack: MutableStack<boolean> = mutableStack();
-    const environmentStack: MutableStack<any> = mutableStack(); // eslint-disable-line @typescript-eslint/no-explicit-any
     let cancelAsync: Lazy<void> | undefined;
 
 
@@ -138,7 +118,7 @@ export function makeDriver<R, E, A>(runtime: Runtime = defaultRuntime): Driver<R
                 return frame.recover(e);
             }
             // We need to make sure we leave an interrupt region or environment provision region while unwinding on errors
-            if (frame._tag === "interrupt-frame" || frame._tag === "environment-frame") {
+            if (frame._tag === "interrupt-frame") {
                 frame.exitRegion();
             }
             frame = frameStack.pop();
@@ -241,14 +221,6 @@ export function makeDriver<R, E, A>(runtime: Runtime = defaultRuntime): Driver<R
                         frameStack.push(makeFoldFrame(current.success, current.failure));
                         current = current.inner;
                         break;
-                    case RIOTag.ProvideEnv:
-                        environmentStack.push(current.r)
-                        frameStack.push(makeEnvironmentFrame(environmentStack));
-                        current = current.inner;
-                        break;
-                    case RIOTag.AccessEnv:
-                        current = io.pure(current.f(environmentStack.peek())) as UnkIO;
-                        break;
                     case RIOTag.InterruptibleRegion:
                         interruptRegionStack.push(current.flag);
                         frameStack.push(makeInterruptFrame(interruptRegionStack));
@@ -274,12 +246,11 @@ export function makeDriver<R, E, A>(runtime: Runtime = defaultRuntime): Driver<R
         }
     }
 
-    function start(r: R, run: RIO<R, E, A>): void {
+    function start(run: RIO<R, E, A>): void {
         if (started) {
             throw new Error("Bug: Runtime may not be started multiple times");
         }
         started = true;
-        environmentStack.push(r);
         runtime.dispatch(() => loop(run as UnkIO));
     }
 
