@@ -364,6 +364,13 @@ export function to<B>(b: B): <E, A>(io: Wave<E, A>) => Wave<E, B> {
     return (io) => as(io, b);
 }
 
+/**
+ * Sequence a Wave and then produce an effect based on the produced value for observation.
+ * 
+ * Produces the result of the iniital Wave
+ * @param inner 
+ * @param bind 
+ */
 export function chainTap<E, A>(inner: Wave<E, A>, bind: FunctionN<[A], Wave<E, unknown>>): Wave<E, A> {
     return chain(inner, (a) =>
         as(bind(a), a)
@@ -372,14 +379,6 @@ export function chainTap<E, A>(inner: Wave<E, A>, bind: FunctionN<[A], Wave<E, u
 
 export function chainTapWith<E, A>(bind: FunctionN<[A], Wave<E, unknown>>): (inner: Wave<E, A>) => Wave<E, A> {
     return (inner) => chainTap(inner, bind);
-}
-
-/**
- * Curried form of as
- * @param b
- */
-export function liftAs<B>(b: B): <E, A>(io: Wave<E, A>) => Wave<E, B> {
-    return <E, A>(io: Wave<E, A>) => as(io, b);
 }
 
 /**
@@ -516,13 +515,6 @@ export function ap<E, A, B>(ioa: Wave<E, A>, iof: Wave<E, FunctionN<[A], B>>): W
     return zipWith(ioa, iof, (a, f) => f(a));
 }
 
-/**
- * Curried form of ap
- * @param ioa 
- */
-export function apWith<E, A>(ioa: Wave<E, A>): <B>(iof: Wave<E, FunctionN<[A], B>>) => Wave<E, B> {
-    return <B>(iof: Wave<E, FunctionN<[A], B>>) => ap(ioa, iof);
-}
 
 /**
  * Flipped argument form of ap
@@ -531,14 +523,6 @@ export function apWith<E, A>(ioa: Wave<E, A>): <B>(iof: Wave<E, FunctionN<[A], B
  */
 export function ap_<E, A, B>(iof: Wave<E, FunctionN<[A], B>>, ioa: Wave<E, A>): Wave<E, B> {
     return zipWith(iof, ioa, (f, a) => f(a));
-}
-
-/**
- * Curried form of ap_
- * @param iof 
- */
-export function apWith_<E, A, B>(iof: Wave<E, FunctionN<[A], B>>): FunctionN<[Wave<E, A>], Wave<E, B>> {
-    return (io) => ap_(iof, io);
 }
 
 /**
@@ -1003,31 +987,6 @@ export function fromPromise<A>(thunk: Lazy<Promise<A>>): Wave<unknown, A> {
 }
 
 /**
- * Create an IO by lifting an Either
- * @param e 
- */
-export function fromEither<E, A>(e: Either<E, A>): Wave<E, A> {
-    return either.fold<E, A, Wave<E, A>>(raiseError, pure)(e);
-}
-
-/**
- * Create an IO from an Option, failing if it is none with the given error
- * @param o 
- * @param ifNone 
- */
-export function fromOption<E, A>(o: Option<A>, ifNone: Lazy<E>): Wave<E, A> {
-    return option.fold<A, Wave<E, A>>(() => raiseError(ifNone()), pure)(o);
-}
-
-/**
- * Curried form of fromOption
- * @param ifNone 
- */
-export function fromOptionWith<E, A>(ifNone: Lazy<E>): FunctionN<[Option<A>], Wave<E, A>> {
-    return (o) => fromOption(o, ifNone);
-}
-
-/**
  * Run the given IO with the provided environment.
  * @param io 
  * @param r 
@@ -1077,18 +1036,18 @@ export function runToPromiseExit<E, A>(io: Wave<E, A>): Promise<Exit<E, A>> {
     return new Promise((result) => runR(io, result))
 }
 
-export const URI = "RIO";
+export const URI = "Wave";
 export type URI = typeof URI;
 declare module "fp-ts/lib/HKT" {
     interface URItoKind2<E, A> {
-        RIO: Wave<E, A>;
+        Wave: Wave<E, A>;
     }
 }
 
 export const instances:  MonadThrow2<URI> = {
     URI,
     map,
-    of: <E, A>(a: A) => pure(a),
+    of: <E, A>(a: A): Wave<E, A> => pure(a),
     ap: ap_,
     chain,
     throwError: <E, A>(e: E): Wave<E, A> => raiseError(e)
@@ -1097,7 +1056,7 @@ export const instances:  MonadThrow2<URI> = {
 export const parInstances: Applicative2<URI> = {
     URI,
     map,
-    of: pure,
+    of: <E, A>(a: A): Wave<E, A> => pure(a),
     ap: parAp_
 } as const;
 

@@ -19,6 +19,13 @@
             "script": "build",
             "problemMatcher": [],
             "group": "build"
+        },
+        {
+            "type": "npm",
+            "script": "lint-fix",
+            "problemMatcher": [
+                "$eslint-stylish"
+            ]
         }
     ]
 }
