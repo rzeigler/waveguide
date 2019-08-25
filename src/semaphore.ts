@@ -14,7 +14,7 @@
 
 import * as e from "fp-ts/lib/Either";
 import { Either, left, right } from "fp-ts/lib/Either";
-import { constant, identity, not } from "fp-ts/lib/function";
+import { constant, identity, not, flow } from "fp-ts/lib/function";
 import * as o from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
 import { Deferred, makeDeferred } from "./deferred";
@@ -23,6 +23,8 @@ import { Wave } from "./wave";
 import { makeRef, Ref } from "./ref";
 import { Dequeue, empty } from "./support/dequeue";
 import { makeTicket, Ticket, ticketExit, ticketUse } from "./ticket";
+import { WaveR } from "./waver";
+import * as waver from "./waver";
 
 export interface Semaphore {
     readonly acquire: Wave<never, void>;
@@ -173,4 +175,41 @@ export function makeSemaphore(n: number): Wave<never, Semaphore> {
         sanityCheck(n),
         io.map(makeRef(right(n) as State), makeSemaphoreImpl)
     );
+}
+
+export interface SemaphoreR {
+    acquireN(n: number): WaveR<{}, never, void>;
+    readonly acquire: WaveR<{}, never, void>
+    releaseN(n: number): WaveR<{}, never, void>;
+    readonly release: WaveR<{}, never, void>;
+    withPermitsN<R, E, A>(n: number, wave: WaveR<R, E, A>): WaveR<R, E, A>;
+    withPermit<R, E, A>(wave: WaveR<R, E, A>): WaveR<R, E, A>;
+    readonly available: WaveR<{}, never, number>
+}
+
+export function liftSemaphore(sem: Semaphore): SemaphoreR {
+    const acquireN = flow(sem.acquireN, waver.encaseWave);
+    const acquire = waver.encaseWave(sem.acquire);
+    const releaseN = flow(sem.releaseN, waver.encaseWave);
+    const release = waver.encaseWave(sem.release);
+    function withPermitsN<R, E, A>(n: number, wave: WaveR<R, E, A>): WaveR<R, E, A> {
+        return (r) => sem.withPermitsN(n, wave(r));
+    }
+    function withPermit<R, E, A>(wave: WaveR<R, E, A>): WaveR<R, E, A> {
+        return (r) => sem.withPermit(wave(r));
+    }
+    const available = waver.encaseWave(sem.available);
+    return {
+        acquireN,
+        acquire,
+        releaseN,
+        release,
+        withPermitsN,
+        withPermit,
+        available
+    }
+}
+
+export function makeSemaphoreR(n: number): WaveR<{}, never, SemaphoreR> {
+    return waver.encaseWave(io.map(makeSemaphore(n), liftSemaphore));
 }

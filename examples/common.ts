@@ -34,6 +34,7 @@ export function main(io: Wave<never, void>): void {
     driver.onExit((e) => {
         // We don't worry about the raise case because the type of main says you must have handled your errors
         if (e._tag === ExitTag.Abort) {
+            console.error(e);
             process.exit(1);
         } else {
             process.exit(0);

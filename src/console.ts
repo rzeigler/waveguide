@@ -15,6 +15,8 @@
 /* eslint @typescript-eslint/no-explicit-any:off */
 
 import { Wave, sync } from "./wave";
+import { WaveR } from "./waver";
+import * as waver from "./waver";
 
 
 
@@ -49,4 +51,30 @@ export function error(msg?: any, ...more: any[]): Wave<never, void> {
     // tslint:disable-next-line
         console.error(msg, ...more);
     });
+}
+
+
+
+/**
+ * Suspend console.log in an IO
+ * @param msg
+ */
+export function logR<R = {}>(msg?: any, ...more: any[]): WaveR<R, never, void> {
+    return waver.encaseWaveR(log(msg, ...more));
+}
+
+/**
+ * Suspend console.warn in an IO
+ * @param msg
+ */
+export function warnR<R = {}>(msg?: any, ...more: any[]): WaveR<R, never, void> {
+   return waver.encaseWaveR(warn(msg, ...more));
+}
+
+/**
+ * Suspend console.error in an IO
+ * @param msg
+ */
+export function errorR<R = {}>(msg?: any, ...more: any[]): WaveR<R, never, void> {
+    return waver.encaseWaveR(error(msg, ...more));
 }

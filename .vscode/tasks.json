@@ -26,6 +26,13 @@
             "problemMatcher": [
                 "$eslint-stylish"
             ]
+        },
+        {
+            "type": "npm",
+            "script": "test-build",
+            "problemMatcher": [
+                "$tsc"
+            ]
         }
     ]
 }
