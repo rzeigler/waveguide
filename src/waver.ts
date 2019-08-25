@@ -95,6 +95,10 @@ export function completed<E, A>(exit: Exit<E, A>): WaveR<{}, E, A> {
     return constant(wave.completed(exit));
 }
 
+export function contramap<R, E, A, R2>(wave: WaveR<R, E, A>, f: FunctionN<[R2], R>): WaveR<R2, E, A> {
+    return (r2) => wave(f(r2));
+}
+
 export function interruptibleRegion<R, E, A>(inner: WaveR<R, E, A>, flag: boolean): WaveR<R, E, A> {
     return (r: R) =>
         wave.interruptibleRegion(inner(r), flag);
