@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Wave } from "./wave";
+import { Wave, Fiber } from "./wave";
 import * as wave from "./wave";
 import { constant, FunctionN, flow, Lazy, identity } from "fp-ts/lib/function";
 import { Option } from "fp-ts/lib/Option";
@@ -21,37 +21,78 @@ import * as exit from "./exit";
 import { Either } from "fp-ts/lib/Either";
 import { Runtime } from "./runtime";
 import { tuple2, fst, snd } from "./support/util";
-import { Fiber } from "./fiber";
 import { MonadThrow3 } from "fp-ts/lib/MonadThrow";
 import { Applicative3 } from "fp-ts/lib/Applicative";
 
 export type WaveR<R, E, A> = (r: R) => Wave<E, A>;
 
+export type ReturnCovaryE<T, E2> = 
+    T extends WaveR<infer R, infer E, infer A> ? 
+        (E extends E2 ? WaveR<R, E2, A> : WaveR<R, E | E2, A>) : never
+
+/** 
+ * Perform a widening of WaveR<R, E1, A> such that the result includes E2.
+ * 
+ * This encapsulates normal subtype widening, but will also widen to E1 | E2 as a fallback
+ * Assumes that this function (which does nothing when compiled to js) will be inlined in hot code
+ */
+export function covaryE<R, E1, A, E2>(wave: WaveR<R, E1, A>): ReturnCovaryE<typeof wave, E2> {
+    return wave as unknown as ReturnCovaryE<typeof wave, E2>;
+}
+
+/**
+ * Type inference helper form of covaryToE
+ */
+export function covaryToE<E2>(): <R, E1, A>(wave: WaveR<R, E1, A>) => ReturnCovaryE<typeof wave, E2> {
+    return (wave) => covaryE(wave);
+}
+
+export type ReturnContravaryR<T, R2> = 
+    T extends WaveR<infer R, infer E, infer A> ?
+        (R2 extends R ? WaveR<R2, E, A> : WaveR<R & R2, E, A>) : never;
+
+/** 
+ * Perform a widening of WaveR<R, E, A> such that the result includes R2.
+ * 
+ * This encapsulates normal subtype widening, but will also widen to R1 & R2 as a fallback.
+ * Assumes that this function (which does nothing when compiled to js) will be inlined in hot code.
+ */
+export function contravaryR<R, E, A, R2>(wave: WaveR<R, E, A>): ReturnContravaryR<typeof wave, R2> {
+    return wave as unknown as ReturnContravaryR<typeof wave, R2>;
+}
+
+export function contravaryToR<R2>(): <R1, E, A>(wave: WaveR<R1, E, A>) => ReturnContravaryR<typeof wave, R2>  {
+    return (wave) => contravaryR(wave);
+}
+
+export function encaseWave<E, A>(w: Wave<E, A>): WaveR<{}, E, A> {
+    return constant(w);
+}
+
+export function encaseWaveR<R, E, A>(w: Wave<E, A>): WaveR<R, E, A> {
+    return contravaryR(encaseWave(w));
+}
 
 export function pure<A>(a: A): WaveR<{}, never, A> {
-    return constant(wave.pure(a));
+    return encaseWave(wave.pure(a));
 }
 
 export function raised<E>(e: Cause<E>): WaveR<{}, E, never> {
-    return constant(wave.raised(e));
+    return encaseWave(wave.completed(e))
 }
 
 export function raiseError<E>(e: E): WaveR<{}, E, never> {
-    return raised(exit.raise(e))
+    return encaseWave(wave.completed(exit.raise(e)))
 }
 
 export function raiseAbort(u: unknown): WaveR<{}, never, never> {
-    return raised(exit.abort(u));
+    return encaseWave(wave.completed(exit.abort(u)));
 }
 
 export const raiseInterrupt: WaveR<{}, never, never> = raised(exit.interrupt);
 
 export function completed<E, A>(exit: Exit<E, A>): WaveR<{}, E, A> {
     return constant(wave.completed(exit));
-}
-
-export function encaseWave<E, A>(w: Wave<E, A>): WaveR<{}, E, A> {
-    return constant(w);
 }
 
 export function interruptibleRegion<R, E, A>(inner: WaveR<R, E, A>, flag: boolean): WaveR<R, E, A> {
@@ -98,6 +139,10 @@ export const accessRuntime: WaveR<{}, never, Runtime> = encaseWave(wave.accessRu
 
 export function map<R, E, A, B>(base: WaveR<R, E, A>, f: FunctionN<[A], B>): WaveR<R, E, B> {
     return flow(base, wave.mapWith(f));
+}
+
+export function mapWith<A, B>(f: FunctionN<[A], B>): <R, E>(wave: WaveR<R, E, A>) => WaveR<R, E, B> {
+    return (wave) => map(wave, f);
 }
 
 export function as<R, E, A, B>(w: WaveR<R, E, A>, b: B): WaveR<R, E, B> {
@@ -277,22 +322,48 @@ export function delay<R, E, A>(inner: WaveR<R, E, A>, ms: number): WaveR<R, E, A
     return applySecond(after(ms) as WaveR<R, E, void>, inner);
 }
 
-export function fork<R, E, A>(wa: WaveR<R, E, A>, name?: string): WaveR<R, never, Fiber<E, A>> {
-    return (r: R) => wave.fork(wa(r), name);
+export interface FiberR<E, A> {
+    readonly name: Option<string>;
+    readonly interrupt: WaveR<{}, never, void>;
+    readonly wait: WaveR<{}, never, Exit<E, A>>;
+    readonly join: WaveR<{}, E, A>;
+    readonly result: WaveR<{}, E, Option<A>>;
+    readonly isComplete: WaveR<{}, never, boolean>;
+}
+
+/**
+ * Lift a fiber in the WaveR context
+ * @param fiber 
+ */
+export function encaseFiber<E, A>(fiber: Fiber<E, A>): FiberR<E, A> {
+    return {
+        name: fiber.name,
+        interrupt: encaseWave(fiber.interrupt),
+        wait: encaseWave(fiber.wait),
+        join: encaseWave(fiber.join),
+        result: encaseWave(fiber.result),
+        isComplete: encaseWave(fiber.isComplete)
+    } as const;
+}
+
+export function fork<R, E, A>(wa: WaveR<R, E, A>, name?: string): WaveR<R, never, FiberR<E, A>> {
+    return (r: R) => wave.map(wave.fork(wa(r), name), encaseFiber);
 }
 
 export function raceFold<R, E1, E2, A, B, C>(first: WaveR<R, E1, A>, second: WaveR<R, E1, B>,
-    onFirstWon: FunctionN<[Exit<E1, A>, Fiber<E1, B>], WaveR<R, E2, C>>,
-    onSecondWon: FunctionN<[Exit<E1, B>, Fiber<E1, A>], WaveR<R, E2, C>>): WaveR<R, E2, C> {
+    onFirstWon: FunctionN<[Exit<E1, A>, FiberR<E1, B>], WaveR<R, E2, C>>,
+    onSecondWon: FunctionN<[Exit<E1, B>, FiberR<E1, A>], WaveR<R, E2, C>>): WaveR<R, E2, C> {
     return (r: R) =>
-        wave.raceFold(first(r), second(r), (exit, fiber) => onFirstWon(exit, fiber)(r), (exit, fiber) => onSecondWon(exit, fiber)(r));
+        wave.raceFold(first(r), second(r), 
+            (exit, fiber) => onFirstWon(exit, encaseFiber(fiber))(r), 
+            (exit, fiber) => onSecondWon(exit, encaseFiber(fiber))(r));
 }
 
-export function timeoutFold<R, E1, E2, A, B>(source: WaveR<R, E1, A>, ms: number, onTimeout: FunctionN<[Fiber<E1, A>], WaveR<R, E2, B>>, onCompleted: FunctionN<[Exit<E1, A>], WaveR<R, E2, B>>): WaveR<R, E2, B> {
+export function timeoutFold<R, E1, E2, A, B>(source: WaveR<R, E1, A>, ms: number, onTimeout: FunctionN<[FiberR<E1, A>], WaveR<R, E2, B>>, onCompleted: FunctionN<[Exit<E1, A>], WaveR<R, E2, B>>): WaveR<R, E2, B> {
     return raceFold<R, E1, E2, A, void, B>(
         source, after(ms), 
-        (exit, delayFiber) => applySecond(encaseWave(delayFiber.interrupt) as WaveR<R, never, void>,
-        onCompleted(exit)),
+        (exit, delayFiber) => applySecond(delayFiber.interrupt as WaveR<R, never, void>,
+            onCompleted(exit)),
         (_, fiber) => onTimeout(fiber))
 }
 
@@ -340,12 +411,16 @@ export function fromPromise<R, A>(thunk: FunctionN<[R], Promise<A>>): WaveR<R, u
     return (r: R) => wave.fromPromise(() => thunk(r));
 }
 
+export function env<R>(): WaveR<R, never, R> {
+    return wave.pure;
+}
+
 export const URI = "WaveR";
 export type URI = typeof URI;
 
 declare module "fp-ts/lib/HKT" {
     interface URItoKind3<R, E, A> {
-        WaveR: WaveR<R, E, A>
+        WaveR: WaveR<R, E, A>;
     }
 }
 

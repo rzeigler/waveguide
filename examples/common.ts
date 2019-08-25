@@ -15,18 +15,17 @@
 // This is a file for code that has already been introduced in example modules
 // so it is only replicated 2x
 
+import { Wave } from "../src/wave";
 import * as wave from "../src/wave";
-import { IO } from "../src/wave";
-import { Resource } from "../src/resource";
 import * as fs from "fs";
 import { left, right } from "fp-ts/lib/Either";
 import { ExitTag } from "../src/exit";
 
 // main from overview.ts
 import { makeDriver } from "../src/driver";
-export function main(io: IO<never, void>): void {
+export function main(io: Wave<never, void>): void {
     // We need a driver to run the io
-    const driver = makeDriver<wave.DefaultR, never, void>();
+    const driver = makeDriver<never, void>();
     // If we receive signals, we should interrupt
     // These will cause the runloop to switch to its interrupt handling
     process.on("SIGINT", () => driver.interrupt());
@@ -40,11 +39,11 @@ export function main(io: IO<never, void>): void {
             process.exit(0);
         }
     });
-    driver.start({}, io);
+    driver.start(io);
 }
 
 /** open/close/write from overview.ts */
-export const openFile = (path: string, flags: string): IO<NodeJS.ErrnoException, number> => wave.uninterruptible(
+export const openFile = (path: string, flags: string): Wave<NodeJS.ErrnoException, number> => wave.uninterruptible(
     wave.async((callback) => {
         fs.open(path, flags, 
             (err, fd) => {
@@ -62,7 +61,7 @@ export const openFile = (path: string, flags: string): IO<NodeJS.ErrnoException,
 /**
  * Here we close a file handle
  */
-export const closeFile = (handle: number): IO<NodeJS.ErrnoException, void> => wave.uninterruptible(
+export const closeFile = (handle: number): Wave<NodeJS.ErrnoException, void> => wave.uninterruptible(
     wave.async((callback) => {
         fs.close(handle, (err) => {
             if (err) {
@@ -77,7 +76,7 @@ export const closeFile = (handle: number): IO<NodeJS.ErrnoException, void> => wa
 /**
  * We can also use a file handle to write content
  */
-export const write = (handle: number, content: Buffer, ct: number): IO<NodeJS.ErrnoException, number> => wave.uninterruptible(
+export const write = (handle: number, content: Buffer, ct: number): Wave<NodeJS.ErrnoException, number> => wave.uninterruptible(
     wave.async((callback) => {
         fs.write(handle, content, 0, ct, (err, written) => {
             if (err) {
@@ -90,8 +89,8 @@ export const write = (handle: number, content: Buffer, ct: number): IO<NodeJS.Er
     })
 )
 
-export const read = (handle: number, length: number): IO<NodeJS.ErrnoException, [Buffer, number]> => wave.uninterruptible(
-    // Here we see suspended, which is how we can 'effectfully' create an IO to run
+export const read = (handle: number, length: number): Wave<NodeJS.ErrnoException, [Buffer, number]> => wave.uninterruptible(
+    // Here we see suspended, which is how we can 'effectfully' create an Wave to run
     // In this case we allocate a mutable buffer inside suspended
     wave.suspended(() => {
         const buffer = Buffer.alloc(length);
@@ -110,27 +109,29 @@ export const read = (handle: number, length: number): IO<NodeJS.ErrnoException, 
 
 import * as https from "https"
 import * as http from "http";
-import * as resource from "../src/resource";
-import { RIO } from "../src/wave";
-    
-export const agent: Resource<never, https.Agent> = resource.bracket(
+import * as managed from "../src/managed";
+import { Managed } from "../src/managed";
+import { WaveR } from "../src/waver";
+import * as waver from "../src/waver";
+ 
+export const agent: Managed<never, https.Agent> = managed.bracket(
     wave.sync(() => new https.Agent()),
     (agent) => wave.sync(() => agent.destroy())
 );
-    
-    /**
-     * We can think of an IncomingMessage as something we can produce if we have an agent resource
-     * @param url 
-     */
-export function fetch(url: string): RIO<https.Agent, Error, Buffer> {
-    return wave.encaseReader((agent: https.Agent) => {
+
+/**
+ * We can think of an IncomingMessage as something we can produce if we have an agent managed
+ * @param url 
+ */
+export function fetch(url: string): WaveR<https.Agent, Error, Buffer> {
+    return (agent: https.Agent) => {
         const options = {agent};
         return wave.async<Error, Buffer>((callback) => {
             let cancelled = false;
             let response: http.IncomingMessage | undefined;
             http.get(url, options, (res) => {
                 response = res;
-                let buffers: Buffer[] = [];
+                const buffers: Buffer[] = [];
                 res.on("data", (chunk) => {
                     buffers.push(chunk);
                 })
@@ -152,19 +153,19 @@ export function fetch(url: string): RIO<https.Agent, Error, Buffer> {
                 }
             };
         })
-    })
+    }
 }
 
-export const now = wave.sync(() => process.hrtime.bigint());
+export const now = waver.encaseWave(wave.sync(() => process.hrtime.bigint()));
 
 /**
- * We also want a way of wrapping an IO so that we can see how long its execution took
+ * We also want a way of wrapping an Wave so that we can see how long its execution took
  */
-export function time<R, E, O>(io: RIO<R, E, O>): RIO<R, E, readonly [O, bigint]> {
+export function time<R, E, O>(io: WaveR<R, E, O>): WaveR<R, E, readonly [O, bigint]> {
     // zipWith, zip happen in order with no parallelism
-    return wave.zipWith(
-        now,
-        wave.zip(io, now),
+    return waver.zipWith(
+        waver.contravaryR(now),
+        waver.zip(io, waver.contravaryR(now)),
         (start, [o, end]) => [o, end - start] as const
     );
 }

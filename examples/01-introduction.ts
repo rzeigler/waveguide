@@ -13,20 +13,20 @@
 // limitations under the License.
 
 import * as wave from "../src/wave"
-import { IO } from "../src/wave";
+import { Wave } from "../src/wave";
 import { log } from "../src/console";
 import * as fs from "fs";
 import { left, right } from "fp-ts/lib/Either";
 import { pipe } from "fp-ts/lib/pipeable";
 
 /**
- * An IO is a description of program that can be run to produce a result or possibly fail.
+ * A Wave is a description of program that can be run to produce a result or possibly fail.
  * In this way, it is conceptually similar to the type <A>() => Promise<A>.
- * It allows use to interact with the real world without side effects because an IO doesn't 
+ * It allows use to interact with the real world without side effects because an Wave doesn't 
  * do anything on its own.
  * 
  * Here, we produce a synchronous effect that when executed will read the pid of the process.
- * Process ids never change (so this is being very defensive) but we wrap it in IO because this will 
+ * Process ids never change (so this is being very defensive) but we wrap it in Wave because this will 
  * produce a different result from program execution to program execution so in the strictest sense 
  * it is not referentially transparent.
  */
@@ -42,7 +42,7 @@ const pid = wave.sync(() => process.pid)
  * This ensures the file begins opening, it will complete and we don't leak resources.
  * 
  */
-const openFile = (path: string, flags: string): IO<NodeJS.ErrnoException, number> => wave.uninterruptible(
+const openFile = (path: string, flags: string): Wave<NodeJS.ErrnoException, number> => wave.uninterruptible(
     wave.async((callback) => {
         fs.open(path, flags, 
             (err, fd) => {
@@ -60,7 +60,7 @@ const openFile = (path: string, flags: string): IO<NodeJS.ErrnoException, number
 /**
  * Here we close a file handle
  */
-const closeFile = (handle: number): IO<NodeJS.ErrnoException, void> => wave.uninterruptible(
+const closeFile = (handle: number): Wave<NodeJS.ErrnoException, void> => wave.uninterruptible(
     wave.async((callback) => {
         fs.close(handle, (err) => {
             if (err) {
@@ -75,7 +75,7 @@ const closeFile = (handle: number): IO<NodeJS.ErrnoException, void> => wave.unin
 /**
  * We can also use a file handle to write content
  */
-const write = (handle: number, content: string): IO<NodeJS.ErrnoException, number> => wave.uninterruptible(
+const write = (handle: number, content: string): Wave<NodeJS.ErrnoException, number> => wave.uninterruptible(
     wave.async((callback) => {
         fs.write(handle, content, (err, written) => {
             if (err) {
@@ -92,7 +92,7 @@ const write = (handle: number, content: string): IO<NodeJS.ErrnoException, numbe
  * Effect types are all about working with statements as though they were values.
  * We can package these 3 operations up into a resource safe file writing mechanism to manage the file handle resource
  */
-const writeToFile = (path: string, content: string): IO<NodeJS.ErrnoException, void> => 
+const writeToFile = (path: string, content: string): Wave<NodeJS.ErrnoException, void> => 
     pipe(
         wave.bracket(openFile(path, "w"), closeFile, (handle) => write(handle, content)),
         /**
@@ -106,13 +106,13 @@ const writeToFile = (path: string, content: string): IO<NodeJS.ErrnoException, v
 /**
  * The true power of waveguide (and other IO monads) is that we can treat statements like values
  * We can manipulate them and stitch them together in a side-effect free fashion.
- * Chain stitches together IOs so that the result of the first IO is used to create the IO to continue with.
- * Here we are going to create an IO that uses the result of pid to write a process file
+ * Chain stitches together IOs so that the result of the first Wave is used to create the Wave to continue with.
+ * Here we are going to create an Wave that uses the result of pid to write a process file
  */
 
-const writePidFile: IO<NodeJS.ErrnoException, void> = wave.chain(pid, (p) => writeToFile("pid", p.toString()));
+const writePidFile: Wave<NodeJS.ErrnoException, void> = wave.chain(pid, (p) => writeToFile("pid", p.toString()));
 
-const deletePidFile: IO<NodeJS.ErrnoException, void> = wave.uninterruptible(wave.async((callback) => {
+const deletePidFile: Wave<NodeJS.ErrnoException, void> = wave.uninterruptible(wave.async((callback) => {
     fs.unlink("pid", (err) => {
         if (err) {
             callback(left(err));
@@ -131,7 +131,7 @@ const getTime = wave.sync(() => new Date());
  * If you dislike the stairstep that is happening here, check out fp-ts-contrib's Do which 
  * waveguide works with and makes the stairstep go away
  */
-const logPid: IO<NodeJS.ErrnoException, void> = 
+const logPid: Wave<NodeJS.ErrnoException, void> = 
     wave.chain(pid, 
         (p) => wave.chain(getTime,
             (now) => log(`its ${now} and the pid is still ${p}`))
@@ -139,9 +139,9 @@ const logPid: IO<NodeJS.ErrnoException, void> =
 
 /**
  * Again, because IOs are just data structures, we can manipulate them like values.
- * We can, for instance construct an IO that repeatedly executes an IO on an interval
+ * We can, for instance construct an Wave that repeatedly executes an Wave on an interval
  */
-function repeatEvery<E, A>(io: IO<E, A>, s: number): IO<E, A> {
+function repeatEvery<E, A>(io: Wave<E, A>, s: number): Wave<E, A> {
     // We use chain here for the laziness because this is an infinitely sized structure
     return wave.applySecondL(wave.delay(io, s * 1000), () => repeatEvery(io, s));
 }
@@ -149,8 +149,8 @@ function repeatEvery<E, A>(io: IO<E, A>, s: number): IO<E, A> {
 const logPidForever = repeatEvery(logPid, 1);
 
 /**
- * IO also expose handling cancellation and errors in a safe fashion.
- * Here we are going to create an IO that writes the pid file, logs the pid repeatedly forever, 
+ * Wave also expose handling cancellation and errors in a safe fashion.
+ * Here we are going to create an Wave that writes the pid file, logs the pid repeatedly forever, 
  * but is sure to delete the pid file
  */
 const run = wave.chainError(
@@ -166,7 +166,7 @@ const run = wave.chainError(
 
 /**
  * We haven't actually done anything yet.
- * While IO provides helpful things like run, runToPromise, and friends here we will drive the run loop outselves
+ * While Wave provides helpful things like run, runToPromise, and friends here we will drive the run loop outselves
  * and wire process signals to IOs interruption mechanism
  * 
  * In the future, this will be in the waveguide-node and waveguide-browser packages (the implementation is different per platform)
@@ -177,9 +177,9 @@ const run = wave.chainError(
  */
 import { makeDriver } from "../src/driver";
 import { ExitTag } from "../src/exit";
-function main(io: IO<never, void>): void {
+function main(wave: Wave<never, void>): void {
     // We need a driver to run the io
-    const driver = makeDriver<wave.DefaultR, never, void>();
+    const driver = makeDriver<never, void>();
     // If we receive signals, we should interrupt
     // These will cause the runloop to switch to its interrupt handling
     process.on("SIGINT", () => driver.interrupt());
@@ -193,11 +193,11 @@ function main(io: IO<never, void>): void {
             process.exit(0);
         }
     });
-    driver.start({}, io);
+    driver.start(wave);
 }
 
 /**
- * Now that we have a 'main' function, we can execute our IO.
+ * Now that we have a 'main' function, we can execute our Wave.
  * Notice how the pid file exists while the process is active but is gracefully cleared up at shutdown
  * This file is built by npm run test-build to ./build/examples/01-introduction.js
  */

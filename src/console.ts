@@ -14,7 +14,7 @@
 /* eslint no-console:off */
 /* eslint @typescript-eslint/no-explicit-any:off */
 
-import { RIO, DefaultR, sync } from "./wave";
+import { Wave, sync } from "./wave";
 
 
 
@@ -22,7 +22,7 @@ import { RIO, DefaultR, sync } from "./wave";
  * Suspend console.log in an IO
  * @param msg
  */
-export function log(msg?: any, ...more: any[]): RIO<DefaultR, never, void> {
+export function log(msg?: any, ...more: any[]): Wave<never, void> {
     return sync(() => {
     // tslint:disable-next-line
         console.log(msg, ...more);
@@ -33,7 +33,7 @@ export function log(msg?: any, ...more: any[]): RIO<DefaultR, never, void> {
  * Suspend console.warn in an IO
  * @param msg
  */
-export function warn(msg?: any, ...more: any[]): RIO<DefaultR, never, void> {
+export function warn(msg?: any, ...more: any[]): Wave<never, void> {
     return sync(() => {
     // tslint:disable-next-line
         console.warn(msg, ...more);
@@ -44,7 +44,7 @@ export function warn(msg?: any, ...more: any[]): RIO<DefaultR, never, void> {
  * Suspend console.error in an IO
  * @param msg
  */
-export function error(msg?: any, ...more: any[]): RIO<DefaultR, never, void> {
+export function error(msg?: any, ...more: any[]): Wave<never, void> {
     return sync(() => {
     // tslint:disable-next-line
         console.error(msg, ...more);

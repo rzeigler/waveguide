@@ -12,24 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { RIO, DefaultR } from "./wave";
+import { Wave } from "./wave";
 import * as io from "./wave";
 import { makeSemaphore } from "./semaphore";
 
 export interface Mutex {
-    readonly acquire: RIO<DefaultR, never, void>;
-    readonly release: RIO<DefaultR, never, void>;
-    readonly available: RIO<DefaultR, never, boolean>;
-    withExclusion<R, E, A>(inner: RIO<R, E, A>): RIO<R, E, A>;
+    readonly acquire: Wave<never, void>;
+    readonly release: Wave<never, void>;
+    readonly available: Wave<never, boolean>;
+    withExclusion<R, E, A>(inner: Wave<E, A>): Wave<E, A>;
 }
 
-export const makeMutex: RIO<DefaultR, never, Mutex> =
+export const makeMutex: Wave<never, Mutex> =
   io.map(makeSemaphore(1),
       (sem) => ({
           acquire: sem.acquire,
           release: sem.release,
           available: io.map(sem.available, (n) => n > 0),
-          withExclusion<R, E, A>(inner: RIO<R, E, A>): RIO<R, E, A> {
+          withExclusion<R, E, A>(inner: Wave<E, A>): Wave<E, A> {
               return sem.withPermit(inner);
           }
       }));

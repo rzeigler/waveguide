@@ -471,9 +471,12 @@ describe("io", () => {
                                 (cell) => {
                                     const action = io.bracket(
                                         io.delay(cell.update((n) => n + 1), acqDelay),
-                                        () => io.delay(cell.update((n) => n - 1), relDelay), () => io.delay(useResult, useDelay));
-                                    return io.chain(io.fork(action),
-                                        (child) => io.applySecond(io.delay(child.interrupt, interruptDelay), cell.get));
+                                        () => io.delay(cell.update((n) => n - 1), relDelay), 
+                                        () => io.delay(useResult, useDelay));
+                                    return io.chain(
+                                        io.fork(action),
+                                        (child) => io.applySecond(io.delay(child.interrupt, interruptDelay), cell.get)
+                                    );
                                 }),
                             done(0)
                         )
@@ -481,36 +484,4 @@ describe("io", () => {
             )
         );
     });
-    xdescribe("#provide", function() {
-        // it("should provide an environment", () => {
-        //     return eqvIO(
-        //         io.provideEnv(io.accessEnv(), 42),
-        //         io.pure(42)
-        //     )
-        // });
-        // it("should cleanup following details", () => {
-        //     return eqvIO(
-        //         io.applySecond(io.provideEnv(io.pure(11), 42), io.accessEnv<DefaultR>()),
-        //         io.pure({})
-        //     );
-        // });
-        // it("should allow for nesting", () => {
-        //     return eqvIO(
-        //         io.provideEnv(
-        //             io.zip(
-        //                 io.provideEnv(io.accessEnv(), 43),
-        //                 io.accessEnv()
-        //             ),
-        //             42
-        //         ),
-        //         io.pure([43, 42])
-        //     );
-        // });
-        // it("should not leak the environment state on failure", () => {
-        //     return eqvIO(
-        //         io.applySecond(io.result(io.provideEnv(io.raiseError("boom"), 42)), io.accessEnv<DefaultR>()),
-        //         io.pure({})
-        //     )
-        // });
-    })
 });

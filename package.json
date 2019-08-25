@@ -14,7 +14,7 @@
     "lint": "eslint --ext .ts,.tsx src test examples benchmarks",
     "lint-fix": "eslint --fix --ext .ts,.tsx src test examples benchmarks",
     "docs": "docs-ts",
-    "prepublishOnly": "npm run clean && npm run lint && npm run build && npm run test"
+    "prepublishOnly": "npm run clean && npm run lint && npm run build && npm run test-build"
   },
   "keywords": [
     "typescript",
@@ -39,8 +39,8 @@
     "@types/deep-equal": "^1.0.1",
     "@types/mocha": "^5.2.5",
     "@types/node": "^12.0.2",
-    "@typescript-eslint/eslint-plugin": "^1.11.0",
-    "@typescript-eslint/parser": "^1.11.0",
+    "@typescript-eslint/eslint-plugin": "^2.0.0",
+    "@typescript-eslint/parser": "^2.0.0",
     "benchmark": "^2.1.4",
     "bluebird": "^3.5.5",
     "chai": "^4.2.0",
@@ -48,7 +48,7 @@
     "deep-equal": "^1.0.1",
     "docs-ts": "0.1.0",
     "doctoc": "^1.4.0",
-    "eslint": "^5.0.0",
+    "eslint": "^6.2.2",
     "esm": "^3.2.5",
     "fast-check": "^1.14.0",
     "fearless-io": "^11.1.0",
@@ -62,7 +62,7 @@
     "rimraf": "^2.6.3",
     "source-map-support": "^0.5.10",
     "ts-node": "^8.1.0",
-    "typescript": "^3.5.2"
+    "typescript": "^3.5.3"
   },
   "peerDependencies": {
     "fp-ts": "^2.0.0"

@@ -13,14 +13,13 @@
 // limitations under the License.
 
 import { FunctionN, constant } from "fp-ts/lib/function";
-import { Monad3, Monad2 } from "fp-ts/lib/Monad";
+import { Monad2 } from "fp-ts/lib/Monad";
 import { Semigroup } from "fp-ts/lib/Semigroup";
 import { Monoid } from "fp-ts/lib/Monoid";
-import { Wave } from "./wave";
-import { Fiber } from "./fiber";
+import { Wave, Fiber } from "./wave";
 import * as io from "./wave";
-import { Applicative3 } from "fp-ts/lib/Applicative";
-import { Functor3 } from "fp-ts/lib/Functor";
+import { WaveR } from "./waver";
+import * as waver from "./waver";
 
 export enum ManagedTag {
     Pure,
@@ -70,7 +69,7 @@ export interface Encase<E, A> {
  * @param res 
  * @param f 
  */
-export function encaseWave<E, A>(rio: Wave<E, A>): Encase<E, A> {
+export function encaseWave<E, A>(rio: Wave<E, A>): Managed<E, A> {
     return { _tag: ManagedTag.Encase, acquire: rio };
 }
 
@@ -86,7 +85,7 @@ export interface Bracket<E, A> {
  * @param acquire 
  * @param release 
  */
-export function bracket<E, A>(acquire: Wave<E, A>, release: FunctionN<[A], Wave<E, unknown>>): Bracket<E, A> {
+export function bracket<E, A>(acquire: Wave<E, A>, release: FunctionN<[A], Wave<E, unknown>>): Managed<E, A> {
     return {
         _tag: ManagedTag.Bracket,
         acquire,
@@ -103,7 +102,7 @@ export interface Suspended<E, A> {
  * Lift an IO of a Resource into a resource
  * @param suspended 
  */
-export function suspend<E, A>(suspended: Wave<E, Managed<E, A>>): Suspended<E, A> {
+export function suspend<E, A>(suspended: Wave<E, Managed<E, A>>): Managed<E, A> {
     return {
         _tag: ManagedTag.Suspended,
         suspended
@@ -123,7 +122,7 @@ export interface Chain<E, L, A> {
  * @param left 
  * @param bind 
  */
-export function chain<E, L, A>(left: Managed<E, L>, bind: FunctionN<[L], Managed<E, A>>): Chain<E, L, A> {
+export function chain<E, L, A>(left: Managed<E, L>, bind: FunctionN<[L], Managed<E, A>>): Managed<E, A> {
     return {
         _tag: ManagedTag.Chain,
         left,
@@ -279,17 +278,26 @@ export function use<E, A, B>(res: Managed<E, A>, f: FunctionN<[A], Wave<E, B>>):
     }
 }
 
-export const URI = "Resource";
+/**
+ * Use a resource to provide the environment to a WaveR
+ * @param man 
+ * @param wave 
+ */
+export function provideTo<R, E, A>(man: Managed<E, R>, wave: WaveR<R, E, A>): Wave<E, A> {
+    return use(man, wave);
+}
+
+export const URI = "Managed";
 export type URI = typeof URI;
 
 declare module "fp-ts/lib/HKT" {
     interface URItoKind2<E, A> {
-        Resource: Managed<E, A>;
+        Managed: Managed<E, A>;
     }
 }
 export const instances: Monad2<URI> = {
     URI,
-    of: <E, A>(a: A) => pure(a),
+    of: <E, A>(a: A): Managed<E, A> => pure(a),
     map,
     ap: ap_,
     chain

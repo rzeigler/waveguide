@@ -15,40 +15,38 @@
 
 import { pipe } from "fp-ts/lib/pipeable";
 import * as wave from "../src/wave";
-import { IO } from "../src/wave";
+import { Wave } from "../src/wave";
 import { log } from "../src/console";
 import { Lazy } from "fp-ts/lib/function";
 
 /**
  * Waveguide has ways of interoperating with Promises on the receiving end
- * We can construct an IO from a Promise.
- * We use a thunk instead of the Promise directly because IO's are values and don't perform actions
+ * We can construct an Wave from a Promise.
+ * We use a thunk instead of the Promise directly because Wave's are values and don't perform actions
  * If you use wave.fromPromise with a Promise that is already executing you are breaking referential transparency.
- * The resulting IO is also uncancellable (per default es6 promises)
+ * The resulting Wave is also uncancellable (per default es6 promises)
  * If you are using a Promise library that supports cancellation you will have to roll your own adapter which is not difficult
  */
 
-const fromPromise: IO<never, void> = 
+const fromPromise: Wave<unknown, void> = 
     pipe(
         wave.fromPromise(() => Promise.resolve(41)),
-        wave.lift(n => n + 1),
-        wave.chainWith((n) => log(`the answer is ${n}`)),
-        // note that the E of a fromPromise is unkown because we do not have type information about the reject
-        wave.chainErrorWith(() => log("could not compute the answer"))
-    )
+        wave.mapWith((n) => n + 1), // there are odd interactions between unknown and never, so mapWith doesn't work
+        wave.chainWith((n) => wave.covaryToE<unknown>()(log(`the answer is ${n}`))),
+    );
 
 /**
- * Now that we have an IO from a promise, we can also run back to a promise
+ * Now that we have an Wave from a promise, we can also run back to a promise
  */
 
-const _p: Promise<void> = wave.runToPromiseR(fromPromise, {})
+const _p: Promise<void> = wave.runToPromise(fromPromise)
     .then(() => console.log("finished"));
 
 /**
  * We don't have to run to a Promise or use the runtime like main does
  * We can, instead use run
  */
-const _cancellation: Lazy<void> = wave.runR(fromPromise, {}, (result) => {
+const _cancellation: Lazy<void> = wave.run(fromPromise, (result) => {
     // note that this will actually log before the "finished" above because waveguide's machinery doesn't require event loop ticks
     console.log("finished with " + JSON.stringify(result))
 })

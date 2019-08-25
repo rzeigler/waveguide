@@ -1,4 +1,4 @@
-/* eslint @typescript-eslint/no-triple-slash-reference:off */
+/* eslint @typescript-eslint/triple-slash-reference:off */
 /* eslint @typescript-eslint/explicit-function-return-type:off */
 /// <reference path="./Global.d.ts" />
 
@@ -6,7 +6,7 @@
 import {Suite} from "benchmark"
 import {FutureInstance} from "fluture"
 
-import { IO } from "../../src/wave";
+import { Wave } from "../../src/wave";
 import * as wave from "../../src/wave";
 import {noop} from "fearless-io/src/internals/Noop"
 import {UIO} from "fearless-io"
@@ -22,7 +22,7 @@ export const RunSuite = (
         bluebird(): PromiseLike<unknown>;
         fio(): UIO<unknown>;
         fluture(): FutureInstance<unknown, unknown>;
-        waveguide(): IO<never, unknown>;
+        waveguide(): Wave<never, unknown>;
         native?(): void;
     }
 ) => {
@@ -37,7 +37,7 @@ export const RunSuite = (
     }
 
     suite
-        .add("waveguide", (cb: IDefer) => wave.runR(test.waveguide(), {}, () => cb.resolve()), {defer: true})
+        .add("waveguide", (cb: IDefer) => wave.run(test.waveguide(), () => cb.resolve()), {defer: true})
         .add(
             "FIO",
             (cb: IDefer) => fioRuntime.execute(test.fio(), () => cb.resolve()),

@@ -15,8 +15,8 @@
 import { done } from "../src/exit";
 import * as io from "../src/wave";
 import { makeRef, Ref } from "../src/ref";
-import { Managed } from "../src/resource";
-import * as rsc from "../src/resource";
+import { Managed } from "../src/managed";
+import * as rsc from "../src/managed";
 import { expectExit } from "./tools.spec";
 
 describe("Resource", () => {

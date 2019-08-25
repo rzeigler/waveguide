@@ -16,36 +16,36 @@
  * As we saw in 01-introduction it is possible to use the bracket operators to 
  * ensure that cleanup actions happen in the face of failures.
  * Nested brackets can be somewhat awkward to work with.
- * Waveguide provides the Resource type that allows the bundling up of resource that can be consumed.
+ * Waveguide provides the Managed type that allows the bundling up of resource that can be consumed.
  * 
  * Here we will implement a 'cat' utility that reads from one file and writes to another
  */
 
 import { openFile, closeFile, read, write, main } from "./common";
-import { Resource } from "../src/resource";
-import * as rsrc from "../src/resource";
+import { Managed } from "../src/managed";
+import * as managed from "../src/managed";
 import { pipe } from "fp-ts/lib/pipeable";
 import * as o from "fp-ts/lib/Option";
 import * as wave from "../src/wave";
-import { IO } from "../src/wave";
+import { Wave } from "../src/wave";
 
 
 /**
  * First, lets define IOs that access argv so we can read the two files we need
  */
-const argvN = (n: number): IO<never, string | null> => wave.sync(() => process.argv[n] ? process.argv[n] : null);
+const argvN = (n: number): Wave<never, string | null> => wave.sync(() => process.argv[n] ? process.argv[n] : null);
 
 const inFilePath = pipe(
     argvN(2),
     wave.lift(o.fromNullable),
-    wave.chainWith(wave.fromOptionWith(() => new Error("usage: node 02-resources-and-failures.js <in> <out>"))),
+    wave.chainWith((o) => wave.encaseOption(o, () => new Error("usage: node 02-resources-and-failures.js <in> <out>"))),
     wave.orAbort // here we use orAbort to force the error to a terminal one because there is nothing we can really do in the failure case
 );
 
 const outFilePath = pipe(
     argvN(3),
     wave.lift(o.fromNullable),
-    wave.chainWith(wave.fromOptionWith(() => new Error("usage: node 02-resources-and-failures.js <in> <out>"))),
+    wave.chainWith((o) => wave.encaseOption(o, () => new Error("usage: node 02-resources-and-failures.js <in> <out>"))),
     wave.orAbort
 );
 
@@ -53,17 +53,17 @@ type Errno = NodeJS.ErrnoException;
 
 /**
  * Now lets define the resources that define our input and output file handles.
- * We use rsrc.suspend as the outer call because we need to perform IO in order to get the name of the file to open
- * This allows us to create a resource from an IO of a resource
+ * We use managed.suspend as the outer call because we need to perform Wave in order to get the name of the file to open
+ * This allows us to create a resource from an Wave of a resource
  */
-const inFileHandle: Resource<Errno, number> = rsrc.suspend(
+const inFileHandle: Managed<Errno, number> = managed.suspend(
     wave.map(
         inFilePath,
         (path) =>
             // Once we have the path to open, we can create the resource itself
             // Bracket is similar to wave.bracket except it doesn't have consume logic
             // We are defering defining how we will consume this resource
-            rsrc.bracket(
+            managed.bracket(
                 openFile(path, "r"),
                 closeFile
             )
@@ -73,11 +73,11 @@ const inFileHandle: Resource<Errno, number> = rsrc.suspend(
 /**
  * This is basically the same as inFileHandle only we use "w" as the open mode
  */
-const outFileHandle: Resource<Errno, number> = rsrc.suspend(
+const outFileHandle: Managed<Errno, number> = managed.suspend(
     wave.map(
         outFilePath,
         (path) =>
-            rsrc.bracket(
+            managed.bracket(
                 openFile(path, "w"),
                 closeFile
             )
@@ -86,24 +86,24 @@ const outFileHandle: Resource<Errno, number> = rsrc.suspend(
 
 
 /**
- * Resource are also little programs that can produce resources in a safe manner.
+ * Managed are also little programs that can produce resources in a safe manner.
  * Thus, we can use chain and map to glue them together
  */
-const handles: Resource<Errno, [number, number]> = 
-    rsrc.chain(inFileHandle, (inh) => rsrc.map(outFileHandle, (outh) => [inh, outh]));
+const handles: Managed<Errno, [number, number]> = 
+    managed.chain(inFileHandle, (inh) => managed.map(outFileHandle, (outh) => [inh, outh]));
     // or you could use
-    // again, not that this call to zip is perfectly safe because like IO, 
-    // Resource doesn't do anything until it is run
-rsrc.zip(inFileHandle, outFileHandle)
+    // again, not that this call to zip is perfectly safe because like Wave, 
+    // Managed doesn't do anything until it is run
+managed.zip(inFileHandle, outFileHandle)
 
 
 /**
  * Now that we have our resources, we need a way of consuming them
  */
-const cat = (blocksz: number) => (handles: [number, number]): IO<Errno, void> => {
+const cat = (blocksz: number) => (handles: [number, number]): Wave<Errno, void> => {
     const [inHandle, outHandle] = handles;
 
-    function copy(): IO<Errno, void> {
+    function copy(): Wave<Errno, void> {
         return wave.chain(
             read(inHandle, blocksz),
             ([buffer, ct]) => 
@@ -121,7 +121,7 @@ const cat = (blocksz: number) => (handles: [number, number]): IO<Errno, void> =>
 /**
  * We can now wire everything together
  */
-const run: IO<Errno, void> = rsrc.use(handles, cat(1028));
+const run: Wave<Errno, void> = managed.use(handles, cat(1028));
 
 /**
  * An finally, we actually do something

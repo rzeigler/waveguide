@@ -19,7 +19,7 @@ import { done, interrupt } from "../src/exit";
 import * as io from "../src/wave";
 import { makeRef } from "../src/ref";
 import { arbEitherIO, eqvIO, expectExit } from "./tools.spec";
-import { Fiber } from "../src/fiber";
+import * as waver from "../src/waver";
 
 describe("fiber", () => {
     it("fibers are joinable", () =>
@@ -47,12 +47,11 @@ describe("fiber", () => {
             done(interrupt)
         )
     );
-    xit("environments should propogate across fibers", () => {
-        // const fiber = 
-        //     io.accessEnv<string>()
-        // const host = 
-        //     io.provideEnv(io.chain<string, never, Fiber<never, string>, string>(io.fork(fiber), (f) => f.join), "hello");
-        // return expectExit(host, done("hello"));
+    it("environments should propogate across fibers", () => {
+        const fiber = waver.env<string>();
+        const host = 
+            waver.chain(waver.fork(fiber), (f) => waver.contravaryR(f.join));
+        return expectExit(host("hello"), done("hello"));
     });
     describe("properties", function() {
         this.timeout(5000);

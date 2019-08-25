@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { RIO } from "../src/io";
+import { Wave } from "../src/wave";
 import { pipe } from "fp-ts/lib/pipeable";
-import * as wave from "../src/io";
-import * as resource from "../src/resource";
+import * as wave from "../src/wave";
+import * as waver from "../src/waver";
+import * as managed from "../src/managed";
 import * as consoleIO from "../src/console";
 import * as https from "https";
 
@@ -28,16 +29,16 @@ import * as https from "https";
  * Lets start by writing a little timing helper
  * We want a way of getting the current time
  */
-const now = wave.sync(() => process.hrtime.bigint());
+const now = waver.encaseWave(wave.sync(() => process.hrtime.bigint()));
 
 /**
  * We also want a way of wrapping an IO so that we can see how long its execution took
  */
-function time<R, E, O>(io: RIO<R, E, O>): RIO<R, E, readonly [O, bigint]> {
+function time<R, E, O>(io: WaveR<R, E, O>): WaveR<R, E, readonly [O, bigint]> {
     // zipWith, zip happen in order with no parallelism
-    return wave.zipWith(
-        now,
-        wave.zip(io, now),
+    return waver.zipWith(
+        waver.contravaryR(now),
+        waver.zip(io, waver.contravaryR(now)),
         (start, [o, end]) => [o, end - start] as const
     );
 }
@@ -46,23 +47,24 @@ function time<R, E, O>(io: RIO<R, E, O>): RIO<R, E, readonly [O, bigint]> {
  * Also, recall the implementation of fetch that we had in 03-environment.ts
  */
 import { fetch, agent } from "./common";
+import { WaveR } from "../src/waver";
 
 interface Info {host: string; q: string}
 type TimeInfo = readonly [ Info, bigint ];
 type CompareInfo = readonly [ TimeInfo, TimeInfo ];
 
-function compare(q: string): RIO<https.Agent, Error, CompareInfo> {
+function compare(q: string): WaveR<https.Agent, Error, CompareInfo> {
     // We time the query
     const google = time(
         // We don't care so much about what the body is, just the host so we use as to coerce
-        wave.as(
+        waver.as(
             fetch(`https://www.google.com/search?q=${q}`), 
             {host: "google", q}
         )
     );
 
     const bing = time(
-        wave.as(
+        waver.as(
             fetch(`https://www.bing.com/search?q=${q}`),
             {host: "bing", q}
         )
@@ -71,24 +73,24 @@ function compare(q: string): RIO<https.Agent, Error, CompareInfo> {
     // We use parZip instead of zip
     // There are parallel versions of many combinators like zip, zipWith, applyFirst, applySecond, etc.
     // We also add an onInterrupted action which will be useful later
-    return wave.onInterrupted(
-        wave.parZip(google, bing), 
-        consoleIO.log(`cancelling comparison of ${q}`)
+    return waver.onInterrupted(
+        waver.parZip(google, bing), 
+        waver.encaseWaveR(consoleIO.log(`cancelling comparison of ${q}`))
     );
 }
 
 
-const rt: RIO<https.Agent, Error, void> =
+const rt: WaveR<https.Agent, Error, void> =
     pipe(
         compare("referential+transparency"),
-        wave.chainWith((results) => {
+        waver.chainWith((results): WaveR<https.Agent, Error, void> => {
             const l = consoleIO.log(`${results[0][0].host} took ${results[0][1]}, ${results[1][0].host} took ${results[1][1]}`);
-            return wave.bivary<typeof l, https.Agent, Error>(l);
-        }),
-        wave.chainErrorWith((e) => consoleIO.error(e.toString()))
+            const w = waver.encaseWave(l);
+            return w;
+        })
     );
 
-const versus = resource.provideTo(agent, rt)
+const versus = managed.provideTo(agent, rt)
 
 
 /**
@@ -98,11 +100,11 @@ const versus = resource.provideTo(agent, rt)
 const firstVersusIO = ["referential+transparency", "monad", "functor", "haskell", "scala", "purescript", "lenses"]
     .map(compare)
 // When we race IOs, the loser is automatically cancelled immediately
-    .reduce((left, right) => wave.race(left, right));
+    .reduce((left, right) => waver.race(left, right));
         
-const firstVersus = 
-        resource.provideTo(agent, wave.chain(firstVersusIO,
-            // Notice if you are running this code yourself that you see many query cancellations logged before this final output
-            (results) => consoleIO.log(`winning query was ${results[0][0].q}`)));
+const printResults = waver.chain(firstVersusIO, (results) => waver.encaseWaveR(consoleIO.log(`winning query was ${results[0][0].q}`)));
 
-wave.runR(wave.applySecond(versus, firstVersus), {});
+const log = 
+        managed.provideTo(agent, printResults);
+
+wave.run(wave.applySecond(versus, log));

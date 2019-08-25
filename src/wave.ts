@@ -26,10 +26,9 @@ import * as option from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
 
 import { Deferred, makeDeferred } from "./deferred";
-import { makeDriver } from "./driver";
+import { makeDriver, Driver } from "./driver";
 import { Cause, Exit } from "./exit";
 import * as ex from "./exit";
-import { Fiber, makeFiber } from "./fiber";
 import { makeRef, Ref } from "./ref";
 import { Runtime } from "./runtime";
 import { fst, snd, tuple2 } from "./support/util";
@@ -61,6 +60,29 @@ export type Wave<E, A> =
     InterruptibleRegion<E, A> |
     AccessInterruptible<E, A> |
     AccessRuntime<E, A>;
+
+
+export type ReturnCovaryE<T, E2> = 
+    T extends Wave<infer E, infer A> ? 
+        (E extends E2 ? Wave<E2, A> : Wave<E | E2, A>) : never
+
+/** 
+ * Perform a widening of Wave<E1, A> such that the result includes E2.
+ * 
+ * This encapsulates normal subtype widening, but will also widen to E1 | E2 as a fallback
+ * Assumes that this function (which does nothing when compiled to js) will be inlined in hot code
+ */
+export function covaryE<E1, A, E2>(wave: Wave<E1, A>): ReturnCovaryE<typeof wave, E2> {
+    return wave as unknown as  ReturnCovaryE<typeof wave, E2>;
+}
+
+
+/**
+ * Type inference helper form of covaryToE
+ */
+export function covaryToE<E2>(): <R, E1, A>(wave: Wave<E1, A>) => ReturnCovaryE<typeof wave, E2> {
+    return (wave) => covaryE(wave);
+}
 
 export interface Pure<E, A> {
     readonly _tag: WaveTag.Pure;
@@ -787,6 +809,79 @@ export function liftDelay(ms: number): <E, A>(io: Wave<E, A>) => Wave<E, A> {
     return (io) => delay(io, ms);
 }
 
+
+
+export interface Fiber<E, A> {
+    /**
+   * The name of the fiber
+   */
+    readonly name: Option<string>;
+    /**
+   * Send an interrupt signal to this fiber.
+   *
+   * The this will complete execution once the target fiber has halted.
+   * Does nothing if the target fiber is already complete
+   */
+    readonly interrupt: Wave<never, void>;
+    /**
+   * Await the result of this fiber
+   */
+    readonly wait: Wave<never, Exit<E, A>>;
+    /**
+   * Join with this fiber.
+   * This is equivalent to fiber.wait.chain(io.completeWith)
+   */
+    readonly join: Wave<E, A>;
+    /**
+   * Poll for a fiber result
+   */
+    readonly result: Wave<E, Option<A>>;
+    /**
+   * Determine if the fiber is complete
+   */
+    readonly isComplete: Wave<never, boolean>;
+}
+
+function createFiber<E, A>(driver: Driver<E, A>, n?: string): Fiber<E, A> {
+    const name = option.fromNullable(n);
+    const sendInterrupt = sync(() => {
+        driver.interrupt();
+    });
+    const wait = asyncTotal(driver.onExit);
+    const interrupt = applySecond(sendInterrupt, asUnit(wait));
+    const join = chain(wait, (exit) => completed(exit));
+    const result =
+        chain(sync(() => driver.exit()),
+            (opt) => pipe(opt, option.fold(() => pure(none), (exit: Exit<E, A>) => map(completed(exit), some))));
+    const isComplete = sync(() => option.isSome(driver.exit()));
+    return {
+        name,
+        wait,
+        interrupt,
+        join,
+        result,
+        isComplete
+    };
+}
+
+/**
+ * Implementation of wave/waver fork. Creates an IO that will fork a fiber in the background
+ * @param init 
+ * @param name 
+ */
+export function makeFiber<E, A>(init: Wave<E, A>, name?: string): Wave<never, Fiber<E, A>> {
+    return chain(
+        accessRuntime as Wave<never, Runtime>,
+        (runtime) =>
+            sync(() => {
+                const driver = makeDriver<E, A>(runtime);
+                const fiber = createFiber(driver, name);
+                driver.start(init);
+                return fiber;
+            }));
+}
+
+
 /**
  * Fork the program described by IO in a separate fiber.
  * 
@@ -992,7 +1087,7 @@ export function fromPromise<A>(thunk: Lazy<Promise<A>>): Wave<unknown, A> {
  * @param r 
  * @param callback 
  */
-export function runR<E, A>(io: Wave<E, A>, callback?: FunctionN<[Exit<E, A>], void>): Lazy<void> {
+export function run<E, A>(io: Wave<E, A>, callback?: FunctionN<[Exit<E, A>], void>): Lazy<void> {
     const driver = makeDriver<E, A>();
     if (callback) {
         driver.onExit(callback);
@@ -1010,7 +1105,7 @@ export function runR<E, A>(io: Wave<E, A>, callback?: FunctionN<[Exit<E, A>], vo
  */
 export function runToPromise<E, A>(io: Wave<E, A>): Promise<A> {
     return new Promise((resolve, reject) =>
-        runR(io, (exit) => {
+        run(io, (exit) => {
             if (exit._tag === ex.ExitTag.Done) {
                 resolve(exit.value);
             } else if (exit._tag === ex.ExitTag.Abort) {
@@ -1033,8 +1128,9 @@ export function runToPromise<E, A>(io: Wave<E, A>): Promise<A> {
  * @param r 
  */
 export function runToPromiseExit<E, A>(io: Wave<E, A>): Promise<Exit<E, A>> {
-    return new Promise((result) => runR(io, result))
+    return new Promise((result) => run(io, result))
 }
+
 
 export const URI = "Wave";
 export type URI = typeof URI;
