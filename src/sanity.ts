@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { RIO, raiseAbort, unit } from "./wave";
+import { Wave, raiseAbort, unit } from "./wave";
 
-export const natNumber = (msg: unknown) => (n: number): RIO<never, void> =>
+export const natNumber = (msg: unknown) => (n: number): Wave<never, void> =>
     n < 0 || Math.round(n) !== n ? raiseAbort(msg) : unit;

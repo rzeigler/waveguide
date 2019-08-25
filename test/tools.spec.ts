@@ -19,11 +19,11 @@ import fc, { Arbitrary } from "fast-check";
 import { Eq } from "fp-ts/lib/Eq";
 import { constTrue, FunctionN, identity } from "fp-ts/lib/function";
 import { done, Exit } from "../src/exit";
-import { asyncTotal, completed, RIO, pure, raiseAbort, raiseError, runToPromiseExit, suspended, unit } from "../src/wave";
+import { asyncTotal, completed, Wave, pure, raiseAbort, raiseError, runToPromiseExit, suspended, unit } from "../src/wave";
 import * as io from "../src/wave";
 
 
-export function expectExitIn<E, A, B>(ioa: RIO<E, A>, f: FunctionN<[Exit<E, A>], B>, expected: B): Promise<void> {
+export function expectExitIn<E, A, B>(ioa: Wave<E, A>, f: FunctionN<[Exit<E, A>], B>, expected: B): Promise<void> {
     return runToPromiseExit(ioa)
         .then((result) => {
             expect(f(result)).to.deep.equal(expected);
@@ -31,14 +31,14 @@ export function expectExitIn<E, A, B>(ioa: RIO<E, A>, f: FunctionN<[Exit<E, A>],
 }
 
 
-export function expectExit<E, A>(ioa: RIO<E, A>, expected: Exit<E, A>): Promise<void> {
+export function expectExit<E, A>(ioa: Wave<E, A>, expected: Exit<E, A>): Promise<void> {
     return expectExitIn(ioa, identity, expected);
 }
 
-export const assertEq = <A>(S: Eq<A>) => (a1: A) => (a2: A): RIO<never, void> =>
+export const assertEq = <A>(S: Eq<A>) => (a1: A) => (a2: A): Wave<never, void> =>
     S.equals(a1, a2) ? unit : raiseAbort(`${a1} <> ${a2}`);
 
-export function eqvIO<E, A>(io1: RIO<E, A>, io2: RIO<E, A>): Promise<boolean> {
+export function eqvIO<E, A>(io1: Wave<E, A>, io2: Wave<E, A>): Promise<boolean> {
     return runToPromiseExit(io1)
         .then((result1) =>
             runToPromiseExit(io2)
@@ -49,7 +49,7 @@ export function eqvIO<E, A>(io1: RIO<E, A>, io2: RIO<E, A>): Promise<boolean> {
         );
 }
 
-export function exitType<E, A>(io1: RIO<E, A>, tag: Exit<E, A>["_tag"]): Promise<void> {
+export function exitType<E, A>(io1: Wave<E, A>, tag: Exit<E, A>["_tag"]): Promise<void> {
     return runToPromiseExit(io1)
         .then((result) => expect(result._tag).to.equal(tag))
         .then(() => undefined);
@@ -58,11 +58,11 @@ export function exitType<E, A>(io1: RIO<E, A>, tag: Exit<E, A>["_tag"]): Promise
 export const arbVariant: Arbitrary<string> =
   fc.constantFrom("succeed", "complete", "suspend", "async");
 
-export function arbIO<E, A>(arb: Arbitrary<A>): Arbitrary<RIO<E, A>> {
+export function arbIO<E, A>(arb: Arbitrary<A>): Arbitrary<Wave<E, A>> {
     return arbVariant
         .chain((ioStep) => {
             if (ioStep === "succeed") {
-                return arb.map((a) => pure(a) as RIO<E, A>); // force downcast
+                return arb.map((a) => pure(a) as Wave<E, A>); // force downcast
             } else if (ioStep === "complete") {
                 return arb.map((a) => completed(done(a)));
             } else if (ioStep === "suspend") {
@@ -83,7 +83,7 @@ export function arbIO<E, A>(arb: Arbitrary<A>): Arbitrary<RIO<E, A>> {
         });
 }
 
-export function arbConstIO<E, A>(a: A): Arbitrary<RIO<E, A>> {
+export function arbConstIO<E, A>(a: A): Arbitrary<Wave<E, A>> {
     return arbIO(fc.constant(a));
 }
 
@@ -93,7 +93,7 @@ export function arbConstIO<E, A>(a: A): Arbitrary<RIO<E, A>> {
  * Used for testing Chain/Monad laws while ensuring we exercise asynchronous machinery
  * @param arb
  */
-export function arbKleisliIO<E, A, B>(arbAB: Arbitrary<FunctionN<[A], B>>): Arbitrary<FunctionN<[A], RIO<E, B>>> {
+export function arbKleisliIO<E, A, B>(arbAB: Arbitrary<FunctionN<[A], B>>): Arbitrary<FunctionN<[A], Wave<E, B>>> {
     return arbAB.chain((fab) =>
         arbIO<E, undefined>(fc.constant(undefined)) // construct an IO of arbitrary type we can push a result into
             .map((slot) =>
@@ -103,16 +103,16 @@ export function arbKleisliIO<E, A, B>(arbAB: Arbitrary<FunctionN<[A], B>>): Arbi
 }
 
 export function arbErrorKleisliIO<E, E2, A>(arbEE: Arbitrary<FunctionN<[E], E2>>):
-Arbitrary<FunctionN<[E], RIO<E2, A>>> {
+Arbitrary<FunctionN<[E], Wave<E2, A>>> {
     return arbKleisliIO<A, E, E2>(arbEE)
         .map((f) => (e: E) => io.flip(f(e)));
 }
 
 /**
- * Given an Arbitrary<E> produce an Arbitrary<RIO<E, A>> that fails with some evaluation model (sync, succeed, async...)
+ * Given an Arbitrary<E> produce an Arbitrary<Wave<E, A>> that fails with some evaluation model (sync, succeed, async...)
  * @param arbE
  */
-export function arbErrorIO<E, A>(arbE: Arbitrary<E>): Arbitrary<RIO<E, A>> {
+export function arbErrorIO<E, A>(arbE: Arbitrary<E>): Arbitrary<Wave<E, A>> {
     return arbE
         .chain((err) =>
             arbConstIO<E, undefined>(undefined)
@@ -123,14 +123,14 @@ export function arbErrorIO<E, A>(arbE: Arbitrary<E>): Arbitrary<RIO<E, A>> {
 }
 
 /**
- * * Given an E produce an Arbitrary<RIO<E, A>> that fails with some evaluation model (sync, succeed, async...)
+ * * Given an E produce an Arbitrary<Wave<E, A>> that fails with some evaluation model (sync, succeed, async...)
  * @param e
  */
-export function arbConstErrorIO<E, A>(e: E): Arbitrary<RIO<E, A>> {
+export function arbConstErrorIO<E, A>(e: E): Arbitrary<Wave<E, A>> {
     return arbErrorIO(fc.constant(e));
 }
 
-export function arbEitherIO<E, A>(arbe: Arbitrary<E>, arba: Arbitrary<A>): Arbitrary<RIO<E, A>> {
+export function arbEitherIO<E, A>(arbe: Arbitrary<E>, arba: Arbitrary<A>): Arbitrary<Wave<E, A>> {
     return fc.boolean()
         .chain((error) => error ? arbErrorIO(arbe) : arbIO(arba));
 }

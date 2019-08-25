@@ -46,7 +46,7 @@ IO can be used to perform long-running tasks without resorting to service worker
 
 
 ### Resources
-Any RIO<E, A> may be safely used as a resource acquisition using the `bracket` or `bracketExit` combinators.
+Any Wave<E, A> may be safely used as a resource acquisition using the `bracket` or `bracketExit` combinators.
 Once the resource is acquired, the release action will always happen. 
 `bracketExit` is a more powerful form of `bracket` where the `Exit` of the resource use action is also available.
 If all you need is to ensure that an acquired resource is cleaned up, there is also the Resource data type which forms a Monad for nesting resource scopes.

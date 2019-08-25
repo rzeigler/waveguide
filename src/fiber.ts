@@ -15,7 +15,7 @@
 import { fold as foldOption, fromNullable, isSome, none, Option, some } from "fp-ts/lib/Option";
 import { Driver, makeDriver } from "./driver";
 import { Exit } from "./exit";
-import { RIO } from "./wave";
+import { Wave } from "./wave";
 import * as io from "./wave";
 import { Runtime } from "./runtime";
 
@@ -30,24 +30,24 @@ export interface Fiber<E, A> {
    * The this will complete execution once the target fiber has halted.
    * Does nothing if the target fiber is already complete
    */
-    readonly interrupt: RIO<never, void>;
+    readonly interrupt: Wave<never, void>;
     /**
    * Await the result of this fiber
    */
-    readonly wait: RIO<never, Exit<E, A>>;
+    readonly wait: Wave<never, Exit<E, A>>;
     /**
    * Join with this fiber.
    * This is equivalent to fiber.wait.chain(io.completeWith)
    */
-    readonly join: RIO<E, A>;
+    readonly join: Wave<E, A>;
     /**
    * Poll for a fiber result
    */
-    readonly result: RIO<E, Option<A>>;
+    readonly result: Wave<E, Option<A>>;
     /**
    * Determine if the fiber is complete
    */
-    readonly isComplete: RIO<never, boolean>;
+    readonly isComplete: Wave<never, boolean>;
 }
 
 function createFiber<E, A>(driver: Driver<E, A>, n?: string): Fiber<E, A> {
@@ -72,9 +72,9 @@ function createFiber<E, A>(driver: Driver<E, A>, n?: string): Fiber<E, A> {
     };
 }
 
-export function makeFiber<E, A>(init: RIO<E, A>, name?: string): RIO<never, Fiber<E, A>> {
+export function makeFiber<E, A>(init: Wave<E, A>, name?: string): Wave<never, Fiber<E, A>> {
     return io.chain(
-        io.accessRuntime as RIO<never, Runtime>,
+        io.accessRuntime as Wave<never, Runtime>,
         (runtime) =>
             io.sync(() => {
                 const driver = makeDriver<E, A>(runtime);

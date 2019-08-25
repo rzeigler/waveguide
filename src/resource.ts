@@ -16,7 +16,7 @@ import { FunctionN, constant } from "fp-ts/lib/function";
 import { Monad3, Monad2 } from "fp-ts/lib/Monad";
 import { Semigroup } from "fp-ts/lib/Semigroup";
 import { Monoid } from "fp-ts/lib/Monoid";
-import { RIO } from "./wave";
+import { Wave } from "./wave";
 import { Fiber } from "./fiber";
 import * as io from "./wave";
 import { Applicative3 } from "fp-ts/lib/Applicative";
@@ -42,10 +42,6 @@ export type Managed<E, A> =
   Suspended<E, A>  |
   Chain<E, any, A>; // eslint-disable-line @typescript-eslint/no-explicit-any
 
-/**
- * The short form of rsource
- */
-export type Resource<E, A> = Managed<E, A>;
 
 export interface Pure<E, A> {
     readonly _tag: ManagedTag.Pure;
@@ -65,7 +61,7 @@ export function pure<A>(value: A): Managed<never, A> {
 
 export interface Encase<E, A> {
     readonly _tag: ManagedTag.Encase;
-    readonly acquire: RIO<E, A>;
+    readonly acquire: Wave<E, A>;
 }
 
 /**
@@ -74,15 +70,15 @@ export interface Encase<E, A> {
  * @param res 
  * @param f 
  */
-export function encaseRIO<E, A>(rio: RIO<E, A>): Encase<E, A> {
+export function encaseWave<E, A>(rio: Wave<E, A>): Encase<E, A> {
     return { _tag: ManagedTag.Encase, acquire: rio };
 }
 
 
 export interface Bracket<E, A> {
     readonly _tag: ManagedTag.Bracket;
-    readonly acquire: RIO<E, A>;
-    readonly release: FunctionN<[A], RIO<E, unknown>>;
+    readonly acquire: Wave<E, A>;
+    readonly release: FunctionN<[A], Wave<E, unknown>>;
 }
 
 /**
@@ -90,7 +86,7 @@ export interface Bracket<E, A> {
  * @param acquire 
  * @param release 
  */
-export function bracket<E, A>(acquire: RIO<E, A>, release: FunctionN<[A], RIO<E, unknown>>): Bracket<E, A> {
+export function bracket<E, A>(acquire: Wave<E, A>, release: FunctionN<[A], Wave<E, unknown>>): Bracket<E, A> {
     return {
         _tag: ManagedTag.Bracket,
         acquire,
@@ -100,14 +96,14 @@ export function bracket<E, A>(acquire: RIO<E, A>, release: FunctionN<[A], RIO<E,
 
 export interface Suspended<E, A> {
     readonly _tag: ManagedTag.Suspended;
-    readonly suspended: RIO<E, Managed<E, A>>;
+    readonly suspended: Wave<E, Managed<E, A>>;
 }
 
 /**
  * Lift an IO of a Resource into a resource
  * @param suspended 
  */
-export function suspend<E, A>(suspended: RIO<E, Managed<E, A>>): Suspended<E, A> {
+export function suspend<E, A>(suspended: Wave<E, Managed<E, A>>): Suspended<E, A> {
     return {
         _tag: ManagedTag.Suspended,
         suspended
@@ -246,7 +242,7 @@ export function chainTapWith<E, A>(bind: FunctionN<[A], Managed<E, unknown>>): F
  * Curried data last form of use
  * @param f 
  */
-export function consume<E, A, B>(f: FunctionN<[A], RIO<E, B>>): FunctionN<[Managed<E, A>], RIO<E, B>> {
+export function consume<E, A, B>(f: FunctionN<[A], Wave<E, B>>): FunctionN<[Managed<E, A>], Wave<E, B>> {
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
     return (r) => use(r, f);
 }
@@ -257,8 +253,8 @@ export function consume<E, A, B>(f: FunctionN<[A], RIO<E, B>>): FunctionN<[Manag
  * The destruction of the resource is interrupting said fiber.
  * @param rio 
  */
-export function fiber<E, A>(rio: RIO<E, A>): Managed<never, Fiber<E, A>> {
-    return bracket(io.fork(rio), (fiber) => fiber.interrupt as RIO<never, void>);
+export function fiber<E, A>(rio: Wave<E, A>): Managed<never, Fiber<E, A>> {
+    return bracket(io.fork(rio), (fiber) => fiber.interrupt as Wave<never, void>);
 }
 
 /**
@@ -266,7 +262,7 @@ export function fiber<E, A>(rio: RIO<E, A>): Managed<never, Fiber<E, A>> {
  * @param res 
  * @param f 
  */
-export function use<E, A, B>(res: Managed<E, A>, f: FunctionN<[A], RIO<E, B>>): RIO<E, B> {
+export function use<E, A, B>(res: Managed<E, A>, f: FunctionN<[A], Wave<E, B>>): Wave<E, B> {
     switch (res._tag) {
         case ManagedTag.Pure:
             return f(res.value);

@@ -16,14 +16,14 @@ import { Either, fold as foldEither } from "fp-ts/lib/Either";
 import { FunctionN, Lazy } from "fp-ts/lib/function";
 import { Option } from "fp-ts/lib/Option";
 import { Cause, Done, done, Exit, interrupt as interruptExit, raise, ExitTag } from "./exit";
-import { RIO, RIOTag } from "./wave";
+import { Wave, WaveTag } from "./wave";
 import * as io from "./wave";
 import { defaultRuntime, Runtime } from "./runtime";
 import { Completable, completable } from "./support/completable";
 import { MutableStack, mutableStack } from "./support/mutable-stack";
 
 // It turns out th is is used quite often
-type UnkIO = RIO<unknown, unknown>
+type UnkIO = Wave<unknown, unknown>
 
 export type RegionFrameType = InterruptFrame;
 export type FrameType = Frame | FoldFrame | RegionFrameType;
@@ -71,7 +71,7 @@ const makeInterruptFrame = (interruptStatus: MutableStack<boolean>): InterruptFr
 };
 
 export interface Driver<E, A> {
-    start(run: RIO<E, A>): void;
+    start(run: Wave<E, A>): void;
     interrupt(): void;
     onExit(f: FunctionN<[Exit<E, A>], void>): Lazy<void>;
     exit(): Option<Exit<E, A>>;
@@ -190,46 +190,46 @@ export function makeDriver<E, A>(runtime: Runtime = defaultRuntime): Driver<E, A
         while (current && (!isInterruptible() || !interrupted)) {
             try {
                 switch (current._tag) {
-                    case RIOTag.Pure:
+                    case WaveTag.Pure:
                         current = next(current.value);
                         break;
-                    case RIOTag.Raised:
+                    case WaveTag.Raised:
                         if (current.error._tag === ExitTag.Interrupt) {
                             interrupted = true;
                         }
                         current = handle(current.error);
                         break;
-                    case RIOTag.Completed:
+                    case WaveTag.Completed:
                         if (current.exit._tag === ExitTag.Done) {
                             current = next(current.exit.value);
                         } else {
                             current = handle(current.exit);
                         }
                         break;
-                    case RIOTag.Suspended:
+                    case WaveTag.Suspended:
                         current = current.thunk();
                         break;
-                    case RIOTag.Async:
+                    case WaveTag.Async:
                         contextSwitch(current.op);
                         current = undefined;
                         break;
-                    case RIOTag.Chain:
+                    case WaveTag.Chain:
                         frameStack.push(makeFrame(current.bind));
                         current = current.inner;
                         break;
-                    case RIOTag.Collapse:
+                    case WaveTag.Collapse:
                         frameStack.push(makeFoldFrame(current.success, current.failure));
                         current = current.inner;
                         break;
-                    case RIOTag.InterruptibleRegion:
+                    case WaveTag.InterruptibleRegion:
                         interruptRegionStack.push(current.flag);
                         frameStack.push(makeInterruptFrame(interruptRegionStack));
                         current = current.inner;
                         break;
-                    case RIOTag.AccessRuntime:
+                    case WaveTag.AccessRuntime:
                         current = io.pure(current.f(runtime)) as UnkIO;
                         break;
-                    case RIOTag.AccessInterruptible:
+                    case WaveTag.AccessInterruptible:
                         current = io.pure(current.f(isInterruptible())) as UnkIO;
                         break;
                     default:
@@ -246,7 +246,7 @@ export function makeDriver<E, A>(runtime: Runtime = defaultRuntime): Driver<E, A
         }
     }
 
-    function start(run: RIO<E, A>): void {
+    function start(run: Wave<E, A>): void {
         if (started) {
             throw new Error("Bug: Runtime may not be started multiple times");
         }

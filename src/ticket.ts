@@ -13,25 +13,25 @@
 // limitations under the License.
 
 import { Exit, ExitTag } from "./exit";
-import { RIO, unit } from "./wave";
+import { Wave, unit } from "./wave";
 
-export function ticketExit<A>(ticket: Ticket<A>, exit: Exit<never, A>): RIO<never, void> {
+export function ticketExit<A>(ticket: Ticket<A>, exit: Exit<never, A>): Wave<never, void> {
     if (exit._tag === ExitTag.Interrupt) {
         return ticket.cleanup;
     }
     return unit;
 }
 
-export function ticketUse<A>(ticket: Ticket<A>): RIO<never, A> {
+export function ticketUse<A>(ticket: Ticket<A>): Wave<never, A> {
     return ticket.acquire;
 }
 
 export interface Ticket<A> {
-    readonly acquire: RIO<never, A>;
-    readonly cleanup: RIO<never, void>;
+    readonly acquire: Wave<never, A>;
+    readonly cleanup: Wave<never, void>;
 }
 
-export function makeTicket<A>(acquire: RIO<never, A>, cleanup: RIO<never, void>): Ticket<A> {
+export function makeTicket<A>(acquire: Wave<never, A>, cleanup: Wave<never, void>): Ticket<A> {
     return {
         acquire,
         cleanup

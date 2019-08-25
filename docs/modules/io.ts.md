@@ -140,7 +140,7 @@ parent: Modules
 
 ```ts
 export interface AccessEnv<R, E, A> {
-  readonly _tag: RIOTag.AccessEnv
+  readonly _tag: WaveTag.AccessEnv
   readonly f: FunctionN<[R], A>
 }
 ```
@@ -151,7 +151,7 @@ export interface AccessEnv<R, E, A> {
 
 ```ts
 export interface AccessInterruptible<R, E, A> {
-  readonly _tag: RIOTag.AccessInterruptible
+  readonly _tag: WaveTag.AccessInterruptible
   readonly f: FunctionN<[boolean], A>
 }
 ```
@@ -162,7 +162,7 @@ export interface AccessInterruptible<R, E, A> {
 
 ```ts
 export interface AccessRuntime<R, E, A> {
-  readonly _tag: RIOTag.AccessRuntime
+  readonly _tag: WaveTag.AccessRuntime
   readonly f: FunctionN<[Runtime], A>
 }
 ```
@@ -173,7 +173,7 @@ export interface AccessRuntime<R, E, A> {
 
 ```ts
 export interface Async<E, A> {
-  readonly _tag: RIOTag.Async
+  readonly _tag: WaveTag.Async
   readonly op: FunctionN<[FunctionN<[Either<E, A>], void>], Lazy<void>>
 }
 ```
@@ -184,7 +184,7 @@ export interface Async<E, A> {
 
 ```ts
 export interface Chain<R, E, Z, A> {
-  readonly _tag: RIOTag.Chain
+  readonly _tag: WaveTag.Chain
   readonly inner: RIO<R, E, Z>
   readonly bind: FunctionN<[Z], RIO<R, E, A>>
 }
@@ -196,7 +196,7 @@ export interface Chain<R, E, Z, A> {
 
 ```ts
 export interface Collapse<R, E1, E2, A1, A2> {
-  readonly _tag: RIOTag.Collapse
+  readonly _tag: WaveTag.Collapse
   readonly inner: RIO<R, E1, A1>
   readonly failure: FunctionN<[Cause<E1>], RIO<R, E2, A2>>
   readonly success: FunctionN<[A1], RIO<R, E2, A2>>
@@ -209,7 +209,7 @@ export interface Collapse<R, E1, E2, A1, A2> {
 
 ```ts
 export interface Completed<R, E, A> {
-  readonly _tag: RIOTag.Completed
+  readonly _tag: WaveTag.Completed
   readonly exit: Exit<E, A>
 }
 ```
@@ -220,7 +220,7 @@ export interface Completed<R, E, A> {
 
 ```ts
 export interface InterruptibleRegion<R, E, A> {
-  readonly _tag: RIOTag.InterruptibleRegion
+  readonly _tag: WaveTag.InterruptibleRegion
   readonly inner: RIO<R, E, A>
   readonly flag: boolean
 }
@@ -232,7 +232,7 @@ export interface InterruptibleRegion<R, E, A> {
 
 ```ts
 export interface ProvideEnv<R, E, A> {
-  readonly _tag: RIOTag.ProvideEnv
+  readonly _tag: WaveTag.ProvideEnv
   readonly r: R
   readonly inner: RIO<R, E, A>
 }
@@ -244,7 +244,7 @@ export interface ProvideEnv<R, E, A> {
 
 ```ts
 export interface Pure<R, E, A> {
-  readonly _tag: RIOTag.Pure
+  readonly _tag: WaveTag.Pure
   readonly value: A
 }
 ```
@@ -255,7 +255,7 @@ export interface Pure<R, E, A> {
 
 ```ts
 export interface Raised<R, E, A> {
-  readonly _tag: RIOTag.Raised
+  readonly _tag: WaveTag.Raised
   readonly error: Cause<E>
 }
 ```
@@ -266,7 +266,7 @@ export interface Raised<R, E, A> {
 
 ```ts
 export interface Suspended<R, E, A> {
-  readonly _tag: RIOTag.Suspended
+  readonly _tag: WaveTag.Suspended
   readonly thunk: Lazy<RIO<R, E, A>>
 }
 ```
@@ -324,7 +324,7 @@ export type RIO<R, E, A> =
 **Signature**
 
 ```ts
-export type SuitableFor<J extends RIOTag, K extends RIOTag, V> = J extends K ? (K extends J ? V : never) : never
+export type SuitableFor<J extends WaveTag, K extends WaveTag, V> = J extends K ? (K extends J ? V : never) : never
 ```
 
 # URI (type alias)

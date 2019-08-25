@@ -13,36 +13,36 @@
 // limitations under the License.
 
 import { FunctionN } from "fp-ts/lib/function";
-import { RIO, sync } from "./wave";
+import { Wave, sync } from "./wave";
 
 export interface Ref<A> {
-    readonly get: RIO<never, A>;
-    set(a: A): RIO<never, A>;
-    update(f: FunctionN<[A], A>): RIO<never, A>;
-    modify<B>(f: FunctionN<[A], readonly [B, A]>): RIO<never, B>;
+    readonly get: Wave<never, A>;
+    set(a: A): Wave<never, A>;
+    update(f: FunctionN<[A], A>): Wave<never, A>;
+    modify<B>(f: FunctionN<[A], readonly [B, A]>): Wave<never, B>;
 }
 
 /**
  * Creates an IO that will allocate a Ref.
  * Curried form of makeRef_ to allow for inference on the initial type
  */
-export const makeRef = <A>(initial: A): RIO<never, Ref<A>> =>
+export const makeRef = <A>(initial: A): Wave<never, Ref<A>> =>
     sync(() => {
         let value = initial;
 
         const get = sync(() => value);
 
-        const set = (a: A): RIO<never, A> => sync(() => {
+        const set = (a: A): Wave<never, A> => sync(() => {
             const prev = value;
             value = a;
             return prev;
         });
 
-        const update = (f: FunctionN<[A], A>): RIO<never, A> => sync(() => {
+        const update = (f: FunctionN<[A], A>): Wave<never, A> => sync(() => {
             return value = f(value);
         });
 
-        const modify = <B>(f: FunctionN<[A], readonly [B, A]>): RIO<never, B> => sync(() => {
+        const modify = <B>(f: FunctionN<[A], readonly [B, A]>): Wave<never, B> => sync(() => {
             const [b, a] = f(value);
             value = a;
             return b;

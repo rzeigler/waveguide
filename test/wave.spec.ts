@@ -18,7 +18,7 @@ import { left, right } from "fp-ts/lib/Either";
 import { FunctionN, identity } from "fp-ts/lib/function";
 import { pipe } from "fp-ts/lib/pipeable";
 import {abort, done, interrupt, raise } from "../src/exit";
-import { RIO } from "../src/wave";
+import { Wave } from "../src/wave";
 import * as io from "../src/wave";
 import { makeRef } from "../src/ref";
 import {
@@ -193,15 +193,15 @@ describe("io", () => {
         const even: FunctionN<[number], boolean> = (n: number) => n % 2 === 0;
 
         const functor = {
-            identity: <E, A>(ioa: RIO<E, A>) => eqvIO(io.map(ioa, identity), ioa),
-            composition: <E, A, B, C>(ioa: RIO<E, A>, fab: FunctionN<[A], B>, fbc: FunctionN<[B], C>) =>
+            identity: <E, A>(ioa: Wave<E, A>) => eqvIO(io.map(ioa, identity), ioa),
+            composition: <E, A, B, C>(ioa: Wave<E, A>, fab: FunctionN<[A], B>, fbc: FunctionN<[B], C>) =>
                 eqvIO(pipe(ioa, io.lift(fab), io.lift(fbc)), io.map(ioa, (a) => fbc(fab(a))))
         };
 
         const apply = {
-            associativeComposition: <E, A, B, C>(ioa: RIO<E, A>,
-                iofab: RIO<E, FunctionN<[A], B>>,
-                iofbc: RIO<E, FunctionN<[B], C>>) =>
+            associativeComposition: <E, A, B, C>(ioa: Wave<E, A>,
+                iofab: Wave<E, FunctionN<[A], B>>,
+                iofbc: Wave<E, FunctionN<[B], C>>) =>
                 eqvIO(
                     io.ap_(
                         io.ap_(
@@ -217,7 +217,7 @@ describe("io", () => {
         };
 
         const applicative = {
-            identity: <E, A>(ioa: RIO<E, A>) =>
+            identity: <E, A>(ioa: Wave<E, A>) =>
                 eqvIO(
                     io.ap(ioa, io.pure(identity)),
                     ioa
@@ -227,12 +227,12 @@ describe("io", () => {
                     io.ap_(io.pure(fab), io.pure(a)),
                     io.pure(fab(a))
                 ),
-            interchange: <E, A, B>(a: A, iofab: RIO<E, FunctionN<[A], B>>) =>
+            interchange: <E, A, B>(a: A, iofab: Wave<E, FunctionN<[A], B>>) =>
                 eqvIO(
                     io.ap_(iofab, io.pure(a)),
                     io.ap_(io.pure((ab: FunctionN<[A], B>) => ab(a)), iofab)
                 ),
-            derivedMap: <E, A, B>(ab: FunctionN<[A], B>, ioa: RIO<E, A>) =>
+            derivedMap: <E, A, B>(ab: FunctionN<[A], B>, ioa: Wave<E, A>) =>
                 eqvIO(
                     io.map(ioa, ab),
                     io.ap_(io.pure(ab), ioa)
@@ -240,7 +240,7 @@ describe("io", () => {
         };
 
         const chain = {
-            associativivity: <E, A, B, C>(ioa: RIO<E, A>, kab: FunctionN<[A], RIO<E, B>>, kbc: FunctionN<[B], RIO<E, C>>) =>
+            associativivity: <E, A, B, C>(ioa: Wave<E, A>, kab: FunctionN<[A], Wave<E, B>>, kbc: FunctionN<[B], Wave<E, C>>) =>
                 eqvIO(
                     pipe(
                         ioa,
@@ -249,7 +249,7 @@ describe("io", () => {
                     ),
                     io.chain(ioa, (a) => io.chain(kab(a), kbc))
                 ),
-            derivedAp: <E, A, B>(iofab: RIO<E, FunctionN<[A], B>>, ioa: RIO<E, A>) =>
+            derivedAp: <E, A, B>(iofab: Wave<E, FunctionN<[A], B>>, ioa: Wave<E, A>) =>
                 eqvIO(
                     io.ap(ioa, iofab),
                     io.chain(iofab, (f) => io.map(ioa, f))
@@ -257,17 +257,17 @@ describe("io", () => {
         };
 
         const monad = {
-            leftIdentity: <E, A, B>(kab: FunctionN<[A], RIO<E, B>>, a: A) =>
+            leftIdentity: <E, A, B>(kab: FunctionN<[A], Wave<E, B>>, a: A) =>
                 eqvIO(
                     io.chain(io.pure(a), kab),
                     kab(a)
                 ),
-            rightIdentity: <E, A>(ioa: RIO<E, A>) =>
+            rightIdentity: <E, A>(ioa: Wave<E, A>) =>
                 eqvIO(
                     io.chain(ioa, io.pure),
                     ioa
                 ),
-            derivedMap: <E, A, B>(ab: FunctionN<[A], B>, ioa: RIO<E, A>) =>
+            derivedMap: <E, A, B>(ab: FunctionN<[A], B>, ioa: Wave<E, A>) =>
                 eqvIO(
                     io.map(ioa, ab),
                     io.chain(ioa, (a) => io.pure(ab(a)))
@@ -390,7 +390,7 @@ describe("io", () => {
         describe("MonadError", () => {
             const monadError = {
                 // The host exists to ensure we are testing in async boundaries
-                recoveryEquivalence: <E, E2, A>(host: RIO<E2, A>, e: E, kea: FunctionN<[E], RIO<E2, A>>) =>
+                recoveryEquivalence: <E, E2, A>(host: Wave<E2, A>, e: E, kea: FunctionN<[E], Wave<E2, A>>) =>
                     eqvIO(
                         io.chain(host, () => io.chainError(io.raiseError(e), kea)),
                         io.chain(host, () => kea(e))
@@ -429,22 +429,22 @@ describe("io", () => {
     describe("parZip", function () {
         this.timeout(10000);
         it("many async ios should be parZipWithAble", () => {
-            const ios: RIO<never, number>[] = [];
+            const ios: Wave<never, number>[] = [];
             for (let i = 0; i < 10000; i++) {
                 ios.push(io.delay(io.pure(1), Math.random() * 100));
             }
             return eqvIO(
-                array.reduce(ios, io.pure(42) as RIO<never, number>, (l, r) => io.parApplyFirst(l, r)),
+                array.reduce(ios, io.pure(42) as Wave<never, number>, (l, r) => io.parApplyFirst(l, r)),
                 io.pure(42)
             );
         });
         it("many sync ios should be parZipWithAble", () => {
-            const ios: RIO<never, number>[] = [];
+            const ios: Wave<never, number>[] = [];
             for (let i = 0; i < 10000; i++) {
                 ios.push(io.pure(1));
             }
             return eqvIO(
-                array.reduce(ios, io.pure(42) as RIO<never, number>, (l, r) => io.parApplyFirst(l, r)),
+                array.reduce(ios, io.pure(42) as Wave<never, number>, (l, r) => io.parApplyFirst(l, r)),
                 io.pure(42)
             );
         });

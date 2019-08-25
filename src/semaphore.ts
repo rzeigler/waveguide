@@ -19,20 +19,20 @@ import * as o from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
 import { Deferred, makeDeferred } from "./deferred";
 import * as io from "./wave";
-import { RIO } from "./wave";
+import { Wave } from "./wave";
 import { makeRef, Ref } from "./ref";
 import { Dequeue, empty } from "./support/dequeue";
 import { makeTicket, Ticket, ticketExit, ticketUse } from "./ticket";
 
 export interface Semaphore {
-    readonly acquire: RIO<never, void>;
-    readonly release: RIO<never, void>;
-    readonly available: RIO<never, number>;
+    readonly acquire: Wave<never, void>;
+    readonly release: Wave<never, void>;
+    readonly available: Wave<never, number>;
 
-    acquireN(n: number): RIO<never, void>;
-    releaseN(n: number): RIO<never, void>;
-    withPermitsN<E, A>(n: number, io: RIO<E, A>): RIO<E, A>;
-    withPermit<E, A>(n: RIO<E, A>): RIO<E, A>;
+    acquireN(n: number): Wave<never, void>;
+    releaseN(n: number): Wave<never, void>;
+    withPermitsN<E, A>(n: number, io: Wave<E, A>): Wave<E, A>;
+    withPermit<E, A>(n: Wave<E, A>): Wave<E, A>;
 }
 
 type Reservation = readonly [number, Deferred<never, void>];
@@ -41,7 +41,7 @@ type State = Either<Dequeue<Reservation>, number>;
 const isReservationFor = (latch: Deferred<never, void>) => (rsv: readonly [number, Deferred<never, void>]): boolean =>
     rsv[1] === latch;
 
-function sanityCheck(n: number): RIO<never, void> {
+function sanityCheck(n: number): Wave<never, void> {
     if (n < 0) {
         return io.raiseAbort(new Error("Die: semaphore permits must be non negative"));
     }
@@ -52,7 +52,7 @@ function sanityCheck(n: number): RIO<never, void> {
 }
 
 function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
-    const releaseN = <E = never>(n: number): RIO<E, void> =>
+    const releaseN = <E = never>(n: number): Wave<E, void> =>
         io.applySecond(
             sanityCheck(n),
             io.uninterruptible(
@@ -85,7 +85,7 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
             ));
 
 
-    const cancelWait = (n: number, latch: Deferred<never, void>): RIO<never, void> =>
+    const cancelWait = (n: number, latch: Deferred<never, void>): Wave<never, void> =>
         io.uninterruptible(io.flatten(
             ref.modify(
                 (current) =>
@@ -109,7 +109,7 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
             )
         ));
 
-    const ticketN = (n: number): RIO<never, Ticket<void>> =>
+    const ticketN = (n: number): Wave<never, Ticket<void>> =>
         io.chain(makeDeferred<never, void>(),
             (latch) =>
                 ref.modify(
@@ -135,7 +135,7 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
                 )
         );
 
-    const acquireN = <E = never>(n: number): RIO<E, void> =>
+    const acquireN = <E = never>(n: number): Wave<E, void> =>
         io.applySecond(
             sanityCheck(n),
             n === 0 ? 
@@ -143,9 +143,9 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
                 io.bracketExit(ticketN(n), ticketExit, ticketUse)
         );
 
-    const withPermitsN = <E, A>(n: number, inner: RIO<E, A>): RIO<E, A> => {
-        const acquire = io.interruptible(acquireN<E>(n)) as RIO<E, void>;
-        const release = releaseN(n) as RIO<E, void>;
+    const withPermitsN = <E, A>(n: number, inner: Wave<E, A>): Wave<E, A> => {
+        const acquire = io.interruptible(acquireN<E>(n)) as Wave<E, void>;
+        const release = releaseN(n) as Wave<E, void>;
         return io.bracket(acquire, constant(release), () => inner);
     }
 
@@ -168,7 +168,7 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
  * @param n the number of permits
  * This must be non-negative
  */
-export function makeSemaphore(n: number): RIO<never, Semaphore> {
+export function makeSemaphore(n: number): Wave<never, Semaphore> {
     return io.applySecond(
         sanityCheck(n),
         io.map(makeRef(right(n) as State), makeSemaphoreImpl)
