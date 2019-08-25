@@ -18,11 +18,35 @@ import * as io from "./wave";
 import { Completable, completable} from "./support/completable";
 
 export interface Deferred<E, A> {
+    /**
+     * Wait for this deferred to complete.
+     * 
+     * This effect will produce the value set by done, raise the error set by error or interrupt
+     */
     readonly wait: Wave<E, A>;
+    /**
+     * Interrupt any waitersa on this Deferred
+     */
     interrupt: Wave<never, void>;
+    /**
+     * Complete this Deferred with a value
+     * 
+     * Any waiters will receive it
+     * @param a 
+     */
     done(a: A): Wave<never, void>;
+    /**
+     * 
+     * @param e Complete this deferred with an error
+     * 
+     * Any waiters will produce an error
+     */
     error(e: E): Wave<never, void>;
-    from<R>(source: Wave<E, A>): Wave<never, void>;
+    /**
+     * Set this deferred with the result of source
+     * @param source 
+     */
+    from(source: Wave<E, A>): Wave<never, void>;
 }
 
 export function makeDeferred<E, A, E2 = never>(): Wave<E2, Deferred<E, A>> {
@@ -43,7 +67,7 @@ export function makeDeferred<E, A, E2 = never>(): Wave<E2, Deferred<E, A>> {
         const complete = (exit: Exit<E, A>): Wave<never, void> => io.sync(() => {
             c.complete(io.completed(exit));
         });
-        const from = <R>(source: Wave<E, A>): Wave<never, void> => {
+        const from = (source: Wave<E, A>): Wave<never, void> => {
             const completed = io.chain<never, Exit<E, A>, void>(io.result(source), complete);
             const interruptor = interrupt as Wave<never, void>;
             return io.onInterrupted(completed, interruptor);

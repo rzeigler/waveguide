@@ -21,8 +21,8 @@ parent: Modules
 
 ```ts
 export interface Ticket<A> {
-  readonly acquire: RIO<DefaultR, never, A>
-  readonly cleanup: RIO<DefaultR, never, void>
+  readonly acquire: Wave<never, A>
+  readonly cleanup: Wave<never, void>
 }
 ```
 
@@ -31,7 +31,7 @@ export interface Ticket<A> {
 **Signature**
 
 ```ts
-export function makeTicket<A>(acquire: RIO<DefaultR, never, A>, cleanup: RIO<DefaultR, never, void>): Ticket<A> { ... }
+export function makeTicket<A>(acquire: Wave<never, A>, cleanup: Wave<never, void>): Ticket<A> { ... }
 ```
 
 # ticketExit (function)
@@ -39,7 +39,7 @@ export function makeTicket<A>(acquire: RIO<DefaultR, never, A>, cleanup: RIO<Def
 **Signature**
 
 ```ts
-export function ticketExit<A>(ticket: Ticket<A>, exit: Exit<never, A>): RIO<DefaultR, never, void> { ... }
+export function ticketExit<A>(ticket: Ticket<A>, exit: Exit<never, A>): Wave<never, void> { ... }
 ```
 
 # ticketUse (function)
@@ -47,5 +47,5 @@ export function ticketExit<A>(ticket: Ticket<A>, exit: Exit<never, A>): RIO<Defa
 **Signature**
 
 ```ts
-export function ticketUse<A>(ticket: Ticket<A>): RIO<DefaultR, never, A> { ... }
+export function ticketUse<A>(ticket: Ticket<A>): Wave<never, A> { ... }
 ```

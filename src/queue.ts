@@ -131,6 +131,9 @@ function makeConcurrentQueueImpl<A>(state: Ref<State<A>>,
 }
     
 
+/**
+ * Create an unbounded concurrent queue
+ */
 export function unboundedQueue<A>(): Wave<never, ConcurrentQueue<A>> {
     return io.map(makeRef(initial<A>()),
         (ref) => makeConcurrentQueueImpl(ref, makeDeferred<never, A>(), unboundedOffer, io.unit, identity));
@@ -138,6 +141,10 @@ export function unboundedQueue<A>(): Wave<never, ConcurrentQueue<A>> {
 
 const natCapacity = natNumber(new Error("Die: capacity must be a natural number"));
 
+/**
+ * Create a bounded queue with the given capacity that drops older offers
+ * @param capacity 
+ */
 export function slidingQueue<A>(capacity: number): Wave<never, ConcurrentQueue<A>> {
     return io.applySecond(
         natCapacity(capacity),
@@ -147,6 +154,10 @@ export function slidingQueue<A>(capacity: number): Wave<never, ConcurrentQueue<A
     );
 }
 
+/**
+ * Create a dropping queue with the given capacity that drops offers on full
+ * @param capacity 
+ */
 export function droppingQueue<A>(capacity: number): Wave<never, ConcurrentQueue<A>> {
     return io.applySecond(
         natCapacity(capacity),
@@ -156,6 +167,10 @@ export function droppingQueue<A>(capacity: number): Wave<never, ConcurrentQueue<
     );
 }
 
+/**
+ * Create a bounded queue that blocks offers on capacity
+ * @param capacity 
+ */
 export function boundedQueue<A>(capacity: number): Wave<never, ConcurrentQueue<A>> {
     return io.applySecond(
         natCapacity(capacity),

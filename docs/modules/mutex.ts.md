@@ -19,10 +19,10 @@ parent: Modules
 
 ```ts
 export interface Mutex {
-  readonly acquire: RIO<DefaultR, never, void>
-  readonly release: RIO<DefaultR, never, void>
-  readonly available: RIO<DefaultR, never, boolean>
-  withExclusion<R, E, A>(inner: RIO<R, E, A>): RIO<R, E, A>
+  readonly acquire: Wave<never, void>
+  readonly release: Wave<never, void>
+  readonly available: Wave<never, boolean>
+  withExclusion<R, E, A>(inner: Wave<E, A>): Wave<E, A>
 }
 ```
 

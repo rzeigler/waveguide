@@ -138,6 +138,9 @@ export function consume<R, E, A, B>(f: FunctionN<[A], WaveR<R, E, B>>): Function
     return (r) => use(r, f);
 }
 
+export function provideTo<R, E, A, B>(ma: ManagedR<R, E, A>, wave: WaveR<A, E, B>): WaveR<R, E, B> {
+    return use(ma, (a) => waver.contravaryR(waver.encaseWave(wave(a))));
+}
 
 export const URI = "ManagedR";
 export type URI = typeof URI;

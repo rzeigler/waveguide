@@ -1,6 +1,6 @@
 ---
 title: sanity.ts
-nav_order: 12
+nav_order: 11
 parent: Modules
 ---
 
@@ -17,5 +17,5 @@ parent: Modules
 **Signature**
 
 ```ts
-export const natNumber = (msg: unknown) => (n: number): RIO<DefaultR, never, void> => ...
+export const natNumber = (msg: unknown) => (n: number): Wave<never, void> => ...
 ```

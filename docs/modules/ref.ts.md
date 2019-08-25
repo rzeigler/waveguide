@@ -19,10 +19,28 @@ parent: Modules
 
 ```ts
 export interface Ref<A> {
-  readonly get: RIO<DefaultR, never, A>
-  set(a: A): RIO<DefaultR, never, A>
-  update(f: FunctionN<[A], A>): RIO<DefaultR, never, A>
-  modify<B>(f: FunctionN<[A], readonly [B, A]>): RIO<DefaultR, never, B>
+  /**
+   * Get the current value of the Ref
+   */
+  readonly get: Wave<never, A>
+  /**
+   * Set the current value of the ref
+   * @param a
+   */
+  set(a: A): Wave<never, A>
+  /**
+   * Update the current value of the ref with a function.
+   * Produces the new value
+   * @param f
+   */
+  update(f: FunctionN<[A], A>): Wave<never, A>
+  /**
+   * Update the current value of a ref with a function.
+   *
+   * This function may return a second value of type B that will be produced on complete
+   * @param f
+   */
+  modify<B>(f: FunctionN<[A], readonly [B, A]>): Wave<never, B>
 }
 ```
 
@@ -34,6 +52,6 @@ Curried form of makeRef\_ to allow for inference on the initial type
 **Signature**
 
 ```ts
-export const makeRef = <A>(initial: A): RIO<DefaultR, never, Ref<A>> =>
+export const makeRef = <A>(initial: A): Wave<never, Ref<A>> =>
     sync(() => ...
 ```

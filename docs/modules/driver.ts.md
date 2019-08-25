@@ -20,8 +20,8 @@ parent: Modules
 **Signature**
 
 ```ts
-export interface Driver<R, E, A> {
-  start(r: R, run: RIO<R, E, A>): void
+export interface Driver<E, A> {
+  start(run: Wave<E, A>): void
   interrupt(): void
   onExit(f: FunctionN<[Exit<E, A>], void>): Lazy<void>
   exit(): Option<Exit<E, A>>
@@ -41,7 +41,7 @@ export type FrameType = Frame | FoldFrame | RegionFrameType
 **Signature**
 
 ```ts
-export type RegionFrameType = InterruptFrame | EnvironmentFrame
+export type RegionFrameType = InterruptFrame
 ```
 
 # makeDriver (function)
@@ -49,5 +49,5 @@ export type RegionFrameType = InterruptFrame | EnvironmentFrame
 **Signature**
 
 ```ts
-export function makeDriver<R, E, A>(runtime: Runtime = defaultRuntime): Driver<R, E, A> { ... }
+export function makeDriver<E, A>(runtime: Runtime = defaultRuntime): Driver<E, A> { ... }
 ```

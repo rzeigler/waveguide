@@ -1,6 +1,6 @@
 ---
-title: resource.ts
-nav_order: 10
+title: managed.ts
+nav_order: 5
 parent: Modules
 ---
 
@@ -14,7 +14,6 @@ parent: Modules
 - [Pure (interface)](#pure-interface)
 - [Suspended (interface)](#suspended-interface)
 - [Managed (type alias)](#managed-type-alias)
-- [Resource (type alias)](#resource-type-alias)
 - [URI (type alias)](#uri-type-alias)
 - [URI (constant)](#uri-constant)
 - [instances (constant)](#instances-constant)
@@ -27,7 +26,7 @@ parent: Modules
 - [chainTapWith (function)](#chaintapwith-function)
 - [chainWith (function)](#chainwith-function)
 - [consume (function)](#consume-function)
-- [encaseRIO (function)](#encaserio-function)
+- [encaseWave (function)](#encasewave-function)
 - [fiber (function)](#fiber-function)
 - [getMonoid (function)](#getmonoid-function)
 - [getSemigroup (function)](#getsemigroup-function)
@@ -48,10 +47,10 @@ parent: Modules
 **Signature**
 
 ```ts
-export interface Bracket<R, E, A> {
+export interface Bracket<E, A> {
   readonly _tag: ManagedTag.Bracket
-  readonly acquire: RIO<R, E, A>
-  readonly release: FunctionN<[A], RIO<R, E, unknown>>
+  readonly acquire: Wave<E, A>
+  readonly release: FunctionN<[A], Wave<E, unknown>>
 }
 ```
 
@@ -60,10 +59,10 @@ export interface Bracket<R, E, A> {
 **Signature**
 
 ```ts
-export interface Chain<R, E, L, A> {
+export interface Chain<E, L, A> {
   readonly _tag: ManagedTag.Chain
-  readonly left: Managed<R, E, L>
-  readonly bind: FunctionN<[L], Managed<R, E, A>>
+  readonly left: Managed<E, L>
+  readonly bind: FunctionN<[L], Managed<E, A>>
 }
 ```
 
@@ -72,9 +71,9 @@ export interface Chain<R, E, L, A> {
 **Signature**
 
 ```ts
-export interface Encase<R, E, A> {
+export interface Encase<E, A> {
   readonly _tag: ManagedTag.Encase
-  readonly acquire: RIO<R, E, A>
+  readonly acquire: Wave<E, A>
 }
 ```
 
@@ -83,7 +82,7 @@ export interface Encase<R, E, A> {
 **Signature**
 
 ```ts
-export interface Pure<R, E, A> {
+export interface Pure<E, A> {
   readonly _tag: ManagedTag.Pure
   readonly value: A
 }
@@ -94,9 +93,9 @@ export interface Pure<R, E, A> {
 **Signature**
 
 ```ts
-export interface Suspended<R, E, A> {
+export interface Suspended<E, A> {
   readonly _tag: ManagedTag.Suspended
-  readonly suspended: RIO<R, E, Managed<R, E, A>>
+  readonly suspended: Wave<E, Managed<E, A>>
 }
 ```
 
@@ -109,22 +108,7 @@ This is a friendly monadic wrapper around bracketExit.
 **Signature**
 
 ```ts
-export type Managed<R, E, A> =
-  | Pure<R, E, A>
-  | Encase<R, E, A>
-  | Bracket<R, E, A>
-  | Suspended<R, E, A>
-  | Chain<R, E, any, A>
-```
-
-# Resource (type alias)
-
-The short form of rsource
-
-**Signature**
-
-```ts
-export type Resource<E, A> = Managed<io.DefaultR, E, A>
+export type Managed<E, A> = Pure<E, A> | Encase<E, A> | Bracket<E, A> | Suspended<E, A> | Chain<E, any, A>
 ```
 
 # URI (type alias)
@@ -148,7 +132,7 @@ export const URI = ...
 **Signature**
 
 ```ts
-export const instances: Monad3<URI> = ...
+export const instances: Monad2<URI> = ...
 ```
 
 # ap (function)
@@ -158,7 +142,7 @@ Apply the function produced by resfab to the value produced by resa to produce a
 **Signature**
 
 ```ts
-export function ap<R, E, A, B>(resa: Managed<R, E, A>, resfab: Managed<R, E, FunctionN<[A], B>>): Managed<R, E, B> { ... }
+export function ap<E, A, B>(resa: Managed<E, A>, resfab: Managed<E, FunctionN<[A], B>>): Managed<E, B> { ... }
 ```
 
 # ap\_ (function)
@@ -168,7 +152,7 @@ Flipped version of ap
 **Signature**
 
 ```ts
-export function ap_<R, E, A, B>(resfab: Managed<R, E, FunctionN<[A], B>>, resa: Managed<R, E, A>): Managed<R, E, B> { ... }
+export function ap_<E, A, B>(resfab: Managed<E, FunctionN<[A], B>>, resa: Managed<E, A>): Managed<E, B> { ... }
 ```
 
 # as (function)
@@ -180,7 +164,7 @@ This creates a resource of the provided constant b where the produced A has the 
 **Signature**
 
 ```ts
-export function as<R, E, A, B>(fa: Managed<R, E, A>, b: B): Managed<R, E, B> { ... }
+export function as<E, A, B>(fa: Managed<E, A>, b: B): Managed<E, B> { ... }
 ```
 
 # bracket (function)
@@ -190,7 +174,7 @@ Create a resource from an acquisition and release function
 **Signature**
 
 ```ts
-export function bracket<R, E, A>(acquire: RIO<R, E, A>, release: FunctionN<[A], RIO<R, E, unknown>>): Bracket<R, E, A> { ... }
+export function bracket<E, A>(acquire: Wave<E, A>, release: FunctionN<[A], Wave<E, unknown>>): Managed<E, A> { ... }
 ```
 
 # chain (function)
@@ -202,7 +186,7 @@ The scope of left will enclose the scope of the resource produced by bind
 **Signature**
 
 ```ts
-export function chain<R, E, L, A>(left: Managed<R, E, L>, bind: FunctionN<[L], Managed<R, E, A>>): Chain<R, E, L, A> { ... }
+export function chain<E, L, A>(left: Managed<E, L>, bind: FunctionN<[L], Managed<E, A>>): Managed<E, A> { ... }
 ```
 
 # chainTap (function)
@@ -213,7 +197,7 @@ Useful for performing initialization and cleanup that clients don't need to see
 **Signature**
 
 ```ts
-export function chainTap<R, E, A>(left: Managed<R, E, A>, bind: FunctionN<[A], Managed<R, E, unknown>>): Managed<R, E, A> { ... }
+export function chainTap<E, A>(left: Managed<E, A>, bind: FunctionN<[A], Managed<E, unknown>>): Managed<E, A> { ... }
 ```
 
 # chainTapWith (function)
@@ -223,7 +207,7 @@ Curried form of chainTap
 **Signature**
 
 ```ts
-export function chainTapWith<R, E, A>(bind: FunctionN<[A], Managed<R, E, unknown>>): FunctionN<[Managed<R, E, A>], Managed<R, E, A>> { ... }
+export function chainTapWith<E, A>(bind: FunctionN<[A], Managed<E, unknown>>): FunctionN<[Managed<E, A>], Managed<E, A>> { ... }
 ```
 
 # chainWith (function)
@@ -233,7 +217,7 @@ Curried form of chain
 **Signature**
 
 ```ts
-export function chainWith<R, E, L, A>(bind: FunctionN<[L], Managed<R, E, A>>): FunctionN<[Managed<R, E, L>], Managed<R, E, A>> { ... }
+export function chainWith<E, L, A>(bind: FunctionN<[L], Managed<E, A>>): FunctionN<[Managed<E, L>], Managed<E, A>> { ... }
 ```
 
 # consume (function)
@@ -243,17 +227,17 @@ Curried data last form of use
 **Signature**
 
 ```ts
-export function consume<R, E, A, B>(f: FunctionN<[A], RIO<R, E, B>>): FunctionN<[Managed<R, E, A>], RIO<R, E, B>> { ... }
+export function consume<E, A, B>(f: FunctionN<[A], Wave<E, B>>): FunctionN<[Managed<E, A>], Wave<E, B>> { ... }
 ```
 
-# encaseRIO (function)
+# encaseWave (function)
 
 Create a Resource by wrapping an IO producing a value that does not need to be disposed
 
 **Signature**
 
 ```ts
-export function encaseRIO<R, E, A>(rio: RIO<R, E, A>): Encase<R, E, A> { ... }
+export function encaseWave<E, A>(rio: Wave<E, A>): Managed<E, A> { ... }
 ```
 
 # fiber (function)
@@ -265,7 +249,7 @@ The destruction of the resource is interrupting said fiber.
 **Signature**
 
 ```ts
-export function fiber<R, E, A>(rio: RIO<R, E, A>): Managed<R, never, Fiber<E, A>> { ... }
+export function fiber<E, A>(rio: Wave<E, A>): Managed<never, Fiber<E, A>> { ... }
 ```
 
 # getMonoid (function)
@@ -273,7 +257,7 @@ export function fiber<R, E, A>(rio: RIO<R, E, A>): Managed<R, never, Fiber<E, A>
 **Signature**
 
 ```ts
-export function getMonoid<R, E, A>(Monoid: Monoid<A>): Monoid<Managed<R, E, A>> { ... }
+export function getMonoid<E, A>(Monoid: Monoid<A>): Monoid<Managed<E, A>> { ... }
 ```
 
 # getSemigroup (function)
@@ -281,7 +265,7 @@ export function getMonoid<R, E, A>(Monoid: Monoid<A>): Monoid<Managed<R, E, A>> 
 **Signature**
 
 ```ts
-export function getSemigroup<R, E, A>(Semigroup: Semigroup<A>): Semigroup<Managed<R, E, A>> { ... }
+export function getSemigroup<E, A>(Semigroup: Semigroup<A>): Semigroup<Managed<E, A>> { ... }
 ```
 
 # map (function)
@@ -291,7 +275,7 @@ Map a resource
 **Signature**
 
 ```ts
-export function map<R, E, L, A>(res: Managed<R, E, L>, f: FunctionN<[L], A>): Managed<R, E, A> { ... }
+export function map<E, L, A>(res: Managed<E, L>, f: FunctionN<[L], A>): Managed<E, A> { ... }
 ```
 
 # mapWith (function)
@@ -301,17 +285,17 @@ Curried form of mapWith
 **Signature**
 
 ```ts
-export function mapWith<L, A>(f: FunctionN<[L], A>): <R, E>(res: Managed<R, E, L>) => Managed<R, E, A> { ... }
+export function mapWith<L, A>(f: FunctionN<[L], A>): <E>(res: Managed<E, L>) => Managed<E, A> { ... }
 ```
 
 # provideTo (function)
 
-Provide a Managed as a resource to a resource
+Use a resource to provide the environment to a WaveR
 
 **Signature**
 
 ```ts
-export function provideTo<E, A, B>(res: Resource<E, A>, rio: RIO<A, E, B>): RIO<io.DefaultR, E, B> { ... }
+export function provideTo<R, E, A>(man: Managed<E, R>, wave: WaveR<R, E, A>): Wave<E, A> { ... }
 ```
 
 # pure (function)
@@ -321,7 +305,7 @@ Lift a pure value into a resource
 **Signature**
 
 ```ts
-export function pure<A>(value: A): Managed<io.DefaultR, never, A> { ... }
+export function pure<A>(value: A): Managed<never, A> { ... }
 ```
 
 # suspend (function)
@@ -331,7 +315,7 @@ Lift an IO of a Resource into a resource
 **Signature**
 
 ```ts
-export function suspend<R, E, A>(suspended: RIO<R, E, Managed<R, E, A>>): Suspended<R, E, A> { ... }
+export function suspend<E, A>(suspended: Wave<E, Managed<E, A>>): Managed<E, A> { ... }
 ```
 
 # to (function)
@@ -341,7 +325,7 @@ Curried form of as
 **Signature**
 
 ```ts
-export function to<B>(b: B): <R, E, A>(fa: Managed<R, E, A>) => Managed<R, E, B> { ... }
+export function to<B>(b: B): <E, A>(fa: Managed<E, A>) => Managed<E, B> { ... }
 ```
 
 # use (function)
@@ -351,7 +335,7 @@ Use a resource to produce a program that can be run.s
 **Signature**
 
 ```ts
-export function use<R, E, A, B>(res: Managed<R, E, A>, f: FunctionN<[A], RIO<R, E, B>>): RIO<R, E, B> { ... }
+export function use<E, A, B>(res: Managed<E, A>, f: FunctionN<[A], Wave<E, B>>): Wave<E, B> { ... }
 ```
 
 # zip (function)
@@ -363,7 +347,7 @@ The scope of resa will enclose the scope of resb
 **Signature**
 
 ```ts
-export function zip<R, E, A, B>(resa: Managed<R, E, A>, resb: Managed<R, E, B>): Managed<R, E, readonly [A, B]> { ... }
+export function zip<E, A, B>(resa: Managed<E, A>, resb: Managed<E, B>): Managed<E, readonly [A, B]> { ... }
 ```
 
 # zipWith (function)
@@ -375,7 +359,7 @@ The scope of resa will enclose the scope of resb
 **Signature**
 
 ```ts
-export function zipWith<R, E, A, B, C>(resa: Managed<R, E, A>,
-    resb: Managed<R, E, B>,
-    f: FunctionN<[A, B], C>): Managed<R, E, C> { ... }
+export function zipWith<E, A, B, C>(resa: Managed<E, A>,
+    resb: Managed<E, B>,
+    f: FunctionN<[A, B], C>): Managed<E, C> { ... }
 ```

@@ -9,37 +9,33 @@ has_toc: false
 
 ## Getting Started
 ```
-import * as wave from "waveguide/lib/io"
-import { RIO } from "waveguide/lib/io"
+import * as wave from "waveguide/lib/wave"
+import { Wave } from "waveguide/lib/wave"
 ```
 
-## Overview of RIO
-The core data type in waveguide is the `RIO<R, E, A>`.
-You may think of a `RIO<R, E, A>` as a description of an action that, given some environment `R`, may produce a value `A` or fail with error `E`
-In this way, RIO's are very similar to `(r: R) => Promise<A>` but with a typed error channel.
-Additionally, RIO's are always lazy. 
-The action described by a RIO will never occur until it is explicitly started by using one of the run combinators.
-Additionally, RIO has pervasive support for interruption and resource safety.
-A running RIO may be interrupted and it will terminate as soon as it leaves an uninterruptible section (and all acquired resources are cleaned up).
-There is also a type alias `IO<E, A>` which requires an empty environment.
+## Overview of Wave
+The core data type in waveguide is the `Wave<E, A>`.
+You may think of a `RIO<E, A>` as a description of an action that may produce a value `A` or fail with error `E`
+In this way, Wave's are very similar to `() => Promise<A>` but with a typed error channel.
+The primary difference is that Wave's are lazy and support cancellation and support resource safety (that is interrupt aware)
 
-### Constructing an IO
-There are a number of ways of constructing IOs exported from the /lib/io module
+### Constructing a Wave
+There are a number of ways of constructing IOs exported from the /lib/wave module
 They include
     - `pure` -- create a successful IO
     - `raiseError` -- create a failed IO
     - `async` -- create an asynchronous effect based on callbacks
     - `sync` -- create a synchronous efffect
 
-### Using an IO
-For a quick overview of what IO can do see the [tutorial](https://github.com/rzeigler/waveguide/blob/master/examples/)
-`RIO<R, E, A>` is a monad and exposes the relevant functions in a naming scheme similar to [fp-ts](https://github.com/gcanti/fp-ts/) along with typeclass instances for Monad and parallel Applicative.
-These instances are the exports io and par respectively from /lib/io.
+### Using a Wave
+For a quick overview of what Wave can do see the [tutorial](https://github.com/rzeigler/waveguide/blob/master/examples/)
+`Wave<E, A>` is a monad and exposes the relevant functions in a naming scheme similar to [fp-ts](https://github.com/gcanti/fp-ts/) along with typeclass instances for Monad and parallel Applicative.
+These instances are the exports io and par respectively from waveguide/lib/wave.
 
 As mentioend perviously, RIOs are lazy so they don't actually do anything until they are interpreted.
-`unsafeRunR` will begin running a fiber and returns a cancellation action.
-`unsafeRunToPromiseR` will return a promise of the result of the fiber, rejecting if a failure is encountered.
-`unsafeRunToPromiseTotalR` will return a promise of an `Exit<E, A>` for the result of evaluation. This promis will not reject.
+`unsafeRun` will begin running a fiber and returns a cancellation action.
+`unsafeRunToPromise` will return a promise of the result of the fiber, rejecting if a failure is encountered.
+`unsafeRunToPromiseTotal` will return a promise of an `Exit<E, A>` for the result of evaluation. This promis will not reject.
 Once an IO is launched its runloop will execute synchronous effects continuously until an asynchronous boundary is hit.
 If this is undesirable insert `io.shift` or `io.shiftAsync` calls at appropriate points.
 IO can be used to perform long-running tasks without resorting to service workers on the main thread in this way.
@@ -52,9 +48,9 @@ Once the resource is acquired, the release action will always happen.
 If all you need is to ensure that an acquired resource is cleaned up, there is also the Resource data type which forms a Monad for nesting resource scopes.
 
 ### Fibers
-An `IO<E, A>` may be converted to a fiber using `fork()`.
-The result being an `IO<never, Fiber<E, A>>`.
-The IO action is now running in the background and can be interrupted, waited, or joined.
+An `Wave<E, A>` may be converted to a fiber using `fork()`.
+The result being an `Wave<never, Fiber<E, A>>`.
+The Wave action is now running in the background and can be interrupted, waited, or joined.
 `interrupt` sends an interrupt to a fiber causing it to halt once it leaves any critical sections it may be in.
 `join` will halt the progress of the current fiber until the result of the target fiber is known.
 `wait` will await the termination of a fiber either by interruption or completion and produce the Exit status. 
@@ -63,11 +59,12 @@ The IO action is now running in the background and can be interrupted, waited, o
 Waveguide also provides Ref (synchronous mutable cell), Deferred (set once asynchronous cell), Semaphore, and an asynchronous queue implementation.
 
 ## Managed
-Waveguide also contains a `Managed<R, E, A>` type as a friendly wrapper around using bracket.
-`Managed<R, E, A>` is a data type that can produce a resource of `A` given an environment of `R` that is available for the duration of its `use` invocation.
+Waveguide also contains a `Managed<E, A>` type as a friendly wrapper around using bracket. 
+This type and friends live in `waveguide/lib/managed`;
+`Managed<E, A>` is a data type that can produce a resource of `A` given an environment of `R` that is available for the duration of its `use` invocation.
 `Managed` forms a monad in A where chain produces a new resource that has a scoped lifetime smaller than that of the resource it is devied from.
-For example, `resource.chain(ra, (a) => createb(a))`
-In this case, invoking `resource.use(rb, useB)` will:
+For example, `managed.chain(ra, (a) => createb(a))`
+In this case, invoking `managed.use(rb, useB)` will:
     1) acquire a
     2) use a to acquire b
     3) use b to call useB
@@ -75,6 +72,28 @@ In this case, invoking `resource.use(rb, useB)` will:
     5) release a.
     6) produce the value of useB
 
+
+## Overview of WaveR
+In additional to `Wave<E, A>` and `Managed<E, A>` there are a pair of types `WaveR<R, E, A>` and `Managed<R, E, A>` exported from `waveguide/lib/waver` and `waveguide/lib/managedr` respectively.
+These types encode the need to have an ambient environment `R` in order to produce the effect or the resource.
+`WaveR` is more or less a ReaderT stacked on top of Wave but it can also do anything `Wave` can do, including forking fibers and performing resource bracketing.
+`ManagedR` is similar but for Managed.
+There are corresponding functions for most actions with subtly different signatures.
+
+## Modules
+Waveguide provides a number of useful modules. By function they are:
+    - `waveguide/lib/wave` -- the core datatype
+    - `waveguide/lib/waver` -- the waver variant
+    - `waveguide/lib/managed` -- the resource management datatype
+    - `waveguide/lib/managedr` -- the resource management r variant
+    - `waveguide/lib/exit` -- the definition of the exit statuses
+    - `waveguide/lib/driver` -- the runloop of Wave may be useful if you are providing interop
+    - `waveguide/lib/ref` -- a mutable cell datatype
+    - `waveguide/lib/deferred` -- a set once awaitable mutable cell similar to Q's old Deferred.
+    - `waveguide/lib/semaphore` -- semaphore
+    - `waveguide/lib/mutex` -- mutex implemented as a semaphore with 1 permit
+    - `waveguide/lib/queue` -- various concurrent queues
+    - `waveguide/lib/console` -- the console.* functions wrapped for both Wave and WaveR
 
 ## A Note On Function Naming
 waveguide uses a slightly different naming convention from fp-ts.

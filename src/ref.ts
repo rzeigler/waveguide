@@ -16,9 +16,27 @@ import { FunctionN } from "fp-ts/lib/function";
 import { Wave, sync } from "./wave";
 
 export interface Ref<A> {
+    /**
+     * Get the current value of the Ref
+     */
     readonly get: Wave<never, A>;
+    /**
+     * Set the current value of the ref
+     * @param a 
+     */
     set(a: A): Wave<never, A>;
+    /**
+     * Update the current value of the ref with a function. 
+     * Produces the new value
+     * @param f 
+     */
     update(f: FunctionN<[A], A>): Wave<never, A>;
+    /**
+     * Update the current value of a ref with a function.
+     * 
+     * This function may return a second value of type B that will be produced on complete
+     * @param f 
+     */
     modify<B>(f: FunctionN<[A], readonly [B, A]>): Wave<never, B>;
 }
 

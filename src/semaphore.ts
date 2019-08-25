@@ -27,13 +27,39 @@ import { WaveR } from "./waver";
 import * as waver from "./waver";
 
 export interface Semaphore {
+    /**
+     * Acquire a permit, blocking if not all are vailable
+     */
     readonly acquire: Wave<never, void>;
+    /**
+     * Release a permit
+     */
     readonly release: Wave<never, void>;
+    /**
+     * Get the number of available permits
+     */
     readonly available: Wave<never, number>;
 
+    /**
+     * Acquire multiple permits blocking if not all are available
+     * @param n 
+     */
     acquireN(n: number): Wave<never, void>;
+    /**
+     * Release mutliple permits
+     * @param n 
+     */
     releaseN(n: number): Wave<never, void>;
+    /**
+     * Bracket the given io with acquireN/releaseN calls
+     * @param n 
+     * @param io 
+     */
     withPermitsN<E, A>(n: number, io: Wave<E, A>): Wave<E, A>;
+    /**
+     * withPermitN(1, _)
+     * @param n 
+     */
     withPermit<E, A>(n: Wave<E, A>): Wave<E, A>;
 }
 

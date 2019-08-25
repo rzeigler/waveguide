@@ -21,7 +21,7 @@ import * as waver from "./waver";
 
 
 /**
- * Suspend console.log in an IO
+ * Suspend console.log in a Wave
  * @param msg
  */
 export function log(msg?: any, ...more: any[]): Wave<never, void> {
@@ -32,7 +32,7 @@ export function log(msg?: any, ...more: any[]): Wave<never, void> {
 }
 
 /**
- * Suspend console.warn in an IO
+ * Suspend console.warn in a Wave
  * @param msg
  */
 export function warn(msg?: any, ...more: any[]): Wave<never, void> {
@@ -43,7 +43,7 @@ export function warn(msg?: any, ...more: any[]): Wave<never, void> {
 }
 
 /**
- * Suspend console.error in an IO
+ * Suspend console.error in a Wave
  * @param msg
  */
 export function error(msg?: any, ...more: any[]): Wave<never, void> {
@@ -56,7 +56,7 @@ export function error(msg?: any, ...more: any[]): Wave<never, void> {
 
 
 /**
- * Suspend console.log in an IO
+ * Suspend console.log in a WaveR
  * @param msg
  */
 export function logR<R = {}>(msg?: any, ...more: any[]): WaveR<R, never, void> {
@@ -64,7 +64,7 @@ export function logR<R = {}>(msg?: any, ...more: any[]): WaveR<R, never, void> {
 }
 
 /**
- * Suspend console.warn in an IO
+ * Suspend console.warn in a WaveR
  * @param msg
  */
 export function warnR<R = {}>(msg?: any, ...more: any[]): WaveR<R, never, void> {
@@ -72,7 +72,7 @@ export function warnR<R = {}>(msg?: any, ...more: any[]): WaveR<R, never, void> 
 }
 
 /**
- * Suspend console.error in an IO
+ * Suspend console.error in a WaveR
  * @param msg
  */
 export function errorR<R = {}>(msg?: any, ...more: any[]): WaveR<R, never, void> {

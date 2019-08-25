@@ -22,39 +22,47 @@ parent: Modules
 
 ```ts
 export interface ConcurrentQueue<A> {
-  readonly take: RIO<DefaultR, never, A>
-  offer(a: A): RIO<DefaultR, never, void>
+  readonly take: Wave<never, A>
+  offer(a: A): Wave<never, void>
 }
 ```
 
 # boundedQueue (function)
 
+Create a bounded queue that blocks offers on capacity
+
 **Signature**
 
 ```ts
-export function boundedQueue<A>(capacity: number): RIO<DefaultR, never, ConcurrentQueue<A>> { ... }
+export function boundedQueue<A>(capacity: number): Wave<never, ConcurrentQueue<A>> { ... }
 ```
 
 # droppingQueue (function)
 
+Create a dropping queue with the given capacity that drops offers on full
+
 **Signature**
 
 ```ts
-export function droppingQueue<A>(capacity: number): RIO<DefaultR, never, ConcurrentQueue<A>> { ... }
+export function droppingQueue<A>(capacity: number): Wave<never, ConcurrentQueue<A>> { ... }
 ```
 
 # slidingQueue (function)
 
+Create a bounded queue with the given capacity that drops older offers
+
 **Signature**
 
 ```ts
-export function slidingQueue<A>(capacity: number): RIO<DefaultR, never, ConcurrentQueue<A>> { ... }
+export function slidingQueue<A>(capacity: number): Wave<never, ConcurrentQueue<A>> { ... }
 ```
 
 # unboundedQueue (function)
 
+Create an unbounded concurrent queue
+
 **Signature**
 
 ```ts
-export function unboundedQueue<A>(): RIO<DefaultR, never, ConcurrentQueue<A>> { ... }
+export function unboundedQueue<A>(): Wave<never, ConcurrentQueue<A>> { ... }
 ```
