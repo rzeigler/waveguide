@@ -80,8 +80,8 @@ export function covaryE<E1, A, E2>(wave: Wave<E1, A>): ReturnCovaryE<typeof wave
 /**
  * Type inference helper form of covaryToE
  */
-export function covaryToE<E2>(): <R, E1, A>(wave: Wave<E1, A>) => ReturnCovaryE<typeof wave, E2> {
-    return (wave) => covaryE(wave);
+export function covaryToE<E2>(): <R, E1, A>(wave: Wave<E1, A>) => ReturnCovaryE<Wave<E1, A>, E2> {
+    return (w) => covaryE(w);
 }
 
 export interface Pure<E, A> {

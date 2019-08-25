@@ -205,12 +205,12 @@ export function makeSemaphore(n: number): Wave<never, Semaphore> {
 
 export interface SemaphoreR {
     acquireN(n: number): WaveR<{}, never, void>;
-    readonly acquire: WaveR<{}, never, void>
+    readonly acquire: WaveR<{}, never, void>;
     releaseN(n: number): WaveR<{}, never, void>;
     readonly release: WaveR<{}, never, void>;
     withPermitsN<R, E, A>(n: number, wave: WaveR<R, E, A>): WaveR<R, E, A>;
     withPermit<R, E, A>(wave: WaveR<R, E, A>): WaveR<R, E, A>;
-    readonly available: WaveR<{}, never, number>
+    readonly available: WaveR<{}, never, number>;
 }
 
 export function liftSemaphore(sem: Semaphore): SemaphoreR {
