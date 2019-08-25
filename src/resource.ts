@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import { FunctionN, constant } from "fp-ts/lib/function";
-import { Monad3 } from "fp-ts/lib/Monad";
+import { Monad3, Monad2 } from "fp-ts/lib/Monad";
 import { Semigroup } from "fp-ts/lib/Semigroup";
 import { Monoid } from "fp-ts/lib/Monoid";
 import { RIO } from "./wave";
@@ -35,19 +35,19 @@ export enum ManagedTag {
  *
  * This is a friendly monadic wrapper around bracketExit.
  */
-export type Managed<R, E, A> =
-  Pure<R, E, A> |
-  Encase<R, E, A> |
-  Bracket<R, E, A> |
-  Suspended<R, E, A>  |
-  Chain<R, E, any, A>; // eslint-disable-line @typescript-eslint/no-explicit-any
+export type Managed<E, A> =
+  Pure<E, A> |
+  Encase<E, A> |
+  Bracket<E, A> |
+  Suspended<E, A>  |
+  Chain<E, any, A>; // eslint-disable-line @typescript-eslint/no-explicit-any
 
 /**
  * The short form of rsource
  */
-export type Resource<E, A> = Managed<io.DefaultR, E, A>;
+export type Resource<E, A> = Managed<E, A>;
 
-export interface Pure<R, E, A> {
+export interface Pure<E, A> {
     readonly _tag: ManagedTag.Pure;
     readonly value: A;
 }
@@ -56,16 +56,16 @@ export interface Pure<R, E, A> {
  * Lift a pure value into a resource
  * @param value 
  */
-export function pure<A>(value: A): Managed<io.DefaultR, never, A> {
+export function pure<A>(value: A): Managed<never, A> {
     return {
         _tag: ManagedTag.Pure,
         value
     };
 }
 
-export interface Encase<R, E, A> {
+export interface Encase<E, A> {
     readonly _tag: ManagedTag.Encase;
-    readonly acquire: RIO<R, E, A>;
+    readonly acquire: RIO<E, A>;
 }
 
 /**
@@ -74,15 +74,15 @@ export interface Encase<R, E, A> {
  * @param res 
  * @param f 
  */
-export function encaseRIO<R, E, A>(rio: RIO<R, E, A>): Encase<R, E, A> {
+export function encaseRIO<E, A>(rio: RIO<E, A>): Encase<E, A> {
     return { _tag: ManagedTag.Encase, acquire: rio };
 }
 
 
-export interface Bracket<R, E, A> {
+export interface Bracket<E, A> {
     readonly _tag: ManagedTag.Bracket;
-    readonly acquire: RIO<R, E, A>;
-    readonly release: FunctionN<[A], RIO<R, E, unknown>>;
+    readonly acquire: RIO<E, A>;
+    readonly release: FunctionN<[A], RIO<E, unknown>>;
 }
 
 /**
@@ -90,7 +90,7 @@ export interface Bracket<R, E, A> {
  * @param acquire 
  * @param release 
  */
-export function bracket<R, E, A>(acquire: RIO<R, E, A>, release: FunctionN<[A], RIO<R, E, unknown>>): Bracket<R, E, A> {
+export function bracket<E, A>(acquire: RIO<E, A>, release: FunctionN<[A], RIO<E, unknown>>): Bracket<E, A> {
     return {
         _tag: ManagedTag.Bracket,
         acquire,
@@ -98,26 +98,26 @@ export function bracket<R, E, A>(acquire: RIO<R, E, A>, release: FunctionN<[A], 
     };
 }
 
-export interface Suspended<R, E, A> {
+export interface Suspended<E, A> {
     readonly _tag: ManagedTag.Suspended;
-    readonly suspended: RIO<R, E, Managed<R, E, A>>;
+    readonly suspended: RIO<E, Managed<E, A>>;
 }
 
 /**
  * Lift an IO of a Resource into a resource
  * @param suspended 
  */
-export function suspend<R, E, A>(suspended: RIO<R, E, Managed<R, E, A>>): Suspended<R, E, A> {
+export function suspend<E, A>(suspended: RIO<E, Managed<E, A>>): Suspended<E, A> {
     return {
         _tag: ManagedTag.Suspended,
         suspended
     };
 }
 
-export interface Chain<R, E, L, A> {
+export interface Chain<E, L, A> {
     readonly _tag: ManagedTag.Chain;
-    readonly left: Managed<R, E, L>;
-    readonly bind: FunctionN<[L], Managed<R, E, A>>;
+    readonly left: Managed<E, L>;
+    readonly bind: FunctionN<[L], Managed<E, A>>;
 }
 
 /**
@@ -127,7 +127,7 @@ export interface Chain<R, E, L, A> {
  * @param left 
  * @param bind 
  */
-export function chain<R, E, L, A>(left: Managed<R, E, L>, bind: FunctionN<[L], Managed<R, E, A>>): Chain<R, E, L, A> {
+export function chain<E, L, A>(left: Managed<E, L>, bind: FunctionN<[L], Managed<E, A>>): Chain<E, L, A> {
     return {
         _tag: ManagedTag.Chain,
         left,
@@ -139,7 +139,7 @@ export function chain<R, E, L, A>(left: Managed<R, E, L>, bind: FunctionN<[L], M
  * Curried form of chain
  * @param bind 
  */
-export function chainWith<R, E, L, A>(bind: FunctionN<[L], Managed<R, E, A>>): FunctionN<[Managed<R, E, L>], Managed<R, E, A>> {
+export function chainWith<E, L, A>(bind: FunctionN<[L], Managed<E, A>>): FunctionN<[Managed<E, L>], Managed<E, A>> {
     return (left) => chain(left, bind);
 }
 
@@ -148,16 +148,16 @@ export function chainWith<R, E, L, A>(bind: FunctionN<[L], Managed<R, E, A>>): F
  * @param res 
  * @param f 
  */
-export function map<R, E, L, A>(res: Managed<R, E, L>, f: FunctionN<[L], A>): Managed<R, E, A> {
-    return chain(res, (r) => pure(f(r)) as Managed<R, E, A>);
+export function map<E, L, A>(res: Managed<E, L>, f: FunctionN<[L], A>): Managed<E, A> {
+    return chain(res, (r) => pure(f(r)) as Managed<E, A>);
 }
 
 /**
  * Curried form of mapWith
  * @param f 
  */
-export function mapWith<L, A>(f: FunctionN<[L], A>): <R, E>(res: Managed<R, E, L>) => Managed<R, E, A> {
-    return<R, E>(res: Managed<R, E, L>) => map(res, f);
+export function mapWith<L, A>(f: FunctionN<[L], A>): <E>(res: Managed<E, L>) => Managed<E, A> {
+    return<E>(res: Managed<E, L>) => map(res, f);
 }
 
 /**
@@ -168,9 +168,9 @@ export function mapWith<L, A>(f: FunctionN<[L], A>): <R, E>(res: Managed<R, E, L
  * @param resb 
  * @param f 
  */
-export function zipWith<R, E, A, B, C>(resa: Managed<R, E, A>,
-    resb: Managed<R, E, B>,
-    f: FunctionN<[A, B], C>): Managed<R, E, C> {
+export function zipWith<E, A, B, C>(resa: Managed<E, A>,
+    resb: Managed<E, B>,
+    f: FunctionN<[A, B], C>): Managed<E, C> {
     return chain(resa, (a) => map(resb, (b) => f(a, b)));
 }
 
@@ -181,7 +181,7 @@ export function zipWith<R, E, A, B, C>(resa: Managed<R, E, A>,
  * @param resa 
  * @param resb 
  */
-export function zip<R, E, A, B>(resa: Managed<R, E, A>, resb: Managed<R, E, B>): Managed<R, E, readonly [A, B]> {
+export function zip<E, A, B>(resa: Managed<E, A>, resb: Managed<E, B>): Managed<E, readonly [A, B]> {
     return zipWith(resa, resb, (a, b) => [a, b] as const);
 }
 
@@ -190,7 +190,7 @@ export function zip<R, E, A, B>(resa: Managed<R, E, A>, resb: Managed<R, E, B>):
  * @param resa 
  * @param resfab 
  */
-export function ap<R, E, A, B>(resa: Managed<R, E, A>, resfab: Managed<R, E, FunctionN<[A], B>>): Managed<R, E, B> {
+export function ap<E, A, B>(resa: Managed<E, A>, resfab: Managed<E, FunctionN<[A], B>>): Managed<E, B> {
     return zipWith(resa, resfab, (a, f) => f(a));
 }
 
@@ -199,7 +199,7 @@ export function ap<R, E, A, B>(resa: Managed<R, E, A>, resfab: Managed<R, E, Fun
  * @param resfab 
  * @param resa 
  */
-export function ap_<R, E, A, B>(resfab: Managed<R, E, FunctionN<[A], B>>, resa: Managed<R, E, A>): Managed<R, E, B> {
+export function ap_<E, A, B>(resfab: Managed<E, FunctionN<[A], B>>, resa: Managed<E, A>): Managed<E, B> {
     return zipWith(resfab, resa, (f, a) => f(a));
 }
 
@@ -210,7 +210,7 @@ export function ap_<R, E, A, B>(resfab: Managed<R, E, FunctionN<[A], B>>, resa: 
  * @param fa 
  * @param b 
  */
-export function as<R, E, A, B>(fa: Managed<R, E, A>, b: B): Managed<R, E, B> {
+export function as<E, A, B>(fa: Managed<E, A>, b: B): Managed<E, B> {
     return map(fa, constant(b));
 }
 
@@ -219,7 +219,7 @@ export function as<R, E, A, B>(fa: Managed<R, E, A>, b: B): Managed<R, E, B> {
  * Curried form of as
  * @param b 
  */
-export function to<B>(b: B): <R, E, A>(fa: Managed<R, E, A>) => Managed<R, E, B> {
+export function to<B>(b: B): <E, A>(fa: Managed<E, A>) => Managed<E, B> {
     return (fa) => as(fa, b);
 }
 
@@ -229,7 +229,7 @@ export function to<B>(b: B): <R, E, A>(fa: Managed<R, E, A>) => Managed<R, E, B>
  * @param left 
  * @param bind 
  */
-export function chainTap<R, E, A>(left: Managed<R, E, A>, bind: FunctionN<[A], Managed<R, E, unknown>>): Managed<R, E, A> {
+export function chainTap<E, A>(left: Managed<E, A>, bind: FunctionN<[A], Managed<E, unknown>>): Managed<E, A> {
     return chain(left, (a) => as(bind(a), a));
 }
 
@@ -237,7 +237,7 @@ export function chainTap<R, E, A>(left: Managed<R, E, A>, bind: FunctionN<[A], M
  * Curried form of chainTap
  * @param bind 
  */
-export function chainTapWith<R, E, A>(bind: FunctionN<[A], Managed<R, E, unknown>>): FunctionN<[Managed<R, E, A>], Managed<R, E, A>> {
+export function chainTapWith<E, A>(bind: FunctionN<[A], Managed<E, unknown>>): FunctionN<[Managed<E, A>], Managed<E, A>> {
     return (inner) => chainTap(inner, bind);
 }
 
@@ -246,7 +246,7 @@ export function chainTapWith<R, E, A>(bind: FunctionN<[A], Managed<R, E, unknown
  * Curried data last form of use
  * @param f 
  */
-export function consume<R, E, A, B>(f: FunctionN<[A], RIO<R, E, B>>): FunctionN<[Managed<R, E, A>], RIO<R, E, B>> {
+export function consume<E, A, B>(f: FunctionN<[A], RIO<E, B>>): FunctionN<[Managed<E, A>], RIO<E, B>> {
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
     return (r) => use(r, f);
 }
@@ -257,8 +257,8 @@ export function consume<R, E, A, B>(f: FunctionN<[A], RIO<R, E, B>>): FunctionN<
  * The destruction of the resource is interrupting said fiber.
  * @param rio 
  */
-export function fiber<R, E, A>(rio: RIO<R, E, A>): Managed<R, never, Fiber<E, A>> {
-    return bracket(io.fork(rio), (fiber) => fiber.interrupt as RIO<R, never, void>);
+export function fiber<E, A>(rio: RIO<E, A>): Managed<never, Fiber<E, A>> {
+    return bracket(io.fork(rio), (fiber) => fiber.interrupt as RIO<never, void>);
 }
 
 /**
@@ -266,7 +266,7 @@ export function fiber<R, E, A>(rio: RIO<R, E, A>): Managed<R, never, Fiber<E, A>
  * @param res 
  * @param f 
  */
-export function use<R, E, A, B>(res: Managed<R, E, A>, f: FunctionN<[A], RIO<R, E, B>>): RIO<R, E, B> {
+export function use<E, A, B>(res: Managed<E, A>, f: FunctionN<[A], RIO<E, B>>): RIO<E, B> {
     switch (res._tag) {
         case ManagedTag.Pure:
             return f(res.value);
@@ -287,27 +287,27 @@ export const URI = "Resource";
 export type URI = typeof URI;
 
 declare module "fp-ts/lib/HKT" {
-    interface URItoKind3<R, E, A> {
-        Resource: Managed<R, E, A>;
+    interface URItoKind2<E, A> {
+        Resource: Managed<E, A>;
     }
 }
-export const instances: Monad3<URI> = {
+export const instances: Monad2<URI> = {
     URI,
-    of: <R, E, A>(a: A) => pure(a),
+    of: <E, A>(a: A) => pure(a),
     map,
     ap: ap_,
     chain
 } as const;
 
-export function getSemigroup<R, E, A>(Semigroup: Semigroup<A>): Semigroup<Managed<R, E, A>> {
+export function getSemigroup<E, A>(Semigroup: Semigroup<A>): Semigroup<Managed<E, A>> {
     return {
-        concat(x: Managed<R, E, A>, y: Managed<R, E, A>): Managed<R, E, A> {
+        concat(x: Managed<E, A>, y: Managed<E, A>): Managed<E, A> {
             return zipWith(x, y, Semigroup.concat)
         }
     };
 }
 
-export function getMonoid<R, E, A>(Monoid: Monoid<A>): Monoid<Managed<R, E, A>> {
+export function getMonoid<E, A>(Monoid: Monoid<A>): Monoid<Managed<E, A>> {
     return {
         ...getSemigroup(Monoid),
         empty: pure(Monoid.empty)

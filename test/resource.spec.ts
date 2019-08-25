@@ -18,11 +18,10 @@ import { makeRef, Ref } from "../src/ref";
 import { Managed } from "../src/resource";
 import * as rsc from "../src/resource";
 import { expectExit } from "./tools.spec";
-import { DefaultR } from "../src/wave";
 
 describe("Resource", () => {
     it("should bracket as expected", () => {
-        function makeBracket(ref: Ref<string[]>, s: string): Managed<DefaultR, never, string> {
+        function makeBracket(ref: Ref<string[]>, s: string): Managed<never, string> {
             return rsc.bracket(
                 io.as(ref.update((ss) => [...ss, s]), s),
                 (c) => io.asUnit(ref.update((ss) => ss.filter((v) => v !== c)))

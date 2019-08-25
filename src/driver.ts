@@ -23,7 +23,7 @@ import { Completable, completable } from "./support/completable";
 import { MutableStack, mutableStack } from "./support/mutable-stack";
 
 // It turns out th is is used quite often
-type UnkIO = RIO<unknown, unknown, unknown>
+type UnkIO = RIO<unknown, unknown>
 
 export type RegionFrameType = InterruptFrame;
 export type FrameType = Frame | FoldFrame | RegionFrameType;
@@ -70,14 +70,14 @@ const makeInterruptFrame = (interruptStatus: MutableStack<boolean>): InterruptFr
     };
 };
 
-export interface Driver<R, E, A> {
-    start(run: RIO<R, E, A>): void;
+export interface Driver<E, A> {
+    start(run: RIO<E, A>): void;
     interrupt(): void;
     onExit(f: FunctionN<[Exit<E, A>], void>): Lazy<void>;
     exit(): Option<Exit<E, A>>;
 }
 
-export function makeDriver<R, E, A>(runtime: Runtime = defaultRuntime): Driver<R, E, A> {
+export function makeDriver<E, A>(runtime: Runtime = defaultRuntime): Driver<E, A> {
     let started = false;
     let interrupted = false;
     const result: Completable<Exit<E, A>> = completable();
@@ -111,7 +111,7 @@ export function makeDriver<R, E, A>(runtime: Runtime = defaultRuntime): Driver<R
         return true;
     }
 
-    function handle(e: Cause<unknown>): RIO<unknown, unknown, unknown> | undefined {
+    function handle(e: Cause<unknown>): UnkIO | undefined {
         let frame = frameStack.pop();
         while (frame) {
             if (frame._tag === "fold-frame" && canRecover(e)) {
@@ -246,7 +246,7 @@ export function makeDriver<R, E, A>(runtime: Runtime = defaultRuntime): Driver<R
         }
     }
 
-    function start(run: RIO<R, E, A>): void {
+    function start(run: RIO<E, A>): void {
         if (started) {
             throw new Error("Bug: Runtime may not be started multiple times");
         }

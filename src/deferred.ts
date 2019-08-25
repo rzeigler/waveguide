@@ -13,39 +13,39 @@
 // limitations under the License.
 
 import { Exit } from "./exit";
-import { RIO, DefaultR } from "./wave";
+import { RIO } from "./wave";
 import * as io from "./wave";
 import { Completable, completable} from "./support/completable";
 
 export interface Deferred<E, A> {
-    readonly wait: RIO<DefaultR, E, A>;
-    interrupt: RIO<DefaultR, never, void>;
-    done(a: A): RIO<DefaultR, never, void>;
-    error(e: E): RIO<DefaultR, never, void>;
-    from<R>(source: RIO<R, E, A>): RIO<R, never, void>;
+    readonly wait: RIO<E, A>;
+    interrupt: RIO<never, void>;
+    done(a: A): RIO<never, void>;
+    error(e: E): RIO<never, void>;
+    from<R>(source: RIO<E, A>): RIO<never, void>;
 }
 
-export function makeDeferred<E, A, E2 = never>(): RIO<DefaultR, E2, Deferred<E, A>> {
+export function makeDeferred<E, A, E2 = never>(): RIO<E2, Deferred<E, A>> {
     return io.sync(() => {
-        const c: Completable<RIO<DefaultR, E, A>> = completable();
-        const wait = io.flatten(io.asyncTotal<RIO<DefaultR, E, A>>((callback) =>
+        const c: Completable<RIO<E, A>> = completable();
+        const wait = io.flatten(io.asyncTotal<RIO<E, A>>((callback) =>
             c.listen(callback)
         ));
         const interrupt = io.sync(() => {
             c.complete(io.raiseInterrupt);
         });
-        const done = (a: A): RIO<DefaultR, never, void> => io.sync(() => {
+        const done = (a: A): RIO<never, void> => io.sync(() => {
             c.complete(io.pure(a));
         });
-        const error = (e: E): RIO<DefaultR, never, void> => io.sync(() => {
+        const error = (e: E): RIO<never, void> => io.sync(() => {
             c.complete(io.raiseError(e));
         });
-        const complete = (exit: Exit<E, A>): RIO<DefaultR, never, void> => io.sync(() => {
+        const complete = (exit: Exit<E, A>): RIO<never, void> => io.sync(() => {
             c.complete(io.completed(exit));
         });
-        const from = <R>(source: RIO<R, E, A>): RIO<R, never, void> => {
-            const completed = io.chain<R, never, Exit<E, A>, void>(io.result(source), complete);
-            const interruptor = interrupt as RIO<R, never, void>;
+        const from = <R>(source: RIO<E, A>): RIO<never, void> => {
+            const completed = io.chain<never, Exit<E, A>, void>(io.result(source), complete);
+            const interruptor = interrupt as RIO<never, void>;
             return io.onInterrupted(completed, interruptor);
         }
         return {
