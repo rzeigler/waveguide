@@ -20,7 +20,7 @@ import { Functor3 } from "fp-ts/lib/Functor";
 import { Either, left, right } from "fp-ts/lib/Either";
 import * as either from "fp-ts/lib/Either";
 import { constant, flow, FunctionN, identity, Lazy } from "fp-ts/lib/function";
-import { Monad3 } from "fp-ts/lib/Monad";
+import { Monad3, Monad2 } from "fp-ts/lib/Monad";
 import { none, some, Option } from "fp-ts/lib/Option";
 import * as option from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
@@ -1140,13 +1140,12 @@ declare module "fp-ts/lib/HKT" {
     }
 }
 
-export const instances:  MonadThrow2<URI> = {
+export const instances: Monad2<URI> = {
     URI,
     map,
     of: <E, A>(a: A): Wave<E, A> => pure(a),
     ap: ap_,
     chain,
-    throwError: <E, A>(e: E): Wave<E, A> => raiseError(e)
 } as const;
 
 export const parInstances: Applicative2<URI> = {
