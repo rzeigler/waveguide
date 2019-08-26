@@ -35,12 +35,12 @@ const now = waver.encaseWave(wave.sync(() => process.hrtime.bigint()));
  * We also want a way of wrapping an IO so that we can see how long its execution took
  */
 function time<R, E, O>(io: WaveR<R, E, O>): WaveR<R, E, readonly [O, bigint]> {
-    // zipWith, zip happen in order with no parallelism
-    return waver.zipWith(
-        waver.contravaryR(now),
-        waver.zip(io, waver.contravaryR(now)),
-        (start, [o, end]) => [o, end - start] as const
-    );
+  // zipWith, zip happen in order with no parallelism
+  return waver.zipWith(
+    waver.contravaryR(now),
+    waver.zip(io, waver.contravaryR(now)),
+    (start, [o, end]) => [o, end - start] as const
+  );
 }
 
 /**
@@ -54,40 +54,40 @@ type TimeInfo = readonly [ Info, bigint ];
 type CompareInfo = readonly [ TimeInfo, TimeInfo ];
 
 function compare(q: string): WaveR<https.Agent, Error, CompareInfo> {
-    // We time the query
-    const google = time(
-        // We don't care so much about what the body is, just the host so we use as to coerce
-        waver.as(
-            fetch(`https://www.google.com/search?q=${q}`), 
-            {host: "google", q}
-        )
-    );
+  // We time the query
+  const google = time(
+    // We don't care so much about what the body is, just the host so we use as to coerce
+    waver.as(
+      fetch(`https://www.google.com/search?q=${q}`), 
+      {host: "google", q}
+    )
+  );
 
-    const bing = time(
-        waver.as(
-            fetch(`https://www.bing.com/search?q=${q}`),
-            {host: "bing", q}
-        )
-    );
+  const bing = time(
+    waver.as(
+      fetch(`https://www.bing.com/search?q=${q}`),
+      {host: "bing", q}
+    )
+  );
     // Now that we have both queries for our benchmark we can run them both to get the winner
     // We use parZip instead of zip
     // There are parallel versions of many combinators like zip, zipWith, applyFirst, applySecond, etc.
     // We also add an onInterrupted action which will be useful later
-    return waver.onInterrupted(
-        waver.parZip(google, bing), 
-        waver.encaseWaveR(consoleIO.log(`cancelling comparison of ${q}`))
-    );
+  return waver.onInterrupted(
+    waver.parZip(google, bing), 
+    waver.encaseWaveR(consoleIO.log(`cancelling comparison of ${q}`))
+  );
 }
 
 
 const rt: WaveR<https.Agent, Error, void> =
     pipe(
-        compare("referential+transparency"),
-        waver.chainWith((results): WaveR<https.Agent, Error, void> => {
-            const l = consoleIO.log(`${results[0][0].host} took ${results[0][1]}, ${results[1][0].host} took ${results[1][1]}`);
-            const w = waver.encaseWave(l);
-            return w;
-        })
+      compare("referential+transparency"),
+      waver.chainWith((results): WaveR<https.Agent, Error, void> => {
+        const l = consoleIO.log(`${results[0][0].host} took ${results[0][1]}, ${results[1][0].host} took ${results[1][1]}`);
+        const w = waver.encaseWave(l);
+        return w;
+      })
     );
 
 const versus = managed.provideTo(agent, rt)
@@ -98,9 +98,9 @@ const versus = managed.provideTo(agent, rt)
  * 
  */
 const firstVersusIO = ["referential+transparency", "monad", "functor", "haskell", "scala", "purescript", "lenses"]
-    .map(compare)
+  .map(compare)
 // When we race IOs, the loser is automatically cancelled immediately
-    .reduce((left, right) => waver.race(left, right));
+  .reduce((left, right) => waver.race(left, right));
         
 const printResults = waver.chain(firstVersusIO, (results) => waver.encaseWaveR(consoleIO.log(`winning query was ${results[0][0].q}`)));
 

@@ -67,127 +67,127 @@ type Reservation = readonly [number, Deferred<never, void>];
 type State = Either<Dequeue<Reservation>, number>;
 
 const isReservationFor = (latch: Deferred<never, void>) => (rsv: readonly [number, Deferred<never, void>]): boolean =>
-    rsv[1] === latch;
+  rsv[1] === latch;
 
 function sanityCheck(n: number): Wave<never, void> {
-    if (n < 0) {
-        return io.raiseAbort(new Error("Die: semaphore permits must be non negative"));
-    }
-    if (Math.round(n) !== n) {
-        return io.raiseAbort(new Error("Die: semaphore permits may not be fractional"));
-    }
-    return io.unit;
+  if (n < 0) {
+    return io.raiseAbort(new Error("Die: semaphore permits must be non negative"));
+  }
+  if (Math.round(n) !== n) {
+    return io.raiseAbort(new Error("Die: semaphore permits may not be fractional"));
+  }
+  return io.unit;
 }
 
 function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
-    const releaseN = <E = never>(n: number): Wave<E, void> =>
-        io.applySecond(
-            sanityCheck(n),
-            io.uninterruptible(
-                n === 0 ? io.unit :
-                    io.flatten(ref.modify(
-                        (current) =>
-                            pipe(
-                                current,
-                                e.fold(
-                                    (waiting) =>
-                                        pipe(
-                                            waiting.take(),
-                                            o.fold(
-                                                () => [io.unit, right(n) as State] as const,
-                                                ([[needed, latch], q]) => n >= needed ?
+  const releaseN = <E = never>(n: number): Wave<E, void> =>
+    io.applySecond(
+      sanityCheck(n),
+      io.uninterruptible(
+        n === 0 ? io.unit :
+          io.flatten(ref.modify(
+            (current) =>
+              pipe(
+                current,
+                e.fold(
+                  (waiting) =>
+                    pipe(
+                      waiting.take(),
+                      o.fold(
+                        () => [io.unit, right(n) as State] as const,
+                        ([[needed, latch], q]) => n >= needed ?
                                                     [
-                                                        io.applyFirst(latch.done(undefined), n > needed ? releaseN(n - needed) : io.unit),
+                                                      io.applyFirst(latch.done(undefined), n > needed ? releaseN(n - needed) : io.unit),
                                                         left(q) as State
                                                     ] as const :
                                                     [
-                                                        io.unit,
+                                                      io.unit,
                                                         left(q.push([needed - n, latch] as const)) as State
                                                     ] as const
-                                            )
-                                        ),
-                                    (ready) => [io.unit, right(ready + n) as State] as const
-                                )
-                            )
-                    ))
-            ));
+                      )
+                    ),
+                  (ready) => [io.unit, right(ready + n) as State] as const
+                )
+              )
+          ))
+      ));
 
 
-    const cancelWait = (n: number, latch: Deferred<never, void>): Wave<never, void> =>
-        io.uninterruptible(io.flatten(
-            ref.modify(
-                (current) =>
-                    pipe(
-                        current,
-                        e.fold(
-                            (waiting) =>
-                                pipe(
-                                    waiting.find(isReservationFor(latch)),
-                                    o.fold(
-                                        () => [releaseN(n), left(waiting) as State] as const,
-                                        ([pending]) => [
-                                            releaseN(n - pending),
+  const cancelWait = (n: number, latch: Deferred<never, void>): Wave<never, void> =>
+    io.uninterruptible(io.flatten(
+      ref.modify(
+        (current) =>
+          pipe(
+            current,
+            e.fold(
+              (waiting) =>
+                pipe(
+                  waiting.find(isReservationFor(latch)),
+                  o.fold(
+                    () => [releaseN(n), left(waiting) as State] as const,
+                    ([pending]) => [
+                      releaseN(n - pending),
                                             left(waiting.filter(not(isReservationFor(latch)))) as State
-                                        ] as const
-                                    )
-                                ),
-                            (ready) => [io.unit, right(ready + n) as State] as const
-                        )
-                    )
+                    ] as const
+                  )
+                ),
+              (ready) => [io.unit, right(ready + n) as State] as const
             )
-        ));
+          )
+      )
+    ));
 
-    const ticketN = (n: number): Wave<never, Ticket<void>> =>
-        io.chain(makeDeferred<never, void>(),
-            (latch) =>
-                ref.modify(
-                    (current) =>
-                        pipe(
-                            current,
-                            e.fold(
-                                (waiting) => [
-                                    makeTicket(latch.wait, cancelWait(n, latch)),
+  const ticketN = (n: number): Wave<never, Ticket<void>> =>
+    io.chain(makeDeferred<never, void>(),
+      (latch) =>
+        ref.modify(
+          (current) =>
+            pipe(
+              current,
+              e.fold(
+                (waiting) => [
+                  makeTicket(latch.wait, cancelWait(n, latch)),
                                     left(waiting.offer([n, latch] as const)) as State
-                                ] as const,
-                                (ready) => ready >= n ?
+                ] as const,
+                (ready) => ready >= n ?
                                     [
-                                        makeTicket(io.unit, releaseN(n)),
+                                      makeTicket(io.unit, releaseN(n)),
                                         right(ready - n) as State
                                     ] as const :
                                     [
-                                        makeTicket(latch.wait, cancelWait(n, latch)),
+                                      makeTicket(latch.wait, cancelWait(n, latch)),
                                         left(empty().offer([n - ready, latch] as const)) as State
                                     ] as const
-                            )
-                        )
-                )
-        );
+              )
+            )
+        )
+    );
 
-    const acquireN = <E = never>(n: number): Wave<E, void> =>
-        io.applySecond(
-            sanityCheck(n),
-            n === 0 ? 
-                io.unit : 
-                io.bracketExit(ticketN(n), ticketExit, ticketUse)
-        );
+  const acquireN = <E = never>(n: number): Wave<E, void> =>
+    io.applySecond(
+      sanityCheck(n),
+      n === 0 ? 
+        io.unit : 
+        io.bracketExit(ticketN(n), ticketExit, ticketUse)
+    );
 
-    const withPermitsN = <E, A>(n: number, inner: Wave<E, A>): Wave<E, A> => {
-        const acquire = io.interruptible(acquireN<E>(n)) as Wave<E, void>;
-        const release = releaseN(n) as Wave<E, void>;
-        return io.bracket(acquire, constant(release), () => inner);
-    }
+  const withPermitsN = <E, A>(n: number, inner: Wave<E, A>): Wave<E, A> => {
+    const acquire = io.interruptible(acquireN<E>(n)) as Wave<E, void>;
+    const release = releaseN(n) as Wave<E, void>;
+    return io.bracket(acquire, constant(release), () => inner);
+  }
 
-    const available = io.map(ref.get, e.fold((q) => -1 * q.size(), identity));
+  const available = io.map(ref.get, e.fold((q) => -1 * q.size(), identity));
 
-    return {
-        acquireN,
-        acquire: acquireN(1),
-        releaseN,
-        release: releaseN(1),
-        withPermitsN,
-        withPermit: (inner) => withPermitsN(1, inner),
-        available
-    };
+  return {
+    acquireN,
+    acquire: acquireN(1),
+    releaseN,
+    release: releaseN(1),
+    withPermitsN,
+    withPermit: (inner) => withPermitsN(1, inner),
+    available
+  };
 }
 
 /**
@@ -197,10 +197,10 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
  * This must be non-negative
  */
 export function makeSemaphore(n: number): Wave<never, Semaphore> {
-    return io.applySecond(
-        sanityCheck(n),
-        io.map(makeRef(right(n) as State), makeSemaphoreImpl)
-    );
+  return io.applySecond(
+    sanityCheck(n),
+    io.map(makeRef(right(n) as State), makeSemaphoreImpl)
+  );
 }
 
 export interface SemaphoreR {
@@ -214,28 +214,28 @@ export interface SemaphoreR {
 }
 
 export function liftSemaphore(sem: Semaphore): SemaphoreR {
-    const acquireN = flow(sem.acquireN, waver.encaseWave);
-    const acquire = waver.encaseWave(sem.acquire);
-    const releaseN = flow(sem.releaseN, waver.encaseWave);
-    const release = waver.encaseWave(sem.release);
-    function withPermitsN<R, E, A>(n: number, wave: WaveR<R, E, A>): WaveR<R, E, A> {
-        return (r) => sem.withPermitsN(n, wave(r));
-    }
-    function withPermit<R, E, A>(wave: WaveR<R, E, A>): WaveR<R, E, A> {
-        return (r) => sem.withPermit(wave(r));
-    }
-    const available = waver.encaseWave(sem.available);
-    return {
-        acquireN,
-        acquire,
-        releaseN,
-        release,
-        withPermitsN,
-        withPermit,
-        available
-    }
+  const acquireN = flow(sem.acquireN, waver.encaseWave);
+  const acquire = waver.encaseWave(sem.acquire);
+  const releaseN = flow(sem.releaseN, waver.encaseWave);
+  const release = waver.encaseWave(sem.release);
+  function withPermitsN<R, E, A>(n: number, wave: WaveR<R, E, A>): WaveR<R, E, A> {
+    return (r) => sem.withPermitsN(n, wave(r));
+  }
+  function withPermit<R, E, A>(wave: WaveR<R, E, A>): WaveR<R, E, A> {
+    return (r) => sem.withPermit(wave(r));
+  }
+  const available = waver.encaseWave(sem.available);
+  return {
+    acquireN,
+    acquire,
+    releaseN,
+    release,
+    withPermitsN,
+    withPermit,
+    available
+  }
 }
 
 export function makeSemaphoreR(n: number): WaveR<{}, never, SemaphoreR> {
-    return waver.encaseWave(io.map(makeSemaphore(n), liftSemaphore));
+  return waver.encaseWave(io.map(makeSemaphore(n), liftSemaphore));
 }

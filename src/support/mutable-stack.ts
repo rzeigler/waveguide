@@ -21,27 +21,27 @@ export interface MutableStack<A> {
 }
 
 export function mutableStack<A>(): MutableStack<A> {
-    const array: A[] = [];
-    function push(a: A): void {
-        array.push(a);
-    }
-    function pop(): A | undefined {
-        return array.pop();
-    }
-    function peek(): A | undefined {
-        return array.length > 0 ? array[array.length - 1] : undefined;
-    }
-    function isEmpty(): boolean {
-        return array.length === 0;
-    }
-    function size(): number {
-        return array.length;
-    }
-    return {
-        push,
-        pop,
-        peek,
-        isEmpty,
-        size
-    };
+  const array: A[] = [];
+  function push(a: A): void {
+    array.push(a);
+  }
+  function pop(): A | undefined {
+    return array.pop();
+  }
+  function peek(): A | undefined {
+    return array.length > 0 ? array[array.length - 1] : undefined;
+  }
+  function isEmpty(): boolean {
+    return array.length === 0;
+  }
+  function size(): number {
+    return array.length;
+  }
+  return {
+    push,
+    pop,
+    peek,
+    isEmpty,
+    size
+  };
 }

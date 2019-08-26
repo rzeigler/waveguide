@@ -42,8 +42,8 @@ import { pipe } from "fp-ts/lib/pipeable";
 import { left, right } from "fp-ts/lib/Either";
 
 const agent: Managed<never, https.Agent> = managed.bracket(
-    wave.sync(() => new https.Agent()),
-    (agent) => wave.sync(() => agent.destroy())
+  wave.sync(() => new https.Agent()),
+  (agent) => wave.sync(() => agent.destroy())
 );
 
 /**
@@ -51,36 +51,36 @@ const agent: Managed<never, https.Agent> = managed.bracket(
  * @param url 
  */
 function fetch(url: string): WaveR<https.Agent, Error, Buffer> {
-    return (agent: https.Agent) => {
-        const options = {agent};
-        return wave.async<Error, Buffer>((callback) => {
-            let cancelled = false;
-            let response: http.IncomingMessage | undefined;
-            http.get(url, options, (res) => {
-                response = res;
-                const buffers: Buffer[] = [];
-                res.on("data", (chunk) => {
-                    buffers.push(chunk);
-                })
-                res.on("end", () => {
-                    if (!cancelled) {
-                        callback(right(Buffer.concat(buffers)))
-                    }
-                });
-                res.on("error", (e) => {
-                    if (!cancelled) {
-                        callback(left(e));
-                    }
-                });
-            });
-            return () => {
-                cancelled = true;
-                if (response) {
-                    response.destroy();
-                }
-            };
+  return (agent: https.Agent) => {
+    const options = {agent};
+    return wave.async<Error, Buffer>((callback) => {
+      let cancelled = false;
+      let response: http.IncomingMessage | undefined;
+      http.get(url, options, (res) => {
+        response = res;
+        const buffers: Buffer[] = [];
+        res.on("data", (chunk) => {
+          buffers.push(chunk);
         })
-    }
+        res.on("end", () => {
+          if (!cancelled) {
+            callback(right(Buffer.concat(buffers)))
+          }
+        });
+        res.on("error", (e) => {
+          if (!cancelled) {
+            callback(left(e));
+          }
+        });
+      });
+      return () => {
+        cancelled = true;
+        if (response) {
+          response.destroy();
+        }
+      };
+    })
+  }
 }
 
 /**
@@ -88,13 +88,13 @@ function fetch(url: string): WaveR<https.Agent, Error, Buffer> {
  */
 const needsAgent: WaveR<https.Agent, never, void> = 
     pipe(
-        fetch("https://www.google.com"),
-        waver.chainWith((buffer): WaveR<https.Agent, Error, void> => // tsc needs a little help with a return annotation
-            waver.encaseWave(log(buffer.toString("utf-8").length.toString()))
-        ),
-        waver.chainErrorWith((e) => 
-            waver.encaseWaveR(log(e))
-        )
+      fetch("https://www.google.com"),
+      waver.chainWith((buffer): WaveR<https.Agent, Error, void> => // tsc needs a little help with a return annotation
+        waver.encaseWave(log(buffer.toString("utf-8").length.toString()))
+      ),
+      waver.chainErrorWith((e) => 
+        waver.encaseWaveR(log(e))
+      )
     );
 
 /**

@@ -36,17 +36,17 @@ import { Wave } from "../src/wave";
 const argvN = (n: number): Wave<never, string | null> => wave.sync(() => process.argv[n] ? process.argv[n] : null);
 
 const inFilePath = pipe(
-    argvN(2),
-    wave.lift(o.fromNullable),
-    wave.chainWith((o) => wave.encaseOption(o, () => new Error("usage: node 02-resources-and-failures.js <in> <out>"))),
-    wave.orAbort // here we use orAbort to force the error to a terminal one because there is nothing we can really do in the failure case
+  argvN(2),
+  wave.lift(o.fromNullable),
+  wave.chainWith((o) => wave.encaseOption(o, () => new Error("usage: node 02-resources-and-failures.js <in> <out>"))),
+  wave.orAbort // here we use orAbort to force the error to a terminal one because there is nothing we can really do in the failure case
 );
 
 const outFilePath = pipe(
-    argvN(3),
-    wave.lift(o.fromNullable),
-    wave.chainWith((o) => wave.encaseOption(o, () => new Error("usage: node 02-resources-and-failures.js <in> <out>"))),
-    wave.orAbort
+  argvN(3),
+  wave.lift(o.fromNullable),
+  wave.chainWith((o) => wave.encaseOption(o, () => new Error("usage: node 02-resources-and-failures.js <in> <out>"))),
+  wave.orAbort
 );
 
 type Errno = NodeJS.ErrnoException;
@@ -57,31 +57,31 @@ type Errno = NodeJS.ErrnoException;
  * This allows us to create a resource from an Wave of a resource
  */
 const inFileHandle: Managed<Errno, number> = managed.suspend(
-    wave.map(
-        inFilePath,
-        (path) =>
-            // Once we have the path to open, we can create the resource itself
-            // Bracket is similar to wave.bracket except it doesn't have consume logic
-            // We are defering defining how we will consume this resource
-            managed.bracket(
-                openFile(path, "r"),
-                closeFile
-            )
-    )
+  wave.map(
+    inFilePath,
+    (path) =>
+    // Once we have the path to open, we can create the resource itself
+    // Bracket is similar to wave.bracket except it doesn't have consume logic
+    // We are defering defining how we will consume this resource
+      managed.bracket(
+        openFile(path, "r"),
+        closeFile
+      )
+  )
 )
 
 /**
  * This is basically the same as inFileHandle only we use "w" as the open mode
  */
 const outFileHandle: Managed<Errno, number> = managed.suspend(
-    wave.map(
-        outFilePath,
-        (path) =>
-            managed.bracket(
-                openFile(path, "w"),
-                closeFile
-            )
-    )
+  wave.map(
+    outFilePath,
+    (path) =>
+      managed.bracket(
+        openFile(path, "w"),
+        closeFile
+      )
+  )
 )
 
 
@@ -91,9 +91,9 @@ const outFileHandle: Managed<Errno, number> = managed.suspend(
  */
 const handles: Managed<Errno, [number, number]> = 
     managed.chain(inFileHandle, (inh) => managed.map(outFileHandle, (outh) => [inh, outh]));
-    // or you could use
-    // again, not that this call to zip is perfectly safe because like Wave, 
-    // Managed doesn't do anything until it is run
+// or you could use
+// again, not that this call to zip is perfectly safe because like Wave, 
+// Managed doesn't do anything until it is run
 managed.zip(inFileHandle, outFileHandle)
 
 
@@ -101,21 +101,21 @@ managed.zip(inFileHandle, outFileHandle)
  * Now that we have our resources, we need a way of consuming them
  */
 const cat = (blocksz: number) => (handles: [number, number]): Wave<Errno, void> => {
-    const [inHandle, outHandle] = handles;
+  const [inHandle, outHandle] = handles;
 
-    function copy(): Wave<Errno, void> {
-        return wave.chain(
-            read(inHandle, blocksz),
-            ([buffer, ct]) => 
-                ct > 0 ? 
-                    wave.applySecondL(
-                        write(outHandle, buffer, ct), 
-                        copy
-                    ) : 
-                    wave.unit
-        );
-    }
-    return copy();
+  function copy(): Wave<Errno, void> {
+    return wave.chain(
+      read(inHandle, blocksz),
+      ([buffer, ct]) => 
+        ct > 0 ? 
+          wave.applySecondL(
+            write(outHandle, buffer, ct), 
+            copy
+          ) : 
+          wave.unit
+    );
+  }
+  return copy();
 }
 
 /**

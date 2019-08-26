@@ -16,14 +16,14 @@ import { Exit, ExitTag } from "./exit";
 import { Wave, unit } from "./wave";
 
 export function ticketExit<A>(ticket: Ticket<A>, exit: Exit<never, A>): Wave<never, void> {
-    if (exit._tag === ExitTag.Interrupt) {
-        return ticket.cleanup;
-    }
-    return unit;
+  if (exit._tag === ExitTag.Interrupt) {
+    return ticket.cleanup;
+  }
+  return unit;
 }
 
 export function ticketUse<A>(ticket: Ticket<A>): Wave<never, A> {
-    return ticket.acquire;
+  return ticket.acquire;
 }
 
 export interface Ticket<A> {
@@ -32,8 +32,8 @@ export interface Ticket<A> {
 }
 
 export function makeTicket<A>(acquire: Wave<never, A>, cleanup: Wave<never, void>): Ticket<A> {
-    return {
-        acquire,
-        cleanup
-    };
+  return {
+    acquire,
+    cleanup
+  };
 }

@@ -43,49 +43,49 @@ const pid = wave.sync(() => process.pid)
  * 
  */
 const openFile = (path: string, flags: string): Wave<NodeJS.ErrnoException, number> => wave.uninterruptible(
-    wave.async((callback) => {
-        fs.open(path, flags, 
-            (err, fd) => {
-                if (err) {
-                    callback(left(err))
-                } else {
-                    callback(right(fd))
-                }
-            }
-        )
-        return () => {};
-    }));
+  wave.async((callback) => {
+    fs.open(path, flags, 
+      (err, fd) => {
+        if (err) {
+          callback(left(err))
+        } else {
+          callback(right(fd))
+        }
+      }
+    )
+    return () => {};
+  }));
 
 
 /**
  * Here we close a file handle
  */
 const closeFile = (handle: number): Wave<NodeJS.ErrnoException, void> => wave.uninterruptible(
-    wave.async((callback) => {
-        fs.close(handle, (err) => {
-            if (err) {
-                callback(left(err))
-            } else {
-                callback(right(undefined))
-            }
-        })
-        return () => {};
-    }));
+  wave.async((callback) => {
+    fs.close(handle, (err) => {
+      if (err) {
+        callback(left(err))
+      } else {
+        callback(right(undefined))
+      }
+    })
+    return () => {};
+  }));
 
 /**
  * We can also use a file handle to write content
  */
 const write = (handle: number, content: string): Wave<NodeJS.ErrnoException, number> => wave.uninterruptible(
-    wave.async((callback) => {
-        fs.write(handle, content, (err, written) => {
-            if (err) {
-                callback(left(err))
-            } else {
-                callback(right(written));
-            }
-        })
-        return () => {};
+  wave.async((callback) => {
+    fs.write(handle, content, (err, written) => {
+      if (err) {
+        callback(left(err))
+      } else {
+        callback(right(written));
+      }
     })
+    return () => {};
+  })
 )
 
 /**
@@ -93,14 +93,14 @@ const write = (handle: number, content: string): Wave<NodeJS.ErrnoException, num
  * We can package these 3 operations up into a resource safe file writing mechanism to manage the file handle resource
  */
 const writeToFile = (path: string, content: string): Wave<NodeJS.ErrnoException, void> => 
-    pipe(
-        wave.bracket(openFile(path, "w"), closeFile, (handle) => write(handle, content)),
-        /**
+  pipe(
+    wave.bracket(openFile(path, "w"), closeFile, (handle) => write(handle, content)),
+    /**
          * Here, we use the wave.asUnit function to discard the result of a previous wave. 
          * We are saying we want the effects but don't care about the value it produced
          */
-        wave.asUnit
-    );
+    wave.asUnit
+  );
             
 
 /**
@@ -113,14 +113,14 @@ const writeToFile = (path: string, content: string): Wave<NodeJS.ErrnoException,
 const writePidFile: Wave<NodeJS.ErrnoException, void> = wave.chain(pid, (p) => writeToFile("pid", p.toString()));
 
 const deletePidFile: Wave<NodeJS.ErrnoException, void> = wave.uninterruptible(wave.async((callback) => {
-    fs.unlink("pid", (err) => {
-        if (err) {
-            callback(left(err));
-        } else {
-            callback(right(undefined));
-        }
-    })
-    return () => {};
+  fs.unlink("pid", (err) => {
+    if (err) {
+      callback(left(err));
+    } else {
+      callback(right(undefined));
+    }
+  })
+  return () => {};
 }));
 
 const getTime = wave.sync(() => new Date());
@@ -133,8 +133,8 @@ const getTime = wave.sync(() => new Date());
  */
 const logPid: Wave<NodeJS.ErrnoException, void> = 
     wave.chain(pid, 
-        (p) => wave.chain(getTime,
-            (now) => log(`its ${now} and the pid is still ${p}`))
+      (p) => wave.chain(getTime,
+        (now) => log(`its ${now} and the pid is still ${p}`))
     )
 
 /**
@@ -142,8 +142,8 @@ const logPid: Wave<NodeJS.ErrnoException, void> =
  * We can, for instance construct an Wave that repeatedly executes an Wave on an interval
  */
 function repeatEvery<E, A>(io: Wave<E, A>, s: number): Wave<E, A> {
-    // We use chain here for the laziness because this is an infinitely sized structure
-    return wave.applySecondL(wave.delay(io, s * 1000), () => repeatEvery(io, s));
+  // We use chain here for the laziness because this is an infinitely sized structure
+  return wave.applySecondL(wave.delay(io, s * 1000), () => repeatEvery(io, s));
 }
 
 const logPidForever = repeatEvery(logPid, 1);
@@ -154,14 +154,14 @@ const logPidForever = repeatEvery(logPid, 1);
  * but is sure to delete the pid file
  */
 const run = wave.chainError(
-    wave.onComplete(
-        wave.applySecond(writePidFile, logPidForever),
-        deletePidFile
-    ),
-    /**
+  wave.onComplete(
+    wave.applySecond(writePidFile, logPidForever),
+    deletePidFile
+  ),
+  /**
      * We can also handle the errors that we produce to continue the computation. Here we just log
      */
-    (e) => log(`something went wrong: ${e}`)
+  (e) => log(`something went wrong: ${e}`)
 )
 
 /**
@@ -178,22 +178,22 @@ const run = wave.chainError(
 import { makeDriver } from "../src/driver";
 import { ExitTag } from "../src/exit";
 function main(wave: Wave<never, void>): void {
-    // We need a driver to run the io
-    const driver = makeDriver<never, void>();
-    // If we receive signals, we should interrupt
-    // These will cause the runloop to switch to its interrupt handling
-    process.on("SIGINT", () => driver.interrupt());
-    process.on("SIGTERM", () => driver.interrupt());
-    // If the driver exits, we should terminate the process
-    driver.onExit((e) => {
-        // We don't worry about the raise case because the type of main says you must have handled your errors
-        if (e._tag === ExitTag.Abort) {
-            process.exit(1);
-        } else {
-            process.exit(0);
-        }
-    });
-    driver.start(wave);
+  // We need a driver to run the io
+  const driver = makeDriver<never, void>();
+  // If we receive signals, we should interrupt
+  // These will cause the runloop to switch to its interrupt handling
+  process.on("SIGINT", () => driver.interrupt());
+  process.on("SIGTERM", () => driver.interrupt());
+  // If the driver exits, we should terminate the process
+  driver.onExit((e) => {
+    // We don't worry about the raise case because the type of main says you must have handled your errors
+    if (e._tag === ExitTag.Abort) {
+      process.exit(1);
+    } else {
+      process.exit(0);
+    }
+  });
+  driver.start(wave);
 }
 
 /**

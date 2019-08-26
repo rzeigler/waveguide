@@ -20,24 +20,24 @@ import * as rsc from "../src/managed";
 import { expectExit } from "./tools.spec";
 
 describe("Resource", () => {
-    it("should bracket as expected", () => {
-        function makeBracket(ref: Ref<string[]>, s: string): Managed<never, string> {
-            return rsc.bracket(
-                io.as(ref.update((ss) => [...ss, s]), s),
-                (c) => io.asUnit(ref.update((ss) => ss.filter((v) => v !== c)))
-            );
-        }
-        const eff = io.chain(makeRef([] as string[]),
-            (ref) => {
-                const resources = ["a", "b", "c", "d"].map((r) => makeBracket(ref, r))
-                    .reduce((l, r) => rsc.chain(l, (_) => r));
-                return io.zip(
-                    rsc.use(resources, (v) =>
-                        io.zip(ref.get, io.pure(v))
-                    ),
-                    ref.get
-                );
-            });
-        return expectExit(eff, done([[["a", "b", "c", "d"], "d"], []]));
-    });
+  it("should bracket as expected", () => {
+    function makeBracket(ref: Ref<string[]>, s: string): Managed<never, string> {
+      return rsc.bracket(
+        io.as(ref.update((ss) => [...ss, s]), s),
+        (c) => io.asUnit(ref.update((ss) => ss.filter((v) => v !== c)))
+      );
+    }
+    const eff = io.chain(makeRef([] as string[]),
+      (ref) => {
+        const resources = ["a", "b", "c", "d"].map((r) => makeBracket(ref, r))
+          .reduce((l, r) => rsc.chain(l, (_) => r));
+        return io.zip(
+          rsc.use(resources, (v) =>
+            io.zip(ref.get, io.pure(v))
+          ),
+          ref.get
+        );
+      });
+    return expectExit(eff, done([[["a", "b", "c", "d"], "d"], []]));
+  });
 });

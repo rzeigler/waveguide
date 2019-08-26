@@ -25,41 +25,41 @@ export interface Completable<A> {
 }
 
 export function completable<A>(): Completable<A> {
-    let completed: Option<A> = none;
-    let listeners: FunctionN<[A], void>[] = [];
-    const set = (a: A): void => {
-        completed = some(a);
-        listeners.forEach((f) => f(a));
+  let completed: Option<A> = none;
+  let listeners: FunctionN<[A], void>[] = [];
+  const set = (a: A): void => {
+    completed = some(a);
+    listeners.forEach((f) => f(a));
+  };
+  const value = (): Option<A> => completed;
+  const isComplete = (): boolean => o.isSome(completed);
+  const complete = (a: A): void => {
+    if (o.isSome(completed)) {
+      throw new Error("Die: Completable is already completed");
+    }
+    set(a);
+  };
+  const tryComplete = (a: A): boolean => {
+    if (o.isSome(completed)) {
+      return false;
+    }
+    set(a);
+    return true;
+  };
+  const listen = (f: FunctionN<[A], void>): Lazy<void> => {
+    if (o.isSome(completed)) {
+      f(completed.value);
+    }
+    listeners.push(f);
+    return () => {
+      listeners = listeners.filter((cb) => cb !== f);
     };
-    const value = (): Option<A> => completed;
-    const isComplete = (): boolean => o.isSome(completed);
-    const complete = (a: A): void => {
-        if (o.isSome(completed)) {
-            throw new Error("Die: Completable is already completed");
-        }
-        set(a);
-    };
-    const tryComplete = (a: A): boolean => {
-        if (o.isSome(completed)) {
-            return false;
-        }
-        set(a);
-        return true;
-    };
-    const listen = (f: FunctionN<[A], void>): Lazy<void> => {
-        if (o.isSome(completed)) {
-            f(completed.value);
-        }
-        listeners.push(f);
-        return () => {
-            listeners = listeners.filter((cb) => cb !== f);
-        };
-    };
-    return {
-        value,
-        isComplete,
-        complete,
-        tryComplete,
-        listen
-    };
+  };
+  return {
+    value,
+    isComplete,
+    complete,
+    tryComplete,
+    listen
+  };
 }

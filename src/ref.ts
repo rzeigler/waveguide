@@ -45,31 +45,31 @@ export interface Ref<A> {
  * Curried form of makeRef_ to allow for inference on the initial type
  */
 export const makeRef = <A>(initial: A): Wave<never, Ref<A>> =>
-    sync(() => {
-        let value = initial;
+  sync(() => {
+    let value = initial;
 
-        const get = sync(() => value);
+    const get = sync(() => value);
 
-        const set = (a: A): Wave<never, A> => sync(() => {
-            const prev = value;
-            value = a;
-            return prev;
-        });
-
-        const update = (f: FunctionN<[A], A>): Wave<never, A> => sync(() => {
-            return value = f(value);
-        });
-
-        const modify = <B>(f: FunctionN<[A], readonly [B, A]>): Wave<never, B> => sync(() => {
-            const [b, a] = f(value);
-            value = a;
-            return b;
-        });
-
-        return {
-            get,
-            set,
-            update,
-            modify
-        };
+    const set = (a: A): Wave<never, A> => sync(() => {
+      const prev = value;
+      value = a;
+      return prev;
     });
+
+    const update = (f: FunctionN<[A], A>): Wave<never, A> => sync(() => {
+      return value = f(value);
+    });
+
+    const modify = <B>(f: FunctionN<[A], readonly [B, A]>): Wave<never, B> => sync(() => {
+      const [b, a] = f(value);
+      value = a;
+      return b;
+    });
+
+    return {
+      get,
+      set,
+      update,
+      modify
+    };
+  });

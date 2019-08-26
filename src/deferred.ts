@@ -59,38 +59,38 @@ export interface Deferred<E, A> {
 }
 
 export function makeDeferred<E, A, E2 = never>(): Wave<E2, Deferred<E, A>> {
-    return io.sync(() => {
-        const c: Completable<Wave<E, A>> = completable();
-        const wait = io.flatten(io.asyncTotal<Wave<E, A>>((callback) =>
-            c.listen(callback)
-        ));
-        const interrupt = io.sync(() => {
-            c.complete(io.raiseInterrupt);
-        });
-        const done = (a: A): Wave<never, void> => io.sync(() => {
-            c.complete(io.pure(a));
-        });
-        const error = (e: E): Wave<never, void> => io.sync(() => {
-            c.complete(io.raiseError(e));
-        });
-        const abort = (e: unknown): Wave<never, void> => io.sync(() => {
-            c.complete(io.raiseAbort(e));
-        })
-        const complete = (exit: Exit<E, A>): Wave<never, void> => io.sync(() => {
-            c.complete(io.completed(exit));
-        });
-        const from = (source: Wave<E, A>): Wave<never, void> => {
-            const completed = io.chain<never, Exit<E, A>, void>(io.result(source), complete);
-            const interruptor = interrupt as Wave<never, void>;
-            return io.onInterrupted(completed, interruptor);
-        }
-        return {
-            wait,
-            interrupt,
-            done,
-            error,
-            abort,
-            from
-        };
+  return io.sync(() => {
+    const c: Completable<Wave<E, A>> = completable();
+    const wait = io.flatten(io.asyncTotal<Wave<E, A>>((callback) =>
+      c.listen(callback)
+    ));
+    const interrupt = io.sync(() => {
+      c.complete(io.raiseInterrupt);
     });
+    const done = (a: A): Wave<never, void> => io.sync(() => {
+      c.complete(io.pure(a));
+    });
+    const error = (e: E): Wave<never, void> => io.sync(() => {
+      c.complete(io.raiseError(e));
+    });
+    const abort = (e: unknown): Wave<never, void> => io.sync(() => {
+      c.complete(io.raiseAbort(e));
+    })
+    const complete = (exit: Exit<E, A>): Wave<never, void> => io.sync(() => {
+      c.complete(io.completed(exit));
+    });
+    const from = (source: Wave<E, A>): Wave<never, void> => {
+      const completed = io.chain<never, Exit<E, A>, void>(io.result(source), complete);
+      const interruptor = interrupt as Wave<never, void>;
+      return io.onInterrupted(completed, interruptor);
+    }
+    return {
+      wait,
+      interrupt,
+      done,
+      error,
+      abort,
+      from
+    };
+  });
 }

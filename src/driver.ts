@@ -34,8 +34,8 @@ interface Frame {
 }
 
 const makeFrame = (f: FunctionN<[unknown], UnkIO>): Frame => ({
-    _tag: "frame",
-    apply: f
+  _tag: "frame",
+  apply: f
 });
 
 interface FoldFrame {
@@ -45,10 +45,10 @@ interface FoldFrame {
 }
 
 const makeFoldFrame = (f: FunctionN<[unknown], UnkIO>,
-    r: FunctionN<[Cause<unknown>], UnkIO>): FoldFrame => ({
-    _tag: "fold-frame",
-    apply: f,
-    recover: r
+  r: FunctionN<[Cause<unknown>], UnkIO>): FoldFrame => ({
+  _tag: "fold-frame",
+  apply: f,
+  recover: r
 });
 
 interface InterruptFrame {
@@ -58,16 +58,16 @@ interface InterruptFrame {
 }
 
 const makeInterruptFrame = (interruptStatus: MutableStack<boolean>): InterruptFrame => {
-    return {
-        _tag: "interrupt-frame",
-        apply(u: unknown) {
-            interruptStatus.pop();
-            return io.pure(u) as UnkIO;
-        },
-        exitRegion() {
-            interruptStatus.pop();
-        }
-    };
+  return {
+    _tag: "interrupt-frame",
+    apply(u: unknown) {
+      interruptStatus.pop();
+      return io.pure(u) as UnkIO;
+    },
+    exitRegion() {
+      interruptStatus.pop();
+    }
+  };
 };
 
 export interface Driver<E, A> {
@@ -78,199 +78,199 @@ export interface Driver<E, A> {
 }
 
 export function makeDriver<E, A>(runtime: Runtime = defaultRuntime): Driver<E, A> {
-    let started = false;
-    let interrupted = false;
-    const result: Completable<Exit<E, A>> = completable();
-    const frameStack: MutableStack<FrameType> = mutableStack();
-    const interruptRegionStack: MutableStack<boolean> = mutableStack();
-    let cancelAsync: Lazy<void> | undefined;
+  let started = false;
+  let interrupted = false;
+  const result: Completable<Exit<E, A>> = completable();
+  const frameStack: MutableStack<FrameType> = mutableStack();
+  const interruptRegionStack: MutableStack<boolean> = mutableStack();
+  let cancelAsync: Lazy<void> | undefined;
 
 
-    function onExit(f: FunctionN<[Exit<E, A>], void>): Lazy<void> {
-        return result.listen(f);
-    }
+  function onExit(f: FunctionN<[Exit<E, A>], void>): Lazy<void> {
+    return result.listen(f);
+  }
 
-    function exit(): Option<Exit<E, A>> {
-        return result.value();
-    }
+  function exit(): Option<Exit<E, A>> {
+    return result.value();
+  }
 
     
-    function isInterruptible(): boolean {
-        const flag =  interruptRegionStack.peek();
-        if (flag === undefined) {
-            return true;
-        }
-        return flag;
+  function isInterruptible(): boolean {
+    const flag =  interruptRegionStack.peek();
+    if (flag === undefined) {
+      return true;
     }
+    return flag;
+  }
 
-    function canRecover(cause: Cause<unknown>): boolean {
+  function canRecover(cause: Cause<unknown>): boolean {
     // It is only possible to recovery from interrupts in an uninterruptible region
-        if (cause._tag === ExitTag.Interrupt) {
-            return !isInterruptible();
-        }
-        return true;
+    if (cause._tag === ExitTag.Interrupt) {
+      return !isInterruptible();
     }
+    return true;
+  }
 
-    function handle(e: Cause<unknown>): UnkIO | undefined {
-        let frame = frameStack.pop();
-        while (frame) {
-            if (frame._tag === "fold-frame" && canRecover(e)) {
-                return frame.recover(e);
-            }
-            // We need to make sure we leave an interrupt region or environment provision region while unwinding on errors
-            if (frame._tag === "interrupt-frame") {
-                frame.exitRegion();
-            }
-            frame = frameStack.pop();
-        }
-        // At the end... so we have failed
-        result.complete(e as Cause<E>);
-        return;
+  function handle(e: Cause<unknown>): UnkIO | undefined {
+    let frame = frameStack.pop();
+    while (frame) {
+      if (frame._tag === "fold-frame" && canRecover(e)) {
+        return frame.recover(e);
+      }
+      // We need to make sure we leave an interrupt region or environment provision region while unwinding on errors
+      if (frame._tag === "interrupt-frame") {
+        frame.exitRegion();
+      }
+      frame = frameStack.pop();
     }
+    // At the end... so we have failed
+    result.complete(e as Cause<E>);
+    return;
+  }
 
 
-    function resumeInterrupt(): void {
-        runtime.dispatch(() => {
-            const go = handle(interruptExit);
-            if (go) {
-                // eslint-disable-next-line
+  function resumeInterrupt(): void {
+    runtime.dispatch(() => {
+      const go = handle(interruptExit);
+      if (go) {
+        // eslint-disable-next-line
                 loop(go);
-            }
-        });
-    }
+      }
+    });
+  }
 
-    function next(value: unknown): UnkIO | undefined {
-        const frame = frameStack.pop();
-        if (frame) {
-            return frame.apply(value);
+  function next(value: unknown): UnkIO | undefined {
+    const frame = frameStack.pop();
+    if (frame) {
+      return frame.apply(value);
+    }
+    result.complete(done(value) as Done<A>);
+    return;
+  }
+
+  function resume(status: Either<unknown, unknown>): void {
+    cancelAsync = undefined;
+    runtime.dispatch(() => {
+      foldEither(
+        (cause: unknown) => {
+          const go = handle(raise(cause));
+          if (go) {
+            /* eslint-disable-next-line */
+                        loop(go);
+          }
+        },
+        (value: unknown) => {
+          const go = next(value);
+          if (go) {
+            /* eslint-disable-next-line */
+                        loop(go);
+          }
         }
-        result.complete(done(value) as Done<A>);
+      )(status);
+    });
+  }
+
+  function contextSwitch(op: FunctionN<[FunctionN<[Either<unknown, unknown>], void>], Lazy<void>>): void {
+    let complete = false;
+    const wrappedCancel = op((status) => {
+      if (complete) {
         return;
-    }
+      }
+      complete = true;
+      resume(status);
+    });
+    cancelAsync = () => {
+      complete = true;
+      wrappedCancel();
+    };
+  }
 
-    function resume(status: Either<unknown, unknown>): void {
-        cancelAsync = undefined;
-        runtime.dispatch(() => {
-            foldEither(
-                (cause: unknown) => {
-                    const go = handle(raise(cause));
-                    if (go) {
-                        /* eslint-disable-next-line */
-                        loop(go);
-                    }
-                },
-                (value: unknown) => {
-                    const go = next(value);
-                    if (go) {
-                        /* eslint-disable-next-line */
-                        loop(go);
-                    }
-                }
-            )(status);
-        });
-    }
-
-    function contextSwitch(op: FunctionN<[FunctionN<[Either<unknown, unknown>], void>], Lazy<void>>): void {
-        let complete = false;
-        const wrappedCancel = op((status) => {
-            if (complete) {
-                return;
-            }
-            complete = true;
-            resume(status);
-        });
-        cancelAsync = () => {
-            complete = true;
-            wrappedCancel();
-        };
-    }
-
-    function loop(go: UnkIO): void {
-        let current: UnkIO | undefined = go;
-        while (current && (!isInterruptible() || !interrupted)) {
-            try {
-                switch (current._tag) {
-                    case WaveTag.Pure:
-                        current = next(current.value);
-                        break;
-                    case WaveTag.Raised:
-                        if (current.error._tag === ExitTag.Interrupt) {
-                            interrupted = true;
-                        }
-                        current = handle(current.error);
-                        break;
-                    case WaveTag.Completed:
-                        if (current.exit._tag === ExitTag.Done) {
-                            current = next(current.exit.value);
-                        } else {
-                            current = handle(current.exit);
-                        }
-                        break;
-                    case WaveTag.Suspended:
-                        current = current.thunk();
-                        break;
-                    case WaveTag.Async:
-                        contextSwitch(current.op);
-                        current = undefined;
-                        break;
-                    case WaveTag.Chain:
-                        frameStack.push(makeFrame(current.bind));
-                        current = current.inner;
-                        break;
-                    case WaveTag.Collapse:
-                        frameStack.push(makeFoldFrame(current.success, current.failure));
-                        current = current.inner;
-                        break;
-                    case WaveTag.InterruptibleRegion:
-                        interruptRegionStack.push(current.flag);
-                        frameStack.push(makeInterruptFrame(interruptRegionStack));
-                        current = current.inner;
-                        break;
-                    case WaveTag.AccessRuntime:
-                        current = io.pure(current.f(runtime)) as UnkIO;
-                        break;
-                    case WaveTag.AccessInterruptible:
-                        current = io.pure(current.f(isInterruptible())) as UnkIO;
-                        break;
-                    default:
-                        throw new Error(`Die: Unrecognized current type ${current}`);
-                }
-
-            } catch (e) {
-                current = io.raiseAbort(e) as UnkIO;
-            }
+  function loop(go: UnkIO): void {
+    let current: UnkIO | undefined = go;
+    while (current && (!isInterruptible() || !interrupted)) {
+      try {
+        switch (current._tag) {
+        case WaveTag.Pure:
+          current = next(current.value);
+          break;
+        case WaveTag.Raised:
+          if (current.error._tag === ExitTag.Interrupt) {
+            interrupted = true;
+          }
+          current = handle(current.error);
+          break;
+        case WaveTag.Completed:
+          if (current.exit._tag === ExitTag.Done) {
+            current = next(current.exit.value);
+          } else {
+            current = handle(current.exit);
+          }
+          break;
+        case WaveTag.Suspended:
+          current = current.thunk();
+          break;
+        case WaveTag.Async:
+          contextSwitch(current.op);
+          current = undefined;
+          break;
+        case WaveTag.Chain:
+          frameStack.push(makeFrame(current.bind));
+          current = current.inner;
+          break;
+        case WaveTag.Collapse:
+          frameStack.push(makeFoldFrame(current.success, current.failure));
+          current = current.inner;
+          break;
+        case WaveTag.InterruptibleRegion:
+          interruptRegionStack.push(current.flag);
+          frameStack.push(makeInterruptFrame(interruptRegionStack));
+          current = current.inner;
+          break;
+        case WaveTag.AccessRuntime:
+          current = io.pure(current.f(runtime)) as UnkIO;
+          break;
+        case WaveTag.AccessInterruptible:
+          current = io.pure(current.f(isInterruptible())) as UnkIO;
+          break;
+        default:
+          throw new Error(`Die: Unrecognized current type ${current}`);
         }
-        // If !current then the interrupt came to late and we completed everything
-        if (interrupted && current) {
-            resumeInterrupt();
-        }
-    }
 
-    function start(run: Wave<E, A>): void {
-        if (started) {
-            throw new Error("Bug: Runtime may not be started multiple times");
-        }
-        started = true;
-        runtime.dispatch(() => loop(run as UnkIO));
+      } catch (e) {
+        current = io.raiseAbort(e) as UnkIO;
+      }
     }
+    // If !current then the interrupt came to late and we completed everything
+    if (interrupted && current) {
+      resumeInterrupt();
+    }
+  }
 
-    function interrupt(): void {
-        if (interrupted) {
-            return;
-        }
-        interrupted = true;
-        if (cancelAsync && isInterruptible()) {
-            cancelAsync();
-            resumeInterrupt();
-        }
+  function start(run: Wave<E, A>): void {
+    if (started) {
+      throw new Error("Bug: Runtime may not be started multiple times");
     }
+    started = true;
+    runtime.dispatch(() => loop(run as UnkIO));
+  }
+
+  function interrupt(): void {
+    if (interrupted) {
+      return;
+    }
+    interrupted = true;
+    if (cancelAsync && isInterruptible()) {
+      cancelAsync();
+      resumeInterrupt();
+    }
+  }
 
     
 
-    return {
-        start,
-        interrupt,
-        onExit,
-        exit
-    };
+  return {
+    start,
+    interrupt,
+    onExit,
+    exit
+  };
 }

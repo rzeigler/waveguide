@@ -23,10 +23,10 @@ export interface Done<A> {
 }
 
 export function done<A>(v: A): Done<A> {
-    return {
-        _tag: ExitTag.Done,
-        value: v
-    };
+  return {
+    _tag: ExitTag.Done,
+    value: v
+  };
 }
 
 export type Cause<E> = Raise<E> | Abort | Interrupt;
@@ -37,10 +37,10 @@ export interface Raise<E> {
 }
 
 export function raise<E>(e: E): Raise<E> {
-    return {
-        _tag: ExitTag.Raise,
-        error: e
-    };
+  return {
+    _tag: ExitTag.Raise,
+    error: e
+  };
 }
 
 export interface Abort {
@@ -49,10 +49,10 @@ export interface Abort {
 }
 
 export function abort(a: unknown): Abort {
-    return {
-        _tag: ExitTag.Abort,
-        abortedWith: a
-    };
+  return {
+    _tag: ExitTag.Abort,
+    abortedWith: a
+  };
 }
 
 export interface Interrupt {
@@ -60,5 +60,5 @@ export interface Interrupt {
 }
 
 export const interrupt: Interrupt = {
-    _tag: ExitTag.Interrupt
+  _tag: ExitTag.Interrupt
 };

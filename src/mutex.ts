@@ -25,11 +25,11 @@ export interface Mutex {
 
 export const makeMutex: Wave<never, Mutex> =
   io.map(makeSemaphore(1),
-      (sem) => ({
-          acquire: sem.acquire,
-          release: sem.release,
-          available: io.map(sem.available, (n) => n > 0),
-          withExclusion<R, E, A>(inner: Wave<E, A>): Wave<E, A> {
-              return sem.withPermit(inner);
-          }
-      }));
+    (sem) => ({
+      acquire: sem.acquire,
+      release: sem.release,
+      available: io.map(sem.available, (n) => n > 0),
+      withExclusion<R, E, A>(inner: Wave<E, A>): Wave<E, A> {
+        return sem.withPermit(inner);
+      }
+    }));

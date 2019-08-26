@@ -15,4 +15,4 @@
 import { Wave, raiseAbort, unit } from "./wave";
 
 export const natNumber = (msg: unknown) => (n: number): Wave<never, void> =>
-    n < 0 || Math.round(n) !== n ? raiseAbort(msg) : unit;
+  n < 0 || Math.round(n) !== n ? raiseAbort(msg) : unit;

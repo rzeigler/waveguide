@@ -41,29 +41,29 @@ export interface Trampoline {
  * Create a new Trampoline
  */
 export function makeTrampoline(): Trampoline {
-    let running = false;
-    const queue: MutableQueue<Lazy<void>> = mutableQueue();
+  let running = false;
+  const queue: MutableQueue<Lazy<void>> = mutableQueue();
 
-    const isRunning = (): boolean => running;
+  const isRunning = (): boolean => running;
 
-    const run = (): void => {
-        running = true;
-        let next = queue.dequeue();
-        while (next) {
-            next();
-            next = queue.dequeue();
-        }
-        running = false;
-    };
+  const run = (): void => {
+    running = true;
+    let next = queue.dequeue();
+    while (next) {
+      next();
+      next = queue.dequeue();
+    }
+    running = false;
+  };
 
-    const dispatch = (thunk: Lazy<void>): void => {
-        queue.enqueue(thunk);
-        if (!running) {
-            run();
-        }
-    };
-    return {
-        isRunning,
-        dispatch
-    };
+  const dispatch = (thunk: Lazy<void>): void => {
+    queue.enqueue(thunk);
+    if (!running) {
+      run();
+    }
+  };
+  return {
+    isRunning,
+    dispatch
+  };
 }

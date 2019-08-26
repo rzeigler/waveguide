@@ -30,9 +30,9 @@ import { Lazy } from "fp-ts/lib/function";
 
 const fromPromise: Wave<unknown, void> = 
     pipe(
-        wave.fromPromise(() => Promise.resolve(41)),
-        wave.mapWith((n) => n + 1), // there are odd interactions between unknown and never, so mapWith doesn't work
-        wave.chainWith((n) => wave.covaryToE<unknown>()(log(`the answer is ${n}`))),
+      wave.fromPromise(() => Promise.resolve(41)),
+      wave.mapWith((n) => n + 1), // there are odd interactions between unknown and never, so mapWith doesn't work
+      wave.chainWith((n) => wave.covaryToE<unknown>()(log(`the answer is ${n}`))),
     );
 
 /**
@@ -40,13 +40,13 @@ const fromPromise: Wave<unknown, void> =
  */
 
 const _p: Promise<void> = wave.runToPromise(fromPromise)
-    .then(() => console.log("finished"));
+  .then(() => console.log("finished"));
 
 /**
  * We don't have to run to a Promise or use the runtime like main does
  * We can, instead use run
  */
 const _cancellation: Lazy<void> = wave.run(fromPromise, (result) => {
-    // note that this will actually log before the "finished" above because waveguide's machinery doesn't require event loop ticks
-    console.log("finished with " + JSON.stringify(result))
+  // note that this will actually log before the "finished" above because waveguide's machinery doesn't require event loop ticks
+  console.log("finished with " + JSON.stringify(result))
 })

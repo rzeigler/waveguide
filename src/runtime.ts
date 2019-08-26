@@ -41,23 +41,23 @@ export interface Runtime {
 }
 
 function jsRuntime(): Runtime {
-    const trampoline = makeTrampoline();
+  const trampoline = makeTrampoline();
 
-    const dispatch = (thunk: Lazy<void>): void => {
-        trampoline.dispatch(thunk);
-    };
+  const dispatch = (thunk: Lazy<void>): void => {
+    trampoline.dispatch(thunk);
+  };
 
-    const dispatchLater = (thunk: Lazy<void>, ms: number): Lazy<void> => {
-        const handle = setTimeout(() => dispatch(thunk), ms);
-        return () => {
-            clearTimeout(handle);
-        };
+  const dispatchLater = (thunk: Lazy<void>, ms: number): Lazy<void> => {
+    const handle = setTimeout(() => dispatch(thunk), ms);
+    return () => {
+      clearTimeout(handle);
     };
+  };
 
-    return {
-        dispatch,
-        dispatchLater
-    };
+  return {
+    dispatch,
+    dispatchLater
+  };
 }
 
 export const defaultRuntime: Runtime = jsRuntime();

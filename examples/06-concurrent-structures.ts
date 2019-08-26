@@ -31,12 +31,12 @@ import * as consoleIO from "../src/console";
 import * as managed from "../src/managed";
 
 function query(q: string): WaveR<https.Agent, Error, readonly [string, bigint]> {
-    const get = pipe(
-        fetch(`https://www.google.com/search?q=${q}`),
-        time,
-        waver.mapWith(x => [q, x[1]] as const)
-    )
-    return waver.applySecond(consoleIO.logR(`starting ${q}`), waver.applyFirst(get, consoleIO.logR(`finishing ${q}`)));
+  const get = pipe(
+    fetch(`https://www.google.com/search?q=${q}`),
+    time,
+    waver.mapWith(x => [q, x[1]] as const)
+  )
+  return waver.applySecond(consoleIO.logR(`starting ${q}`), waver.applyFirst(get, consoleIO.logR(`finishing ${q}`)));
 }
 
 /**
@@ -50,11 +50,11 @@ const queries = ["c", "cplusplus", "java", "scala", "haskell", "purescript", "ru
 const queryTimes: WaveR<https.Agent, never, void> = 
 
     pipe(
-        waver.chain(sem as WaveR<https.Agent, Error, S.SemaphoreR>, 
-            (sem) => 
-                waver.chain(array.traverse(waver.parInstances)(queries, q => sem.withPermit(query(q))), 
-                    (results) => consoleIO.logR(results.toString()))),
-        waver.chainErrorWith((e) => consoleIO.errorR(`eeik! ${e}`))
+      waver.chain(sem as WaveR<https.Agent, Error, S.SemaphoreR>, 
+        (sem) => 
+          waver.chain(array.traverse(waver.parInstances)(queries, q => sem.withPermit(query(q))), 
+            (results) => consoleIO.logR(results.toString()))),
+      waver.chainErrorWith((e) => consoleIO.errorR(`eeik! ${e}`))
     )
 
 /**

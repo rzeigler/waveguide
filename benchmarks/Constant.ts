@@ -10,8 +10,8 @@ import * as wave from "../src/wave";
 import {RunSuite} from "./internals/RunSuite"
 
 RunSuite("Constant", {
-    bluebird: () => Promise.resolve(10),
-    fio: () => FIO.of(10),
-    fluture: () => Fluture.of(10),
-    waveguide: () => wave.pure(10)
+  bluebird: () => Promise.resolve(10),
+  fio: () => FIO.of(10),
+  fluture: () => Fluture.of(10),
+  waveguide: () => wave.pure(10)
 })

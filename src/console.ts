@@ -25,10 +25,10 @@ import * as waver from "./waver";
  * @param msg
  */
 export function log(msg?: any, ...more: any[]): Wave<never, void> {
-    return sync(() => {
+  return sync(() => {
     // tslint:disable-next-line
-        console.log(msg, ...more);
-    });
+    console.log(msg, ...more);
+  });
 }
 
 /**
@@ -36,10 +36,10 @@ export function log(msg?: any, ...more: any[]): Wave<never, void> {
  * @param msg
  */
 export function warn(msg?: any, ...more: any[]): Wave<never, void> {
-    return sync(() => {
+  return sync(() => {
     // tslint:disable-next-line
-        console.warn(msg, ...more);
-    });
+    console.warn(msg, ...more);
+  });
 }
 
 /**
@@ -47,10 +47,10 @@ export function warn(msg?: any, ...more: any[]): Wave<never, void> {
  * @param msg
  */
 export function error(msg?: any, ...more: any[]): Wave<never, void> {
-    return sync(() => {
+  return sync(() => {
     // tslint:disable-next-line
-        console.error(msg, ...more);
-    });
+    console.error(msg, ...more);
+  });
 }
 
 
@@ -60,7 +60,7 @@ export function error(msg?: any, ...more: any[]): Wave<never, void> {
  * @param msg
  */
 export function logR<R = {}>(msg?: any, ...more: any[]): WaveR<R, never, void> {
-    return waver.encaseWaveR(log(msg, ...more));
+  return waver.encaseWaveR(log(msg, ...more));
 }
 
 /**
@@ -68,7 +68,7 @@ export function logR<R = {}>(msg?: any, ...more: any[]): WaveR<R, never, void> {
  * @param msg
  */
 export function warnR<R = {}>(msg?: any, ...more: any[]): WaveR<R, never, void> {
-   return waver.encaseWaveR(warn(msg, ...more));
+  return waver.encaseWaveR(warn(msg, ...more));
 }
 
 /**
@@ -76,5 +76,5 @@ export function warnR<R = {}>(msg?: any, ...more: any[]): WaveR<R, never, void> 
  * @param msg
  */
 export function errorR<R = {}>(msg?: any, ...more: any[]): WaveR<R, never, void> {
-    return waver.encaseWaveR(error(msg, ...more));
+  return waver.encaseWaveR(error(msg, ...more));
 }

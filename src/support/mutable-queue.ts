@@ -21,27 +21,27 @@ export interface MutableQueue<A> {
 }
 
 export function mutableQueue<A>(): MutableQueue<A> {
-    const array: A[] = [];
-    function enqueue(a: A): void {
-        array.push(a);
-    }
-    function dequeue(): A |  undefined {
-        return array.shift();
-    }
-    function isEmpty(): boolean {
-        return array.length === 0;
-    }
-    function peek(): A | undefined {
-        return isEmpty() ? undefined : array[0];
-    }
-    function size(): number {
-        return array.length;
-    }
-    return {
-        enqueue,
-        dequeue,
-        peek,
-        isEmpty,
-        size
-    };
+  const array: A[] = [];
+  function enqueue(a: A): void {
+    array.push(a);
+  }
+  function dequeue(): A |  undefined {
+    return array.shift();
+  }
+  function isEmpty(): boolean {
+    return array.length === 0;
+  }
+  function peek(): A | undefined {
+    return isEmpty() ? undefined : array[0];
+  }
+  function size(): number {
+    return array.length;
+  }
+  return {
+    enqueue,
+    dequeue,
+    peek,
+    isEmpty,
+    size
+  };
 }
