@@ -42,6 +42,15 @@ export interface Deferred<E, A> {
      * Any waiters will produce an error
      */
     error(e: E): Wave<never, void>;
+
+    /**
+     * Complete this Deferred with an abort
+     * 
+     * Any waiters will produce an error
+     * @param e 
+     */
+    abort(e: unknown): Wave<never, void>;
+
     /**
      * Set this deferred with the result of source
      * @param source 
@@ -64,6 +73,9 @@ export function makeDeferred<E, A, E2 = never>(): Wave<E2, Deferred<E, A>> {
         const error = (e: E): Wave<never, void> => io.sync(() => {
             c.complete(io.raiseError(e));
         });
+        const abort = (e: unknown): Wave<never, void> => io.sync(() => {
+            c.complete(io.raiseAbort(e));
+        })
         const complete = (exit: Exit<E, A>): Wave<never, void> => io.sync(() => {
             c.complete(io.completed(exit));
         });
@@ -77,6 +89,7 @@ export function makeDeferred<E, A, E2 = never>(): Wave<E2, Deferred<E, A>> {
             interrupt,
             done,
             error,
+            abort,
             from
         };
     });
