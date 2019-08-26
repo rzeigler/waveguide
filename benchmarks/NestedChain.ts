@@ -41,7 +41,7 @@ RunSuite(`NestedChain ${MAX}`, {
     return fluture
   },
   waveguide: () => {
-    let io: wave.IO<never, bigint> = wave.pure(BigInt(0))
+    let io: wave.Wave<never, bigint> = wave.pure(BigInt(0))
     for (let i = 0; i < MAX; i++) {
       io = wave.chain(io, waveMapper);
     }
