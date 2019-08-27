@@ -47,6 +47,28 @@ describe("fiber", () => {
       done(interrupt)
     )
   );
+  it("fibers interrupt is a no-op after interruption", () => {
+    io.chain(io.fork(io.never), (fiber) => 
+      io.applySecond(
+        fiber.interrupt,
+        io.applySecond(
+          fiber.interrupt,
+          fiber.wait
+        )
+      )
+    )
+  })
+  it("fiber interrupt is a no-op after completion", () => {
+    io.chain(io.fork(io.never), (fiber) => 
+      io.applySecond(
+        fiber.wait,
+        io.applySecond(
+          fiber.interrupt,
+          fiber.wait
+        )
+      )
+    )
+  })
   it("environments should propogate across fibers", () => {
     const fiber = waver.env<string>();
     const host = 

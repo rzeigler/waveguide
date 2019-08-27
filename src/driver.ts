@@ -29,8 +29,8 @@ export type RegionFrameType = InterruptFrame;
 export type FrameType = Frame | FoldFrame | RegionFrameType;
 
 interface Frame {
-    readonly _tag: "frame";
-    apply(u: unknown): UnkIO;
+  readonly _tag: "frame";
+  apply(u: unknown): UnkIO;
 }
 
 const makeFrame = (f: FunctionN<[unknown], UnkIO>): Frame => ({
@@ -39,22 +39,22 @@ const makeFrame = (f: FunctionN<[unknown], UnkIO>): Frame => ({
 });
 
 interface FoldFrame {
-    readonly _tag: "fold-frame";
-    apply(u: unknown): UnkIO;
-    recover(cause: Cause<unknown>): UnkIO;
+  readonly _tag: "fold-frame";
+  apply(u: unknown): UnkIO;
+  recover(cause: Cause<unknown>): UnkIO;
 }
 
 const makeFoldFrame = (f: FunctionN<[unknown], UnkIO>,
   r: FunctionN<[Cause<unknown>], UnkIO>): FoldFrame => ({
-  _tag: "fold-frame",
-  apply: f,
-  recover: r
-});
+    _tag: "fold-frame",
+    apply: f,
+    recover: r
+  });
 
 interface InterruptFrame {
-    readonly _tag: "interrupt-frame";
-    apply(u: unknown): UnkIO;
-    exitRegion(): void;
+  readonly _tag: "interrupt-frame";
+  apply(u: unknown): UnkIO;
+  exitRegion(): void;
 }
 
 const makeInterruptFrame = (interruptStatus: MutableStack<boolean>): InterruptFrame => {
@@ -71,10 +71,10 @@ const makeInterruptFrame = (interruptStatus: MutableStack<boolean>): InterruptFr
 };
 
 export interface Driver<E, A> {
-    start(run: Wave<E, A>): void;
-    interrupt(): void;
-    onExit(f: FunctionN<[Exit<E, A>], void>): Lazy<void>;
-    exit(): Option<Exit<E, A>>;
+  start(run: Wave<E, A>): void;
+  interrupt(): void;
+  onExit(f: FunctionN<[Exit<E, A>], void>): Lazy<void>;
+  exit(): Option<Exit<E, A>>;
 }
 
 export function makeDriver<E, A>(runtime: Runtime = defaultRuntime): Driver<E, A> {
@@ -94,9 +94,9 @@ export function makeDriver<E, A>(runtime: Runtime = defaultRuntime): Driver<E, A
     return result.value();
   }
 
-    
+
   function isInterruptible(): boolean {
-    const flag =  interruptRegionStack.peek();
+    const flag = interruptRegionStack.peek();
     if (flag === undefined) {
       return true;
     }
@@ -134,7 +134,7 @@ export function makeDriver<E, A>(runtime: Runtime = defaultRuntime): Driver<E, A
       const go = handle(interruptExit);
       if (go) {
         // eslint-disable-next-line
-                loop(go);
+        loop(go);
       }
     });
   }
@@ -156,14 +156,14 @@ export function makeDriver<E, A>(runtime: Runtime = defaultRuntime): Driver<E, A
           const go = handle(raise(cause));
           if (go) {
             /* eslint-disable-next-line */
-                        loop(go);
+            loop(go);
           }
         },
         (value: unknown) => {
           const go = next(value);
           if (go) {
             /* eslint-disable-next-line */
-                        loop(go);
+            loop(go);
           }
         }
       )(status);
@@ -190,50 +190,50 @@ export function makeDriver<E, A>(runtime: Runtime = defaultRuntime): Driver<E, A
     while (current && (!isInterruptible() || !interrupted)) {
       try {
         switch (current._tag) {
-        case WaveTag.Pure:
-          current = next(current.value);
-          break;
-        case WaveTag.Raised:
-          if (current.error._tag === ExitTag.Interrupt) {
-            interrupted = true;
-          }
-          current = handle(current.error);
-          break;
-        case WaveTag.Completed:
-          if (current.exit._tag === ExitTag.Done) {
-            current = next(current.exit.value);
-          } else {
-            current = handle(current.exit);
-          }
-          break;
-        case WaveTag.Suspended:
-          current = current.thunk();
-          break;
-        case WaveTag.Async:
-          contextSwitch(current.op);
-          current = undefined;
-          break;
-        case WaveTag.Chain:
-          frameStack.push(makeFrame(current.bind));
-          current = current.inner;
-          break;
-        case WaveTag.Collapse:
-          frameStack.push(makeFoldFrame(current.success, current.failure));
-          current = current.inner;
-          break;
-        case WaveTag.InterruptibleRegion:
-          interruptRegionStack.push(current.flag);
-          frameStack.push(makeInterruptFrame(interruptRegionStack));
-          current = current.inner;
-          break;
-        case WaveTag.AccessRuntime:
-          current = io.pure(current.f(runtime)) as UnkIO;
-          break;
-        case WaveTag.AccessInterruptible:
-          current = io.pure(current.f(isInterruptible())) as UnkIO;
-          break;
-        default:
-          throw new Error(`Die: Unrecognized current type ${current}`);
+          case WaveTag.Pure:
+            current = next(current.value);
+            break;
+          case WaveTag.Raised:
+            if (current.error._tag === ExitTag.Interrupt) {
+              interrupted = true;
+            }
+            current = handle(current.error);
+            break;
+          case WaveTag.Completed:
+            if (current.exit._tag === ExitTag.Done) {
+              current = next(current.exit.value);
+            } else {
+              current = handle(current.exit);
+            }
+            break;
+          case WaveTag.Suspended:
+            current = current.thunk();
+            break;
+          case WaveTag.Async:
+            contextSwitch(current.op);
+            current = undefined;
+            break;
+          case WaveTag.Chain:
+            frameStack.push(makeFrame(current.bind));
+            current = current.inner;
+            break;
+          case WaveTag.Collapse:
+            frameStack.push(makeFoldFrame(current.success, current.failure));
+            current = current.inner;
+            break;
+          case WaveTag.InterruptibleRegion:
+            interruptRegionStack.push(current.flag);
+            frameStack.push(makeInterruptFrame(interruptRegionStack));
+            current = current.inner;
+            break;
+          case WaveTag.AccessRuntime:
+            current = io.pure(current.f(runtime)) as UnkIO;
+            break;
+          case WaveTag.AccessInterruptible:
+            current = io.pure(current.f(isInterruptible())) as UnkIO;
+            break;
+          default:
+            throw new Error(`Die: Unrecognized current type ${current}`);
         }
 
       } catch (e) {
@@ -255,7 +255,7 @@ export function makeDriver<E, A>(runtime: Runtime = defaultRuntime): Driver<E, A
   }
 
   function interrupt(): void {
-    if (interrupted) {
+    if (interrupted || result.isComplete()) {
       return;
     }
     interrupted = true;
@@ -264,8 +264,6 @@ export function makeDriver<E, A>(runtime: Runtime = defaultRuntime): Driver<E, A
       resumeInterrupt();
     }
   }
-
-    
 
   return {
     start,
