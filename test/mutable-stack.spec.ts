@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import { expect } from "chai";
-import { mutableStack } from "../../src/support/mutable-stack";
+import { mutableStack } from "../src/support/mutable-stack";
 
 describe("MutableStack", () => {
   describe("#pop", () => {

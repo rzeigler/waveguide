@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as wave from "./wave";
 import { WaveR } from "./waver";
 import * as waver from "./waver";
 import { Managed } from "./managed";

@@ -19,7 +19,6 @@ import { Monoid } from "fp-ts/lib/Monoid";
 import { Wave, Fiber } from "./wave";
 import * as io from "./wave";
 import { WaveR } from "./waver";
-import * as waver from "./waver";
 
 export enum ManagedTag {
     Pure,

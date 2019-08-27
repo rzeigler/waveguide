@@ -14,7 +14,7 @@
 
 import { expect } from "chai";
 import { none, some } from "fp-ts/lib/Option";
-import { concat, cons, filter, find, flatten, fromArray, nil, of } from "../../src/support/list";
+import { concat, cons, filter, find, flatten, fromArray, nil, of } from "../src/support/list";
 
 function isEven(n: number): boolean {
   return n % 2 === 0;

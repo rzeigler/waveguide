@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Exit } from "./exit";
+import { Exit, Cause } from "./exit";
 import { Wave } from "./wave";
 import * as io from "./wave";
 import { Completable, completable} from "./support/completable";
@@ -52,6 +52,18 @@ export interface Deferred<E, A> {
     abort(e: unknown): Wave<never, void>;
 
     /**
+     * Complete this deferred with the given cuase
+     * @param c 
+     */
+    cause(c: Cause<E>): Wave<never, void>;
+
+    /**
+     * complete this Defered with the provide exit status
+     * @param e 
+     */
+    complete(e: Exit<E, A>): Wave<never, void>;
+
+    /**
      * Set this deferred with the result of source
      * @param source 
      */
@@ -76,6 +88,9 @@ export function makeDeferred<E, A, E2 = never>(): Wave<E2, Deferred<E, A>> {
     const abort = (e: unknown): Wave<never, void> => io.sync(() => {
       c.complete(io.raiseAbort(e));
     })
+    const cause = (e: Cause<E>): Wave<never, void> => io.sync(() => {
+      c.complete(io.raised(e));
+    })
     const complete = (exit: Exit<E, A>): Wave<never, void> => io.sync(() => {
       c.complete(io.completed(exit));
     });
@@ -90,6 +105,8 @@ export function makeDeferred<E, A, E2 = never>(): Wave<E2, Deferred<E, A>> {
       done,
       error,
       abort,
+      cause,
+      complete,
       from
     };
   });

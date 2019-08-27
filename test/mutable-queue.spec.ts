@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import { expect } from "chai";
-import { mutableQueue } from "../../src/support/mutable-queue";
+import { mutableQueue } from "../src/support/mutable-queue";
 
 describe("MutableQueue", () => {
   describe("#dequeue", () => {

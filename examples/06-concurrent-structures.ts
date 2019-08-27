@@ -20,8 +20,6 @@
  */
 import { array } from "fp-ts/lib/Array";
 import { pipe } from "fp-ts/lib/pipeable";
-import * as wave from "../src/wave";
-import { Wave } from "../src/wave";
 import * as waver from "../src/waver";
 import { WaveR } from "../src/waver";
 import * as S from "../src/semaphore";

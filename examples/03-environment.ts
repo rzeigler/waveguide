@@ -32,7 +32,6 @@ import * as http from "http";
 import * as managed from "../src/managed";
 import { Managed } from "../src/managed";
 import * as wave from "../src/wave";
-import { Wave } from "../src/wave";
 import { WaveR } from "../src/waver";
 import * as waver from "../src/waver";
 import { log } from "../src/console";

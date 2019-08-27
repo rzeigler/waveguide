@@ -63,7 +63,6 @@ describe("Deferred", () => {
               ),
               done(42)
             )
-
         )
       )
     );

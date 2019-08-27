@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Wave } from "../src/wave";
 import { pipe } from "fp-ts/lib/pipeable";
 import * as wave from "../src/wave";
 import * as waver from "../src/waver";

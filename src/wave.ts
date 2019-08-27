@@ -14,13 +14,11 @@
 
 import { Semigroup } from "fp-ts/lib/Semigroup"
 import { Monoid } from "fp-ts/lib/Monoid";
-import { Applicative3, Applicative2 } from "fp-ts/lib/Applicative";
-import { MonadThrow3, MonadThrow2 } from "fp-ts/lib/MonadThrow";
-import { Functor3 } from "fp-ts/lib/Functor";
+import { Applicative2 } from "fp-ts/lib/Applicative";
 import { Either, left, right } from "fp-ts/lib/Either";
 import * as either from "fp-ts/lib/Either";
 import { constant, flow, FunctionN, identity, Lazy } from "fp-ts/lib/function";
-import { Monad3, Monad2 } from "fp-ts/lib/Monad";
+import { Monad2 } from "fp-ts/lib/Monad";
 import { none, some, Option } from "fp-ts/lib/Option";
 import * as option from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
