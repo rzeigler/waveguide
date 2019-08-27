@@ -46,10 +46,10 @@ interface FoldFrame {
 
 const makeFoldFrame = (f: FunctionN<[unknown], UnkIO>,
   r: FunctionN<[Cause<unknown>], UnkIO>): FoldFrame => ({
-  _tag: "fold-frame",
-  apply: f,
-  recover: r
-});
+    _tag: "fold-frame",
+    apply: f,
+    recover: r
+  });
 
 interface InterruptFrame {
   readonly _tag: "interrupt-frame";
@@ -190,50 +190,50 @@ export function makeDriver<E, A>(runtime: Runtime = defaultRuntime): Driver<E, A
     while (current && (!isInterruptible() || !interrupted)) {
       try {
         switch (current._tag) {
-        case WaveTag.Pure:
-          current = next(current.value);
-          break;
-        case WaveTag.Raised:
-          if (current.error._tag === ExitTag.Interrupt) {
-            interrupted = true;
-          }
-          current = handle(current.error);
-          break;
-        case WaveTag.Completed:
-          if (current.exit._tag === ExitTag.Done) {
-            current = next(current.exit.value);
-          } else {
-            current = handle(current.exit);
-          }
-          break;
-        case WaveTag.Suspended:
-          current = current.thunk();
-          break;
-        case WaveTag.Async:
-          contextSwitch(current.op);
-          current = undefined;
-          break;
-        case WaveTag.Chain:
-          frameStack.push(makeFrame(current.bind));
-          current = current.inner;
-          break;
-        case WaveTag.Collapse:
-          frameStack.push(makeFoldFrame(current.success, current.failure));
-          current = current.inner;
-          break;
-        case WaveTag.InterruptibleRegion:
-          interruptRegionStack.push(current.flag);
-          frameStack.push(makeInterruptFrame(interruptRegionStack));
-          current = current.inner;
-          break;
-        case WaveTag.AccessRuntime:
-          current = io.pure(current.f(runtime)) as UnkIO;
-          break;
-        case WaveTag.AccessInterruptible:
-          current = io.pure(current.f(isInterruptible())) as UnkIO;
-          break;
-        default:
-          throw new Error(`Die: Unrecognized current type ${current}`);
+          case WaveTag.Pure:
+            current = next(current.value);
+            break;
+          case WaveTag.Raised:
+            if (current.error._tag === ExitTag.Interrupt) {
+              interrupted = true;
+            }
+            current = handle(current.error);
+            break;
+          case WaveTag.Completed:
+            if (current.exit._tag === ExitTag.Done) {
+              current = next(current.exit.value);
+            } else {
+              current = handle(current.exit);
+            }
+            break;
+          case WaveTag.Suspended:
+            current = current.thunk();
+            break;
+          case WaveTag.Async:
+            contextSwitch(current.op);
+            current = undefined;
+            break;
+          case WaveTag.Chain:
+            frameStack.push(makeFrame(current.bind));
+            current = current.inner;
+            break;
+          case WaveTag.Collapse:
+            frameStack.push(makeFoldFrame(current.success, current.failure));
+            current = current.inner;
+            break;
+          case WaveTag.InterruptibleRegion:
+            interruptRegionStack.push(current.flag);
+            frameStack.push(makeInterruptFrame(interruptRegionStack));
+            current = current.inner;
+            break;
+          case WaveTag.AccessRuntime:
+            current = io.pure(current.f(runtime)) as UnkIO;
+            break;
+          case WaveTag.AccessInterruptible:
+            current = io.pure(current.f(isInterruptible())) as UnkIO;
+            break;
+          default:
+            throw new Error(`Die: Unrecognized current type ${current}`);
         }
 
       } catch (e) {
