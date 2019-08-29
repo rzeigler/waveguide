@@ -1146,12 +1146,16 @@ export const instances: Monad2<URI> = {
   chain,
 } as const;
 
+export const wave = instances;
+
 export const parInstances: Applicative2<URI> = {
   URI,
   map,
   of: <E, A>(a: A): Wave<E, A> => pure(a),
   ap: parAp_
 } as const;
+
+export const parWave = parInstances
 
 export function getSemigroup<E, A>(s: Semigroup<A>): Semigroup<Wave<E, A>> {
   return {

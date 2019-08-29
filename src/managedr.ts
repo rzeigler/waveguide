@@ -157,6 +157,8 @@ export const instances: Monad3<URI> = {
   chain
 } as const;
 
+export const managedr = instances
+
 export function getSemigroup<R, E, A>(Semigroup: Semigroup<A>): Semigroup<ManagedR<R, E, A>> {
   return {
     concat(x: ManagedR<R, E, A>, y: ManagedR<R, E, A>): ManagedR<R, E, A> {

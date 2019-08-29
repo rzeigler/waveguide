@@ -437,9 +437,13 @@ export const instances: MonadThrow3<URI> = {
   throwError: <R, E, A>(e: E): WaveR<R, E, A> => raiseError(e)
 };
 
+export const waver = instances;
+
 export const parInstances: Applicative3<URI> = {
   URI,
   map,
   of: <R, E, A>(a: A): WaveR<R, E, A> => pure(a),
   ap: parAp_
 }
+
+export const parWaver = parInstances
