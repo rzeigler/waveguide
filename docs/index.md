@@ -98,15 +98,19 @@ Waveguide provides a number of useful modules. By function they are:
 
 ## A Note On Function Naming
 waveguide uses a slightly different naming convention from fp-ts.
-The two sets of instances for RIO are exported as `instances` and `parInstances` from `lib/io`.
+The two sets of instances for Wave are exported as `wave` and `parWave` from `waveguide/lib/wave`.
 Generally fp-ts modules export data first functions on the typeclass instances and data last functions from the module.
 Since there are a large number of IO functions that do not correspond to typeclass implementations waveguide takes a slightly different approach.
 In general, the module exports a number of data first functions such as:
-    * chain
-    * map
-    * chainError
+
+* chain
+* map
+* chainError
+
 It also exports a corresponding set of data last curried functions with the `With` suffix such as:
-    * chainWith
-    * mapWith
-    * chainErrorWith
+
+* chainWith
+* mapWith
+* chainErrorWith
+
 Combinators that take multiple RIOs are different. Don't be confused by `zipWith` for instance.
