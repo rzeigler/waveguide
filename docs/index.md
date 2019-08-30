@@ -82,18 +82,19 @@ There are corresponding functions for most actions with subtly different signatu
 
 ## Modules
 Waveguide provides a number of useful modules. By function they are:
-    - `waveguide/lib/wave` -- the core datatype
-    - `waveguide/lib/waver` -- the waver variant
-    - `waveguide/lib/managed` -- the resource management datatype
-    - `waveguide/lib/managedr` -- the resource management r variant
-    - `waveguide/lib/exit` -- the definition of the exit statuses
-    - `waveguide/lib/driver` -- the runloop of Wave may be useful if you are providing interop
-    - `waveguide/lib/ref` -- a mutable cell datatype
-    - `waveguide/lib/deferred` -- a set once awaitable mutable cell similar to Q's old Deferred.
-    - `waveguide/lib/semaphore` -- semaphore
-    - `waveguide/lib/mutex` -- mutex implemented as a semaphore with 1 permit
-    - `waveguide/lib/queue` -- various concurrent queues
-    - `waveguide/lib/console` -- the console.* functions wrapped for both Wave and WaveR
+
+- waveguide/lib/wave -- the core datatype
+- waveguide/lib/waver -- the waver variant
+- waveguide/lib/managed -- the resource management datatype
+- waveguide/lib/managedr -- the resource management r variant
+- waveguide/lib/exit -- the definition of the exit statuses
+- waveguide/lib/driver -- the runloop of Wave may be useful if you are providing interop
+- waveguide/lib/ref -- a mutable cell datatype
+- waveguide/lib/deferred -- a set once awaitable mutable cell similar to Q's old Deferred.
+- waveguide/lib/semaphore -- semaphore
+- waveguide/lib/mutex -- mutex implemented as a semaphore with 1 permit
+- waveguide/lib/queue -- various concurrent queues
+- waveguide/lib/console -- the console.* functions wrapped for both Wave and WaveR
 
 ## A Note On Function Naming
 waveguide uses a slightly different naming convention from fp-ts.
