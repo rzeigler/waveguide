@@ -129,6 +129,12 @@ export function use<R, E, A, B>(ma: ManagedR<R, E, A>, f: FunctionN<[A], WaveR<R
   return (r) => managed.use(ma(r), (a) => f(a)(r));
 }
 
+import { Leak } from "./managed";
+
+export function allocate<R, E, A>(ma: ManagedR<R, E, A>): WaveR<R, E, Leak<E, A>> {
+  return (r) => managed.allocate(ma(r));
+}
+
 /**
  * Curried data last form of use
  * @param f 

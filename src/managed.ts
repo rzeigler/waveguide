@@ -19,6 +19,7 @@ import { Monoid } from "fp-ts/lib/Monoid";
 import { Wave, Fiber } from "./wave";
 import * as io from "./wave";
 import { WaveR } from "./waver";
+import { ExitTag } from "./exit";
 
 export enum ManagedTag {
     Pure,
@@ -274,6 +275,43 @@ export function use<E, A, B>(res: Managed<E, A>, f: FunctionN<[A], Wave<E, B>>):
     return use(res.left, (a) => use(res.bind(a), f));
   default:
     throw new Error(`Die: Unrecognized current type ${res}`);
+  }
+}
+
+export interface Leak<E, A> {
+  a: A;
+  release: Wave<E, unknown>;
+}
+
+/**
+ * Create an IO action that will produce the resource for this managed along with its finalizer
+ * action seperately.
+ * 
+ * If an error occurs during allocation then any allocated resources should be cleaned up, but once the
+ * Leak object is produced it is the callers responsibility to ensure release is invoked.
+ * @param res 
+ */
+export function allocate<E, A>(res: Managed<E, A>): Wave<E, Leak<E, A>> {
+  switch(res._tag) {
+  case ManagedTag.Pure:
+    return io.pure({ a: res.value, release: io.unit });
+  case ManagedTag.Encase:
+    return io.map(res.acquire, (a) => ({ a, release: io.unit }));
+  case ManagedTag.Bracket:
+    return io.map(res.acquire, (a) => ({ a, release: res.release(a) }));
+  case ManagedTag.Suspended:
+    return io.chain(res.suspended, (wm) => allocate(wm));
+  case ManagedTag.Chain:
+    return io.bracketExit(
+      allocate(res.left), 
+      (leak, exit) => exit._tag === ExitTag.Done ? io.unit : leak.release, 
+      (leak) => 
+        io.map(
+          allocate(res.bind(leak.a)),
+          // Combine the finalizer actions of the outer and inner resource
+          (innerLeak) => ({ a: innerLeak.a, release: io.onComplete(innerLeak.release, leak.release) })
+        )
+    )
   }
 }
 
