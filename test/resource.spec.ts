@@ -38,6 +38,6 @@ describe("Resource", () => {
           ref.get
         );
       });
-    return expectExit(eff, done([[["a", "b", "c", "d"], "d"], []]));
+    return expectExit(eff, done([[["a", "b", "c", "d"], "d"], []]) as any);
   });
 });

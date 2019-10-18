@@ -153,7 +153,7 @@ describe("io", () => {
       expectExit(io.zip(
         io.race(io.delay(io.pure(42), 10), io.never),
         io.race(io.never, io.delay(io.pure(42), 14))
-      ), done([42, 42]))
+      ), done([42, 42] as const))
     );
     it("should resolve to a success on a failure", () =>
       expectExit(io.race(io.raiseError("boom!"), io.delay(io.pure(42), 10)), done(42))
