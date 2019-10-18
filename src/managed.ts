@@ -101,6 +101,14 @@ export interface BracketExit<E, A> {
   readonly release: FunctionN<[A, Exit<E, unknown>], Wave<E, unknown>>;
 }
 
+export function bracketExit<E, A>(acquire: Wave<E, A>, release: FunctionN<[A, Exit<E, unknown>], Wave<E, unknown>>): Managed<E, A> {
+  return {
+    _tag: ManagedTag.BracketExit,
+    acquire,
+    release
+  };
+}
+
 export interface Suspended<E, A> {
     readonly _tag: ManagedTag.Suspended;
     readonly suspended: Wave<E, Managed<E, A>>;
