@@ -23,6 +23,9 @@ import { Runtime } from "./runtime";
 import { tuple2, fst, snd } from "./support/util";
 import { MonadThrow3 } from "fp-ts/lib/MonadThrow";
 import { Applicative3 } from "fp-ts/lib/Applicative";
+import { Monoid } from "fp-ts/lib/Monoid";
+import { Semigroup } from "fp-ts/lib/Semigroup";
+import * as reader from "fp-ts/lib/Reader"
 
 export type WaveR<R, E, A> = (r: R) => Wave<E, A>;
 
@@ -447,3 +450,11 @@ export const parInstances: Applicative3<URI> = {
 }
 
 export const parWaver = parInstances
+
+export function getSemigroup<R, E, A>(m: Semigroup<A>): Semigroup<WaveR<R, E, A>> {
+  return reader.getSemigroup(wave.getSemigroup(m));
+}
+
+export function getMonoid<R, E, A>(m: Monoid<A>): Monoid<WaveR<R, E, A>> {
+  return reader.getMonoid(wave.getMonoid(m));
+}
