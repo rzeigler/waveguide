@@ -10,7 +10,7 @@
 [![Join the chat at https://gitter.im/waveguide-core/community](https://badges.gitter.im/waveguide-core/community.svg)](https://gitter.im/waveguide-core/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 Waveguide is a set of modules provided datatypes for describing effects. in Typescript in the [fp-ts](https://github.com/gcanti/fp-ts) ecosystem inspired by scala projects such as [ZIO](https://github.com/scalaz/scalaz-zio) and [cats-effect](https://github.com/typelevel/cats-effect). Waveguide allows you to communicate with the real world in a referentially transparent manner.
-For a quick overview of waveguide in action see [the tutorial tutorial](https://github.com/rzeigler/waveguide/blob/master/examples/)
+For a quick overview of waveguide in action see [the tutorial](https://github.com/rzeigler/waveguide/blob/master/examples/)
 A companion streaming library is being incubated in [waveguide-streams](https://github.com/rzeigler/waveguide-streams) 
 and will eventually become part of the core
 
