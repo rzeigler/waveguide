@@ -89,7 +89,7 @@ const rt: WaveR<https.Agent, Error, void> =
       })
     );
 
-const versus = managed.provideTo(agent, rt)
+const versus = managed.provideTo(agent as managed.Managed<Error, https.Agent>, rt)
 
 
 /**
@@ -104,6 +104,6 @@ const firstVersusIO = ["referential+transparency", "monad", "functor", "haskell"
 const printResults = waver.chain(firstVersusIO, (results) => waver.encaseWaveR(consoleIO.log(`winning query was ${results[0][0].q}`)));
 
 const log = 
-        managed.provideTo(agent, printResults);
+        managed.provideTo(agent as managed.Managed<Error, https.Agent>, printResults);
 
 wave.run(wave.applySecond(versus, log));

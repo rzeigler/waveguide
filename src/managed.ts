@@ -19,14 +19,15 @@ import { Monoid } from "fp-ts/lib/Monoid";
 import { Wave, Fiber } from "./wave";
 import * as io from "./wave";
 import { WaveR } from "./waver";
-import { ExitTag } from "./exit";
+import { ExitTag, Exit, done } from "./exit";
 
 export enum ManagedTag {
     Pure,
     Encase,
     Bracket,
     Suspended,
-    Chain
+    Chain,
+    BracketExit
 }
 
 /**
@@ -39,7 +40,8 @@ export type Managed<E, A> =
   Encase<E, A> |
   Bracket<E, A> |
   Suspended<E, A>  |
-  Chain<E, any, A>; // eslint-disable-line @typescript-eslint/no-explicit-any
+  Chain<E, any, A> |  // eslint-disable-line @typescript-eslint/no-explicit-any
+  BracketExit<E, A> ;
 
 
 export interface Pure<E, A> {
@@ -88,6 +90,20 @@ export interface Bracket<E, A> {
 export function bracket<E, A>(acquire: Wave<E, A>, release: FunctionN<[A], Wave<E, unknown>>): Managed<E, A> {
   return {
     _tag: ManagedTag.Bracket,
+    acquire,
+    release
+  };
+}
+
+export interface BracketExit<E, A> {
+  readonly _tag: ManagedTag.BracketExit;
+  readonly acquire: Wave<E, A>;
+  readonly release: FunctionN<[A, Exit<E, unknown>], Wave<E, unknown>>;
+}
+
+export function bracketExit<E, A>(acquire: Wave<E, A>, release: FunctionN<[A, Exit<E, unknown>], Wave<E, unknown>>): Managed<E, A> {
+  return {
+    _tag: ManagedTag.BracketExit,
     acquire,
     release
   };
@@ -269,12 +285,12 @@ export function use<E, A, B>(res: Managed<E, A>, f: FunctionN<[A], Wave<E, B>>):
     return io.chain(res.acquire, f);
   case ManagedTag.Bracket:
     return io.bracket(res.acquire, res.release, f);
+  case ManagedTag.BracketExit:
+    return io.bracketExit(res.acquire, (a, e) => res.release(a, e), f);
   case ManagedTag.Suspended:
     return io.chain(res.suspended, consume(f));
   case ManagedTag.Chain:
     return use(res.left, (a) => use(res.bind(a), f));
-  default:
-    throw new Error(`Die: Unrecognized current type ${res}`);
   }
 }
 
@@ -299,6 +315,9 @@ export function allocate<E, A>(res: Managed<E, A>): Wave<E, Leak<E, A>> {
     return io.map(res.acquire, (a) => ({ a, release: io.unit }));
   case ManagedTag.Bracket:
     return io.map(res.acquire, (a) => ({ a, release: res.release(a) }));
+  case ManagedTag.BracketExit:
+    // best effort, because we cannot know what the exit status here
+    return io.map(res.acquire, (a) => ({ a, release: res.release(a, done(undefined)) }));
   case ManagedTag.Suspended:
     return io.chain(res.suspended, (wm) => allocate(wm));
   case ManagedTag.Chain:
@@ -334,7 +353,7 @@ declare module "fp-ts/lib/HKT" {
 }
 export const instances: Monad2<URI> = {
   URI,
-  of: <E, A>(a: A): Managed<E, A> => pure(a),
+  of: <E, A>(a: A): Managed<E, A> => pure(a) as Managed<E, A>,
   map,
   ap: ap_,
   chain
@@ -353,6 +372,6 @@ export function getSemigroup<E, A>(Semigroup: Semigroup<A>): Semigroup<Managed<E
 export function getMonoid<E, A>(Monoid: Monoid<A>): Monoid<Managed<E, A>> {
   return {
     ...getSemigroup(Monoid),
-    empty: pure(Monoid.empty)
+    empty: pure(Monoid.empty) as Managed<E, A>
   }
 }

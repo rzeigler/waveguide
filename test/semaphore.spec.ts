@@ -67,7 +67,7 @@ describe("semaphore", () => {
               )
           )
       );
-    return expectExit(eff1, done([1, false]));
+    return expectExit(eff1, done([1, false] as const));
   });
   it("interrupts should release acquired permits for subsequent acquires to advance", () => {
     const eff = Do(io.instances)

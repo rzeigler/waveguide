@@ -157,7 +157,7 @@ declare module "fp-ts/lib/HKT" {
 }
 export const instances: Monad3<URI> = {
   URI,
-  of: <R, E, A>(a: A): ManagedR<R, E, A> => pure(a),
+  of: <R, E, A>(a: A): ManagedR<R, E, A> => pure(a) as unknown as ManagedR<R, E, A>,
   map,
   ap: ap_,
   chain
@@ -176,6 +176,6 @@ export function getSemigroup<R, E, A>(Semigroup: Semigroup<A>): Semigroup<Manage
 export function getMonoid<R, E, A>(Monoid: Monoid<A>): Monoid<ManagedR<R, E, A>> {
   return {
     ...getSemigroup(Monoid),
-    empty: pure(Monoid.empty)
+    empty: pure(Monoid.empty) as unknown as ManagedR<R, E, A>
   }
 }
