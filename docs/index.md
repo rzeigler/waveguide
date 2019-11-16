@@ -22,17 +22,18 @@ The primary difference is that Wave's are lazy and support cancellation and supp
 ### Constructing a Wave
 There are a number of ways of constructing IOs exported from the /lib/wave module
 They include
-    - `pure` -- create a successful Wave
-    - `raiseError` -- create a failed Wave
-    - `async` -- create an asynchronous effect based on callbacks
-    - `sync` -- create a synchronous efffect
+
+- `pure` -- create a successful Wave
+- `raiseError` -- create a failed Wave
+- `async` -- create an asynchronous effect based on callbacks
+- `sync` -- create a synchronous efffect
 
 ### Using a Wave
 For a quick overview of what Wave can do see the [tutorial](https://github.com/rzeigler/waveguide/blob/master/examples/)
 `Wave<E, A>` is a monad and exposes the relevant functions in a naming scheme similar to [fp-ts](https://github.com/gcanti/fp-ts/) along with typeclass instances for Monad and parallel Applicative.
 These instances are the exports io and par respectively from waveguide/lib/wave.
 
-As mentioend perviously, RIOs are lazy so they don't actually do anything until they are interpreted.
+As mentioned previously, Wavess are lazy so they don't actually do anything until they are interpreted.
 `run` will begin running a fiber and returns a cancellation action.
 `runToPromise` will return a promise of the result of the fiber, rejecting if a failure is encountered.
 `runToPromiseExit` will return a promise of an `Exit<E, A>` for the result of evaluation. This promis will not reject.
