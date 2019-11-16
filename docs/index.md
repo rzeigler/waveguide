@@ -15,15 +15,15 @@ import { Wave } from "waveguide/lib/wave"
 
 ## Overview of Wave
 The core data type in waveguide is the `Wave<E, A>`.
-You may think of a `RIO<E, A>` as a description of an action that may produce a value `A` or fail with error `E`
+You may think of a `Wave<E, A>` as a description of an action that may produce a value `A` or fail with error `E`
 In this way, Wave's are very similar to `() => Promise<A>` but with a typed error channel.
 The primary difference is that Wave's are lazy and support cancellation and support resource safety (that is interrupt aware)
 
 ### Constructing a Wave
 There are a number of ways of constructing IOs exported from the /lib/wave module
 They include
-    - `pure` -- create a successful IO
-    - `raiseError` -- create a failed IO
+    - `pure` -- create a successful Wave
+    - `raiseError` -- create a failed Wave
     - `async` -- create an asynchronous effect based on callbacks
     - `sync` -- create a synchronous efffect
 
@@ -33,16 +33,16 @@ For a quick overview of what Wave can do see the [tutorial](https://github.com/r
 These instances are the exports io and par respectively from waveguide/lib/wave.
 
 As mentioend perviously, RIOs are lazy so they don't actually do anything until they are interpreted.
-`unsafeRun` will begin running a fiber and returns a cancellation action.
-`unsafeRunToPromise` will return a promise of the result of the fiber, rejecting if a failure is encountered.
-`unsafeRunToPromiseTotal` will return a promise of an `Exit<E, A>` for the result of evaluation. This promis will not reject.
-Once an IO is launched its runloop will execute synchronous effects continuously until an asynchronous boundary is hit.
-If this is undesirable insert `io.shift` or `io.shiftAsync` calls at appropriate points.
-IO can be used to perform long-running tasks without resorting to service workers on the main thread in this way.
+`run` will begin running a fiber and returns a cancellation action.
+`runToPromise` will return a promise of the result of the fiber, rejecting if a failure is encountered.
+`runToPromiseExit` will return a promise of an `Exit<E, A>` for the result of evaluation. This promis will not reject.
+Once a Wave is launched its runloop will execute synchronous effects continuously until an asynchronous boundary is hit.
+If this is undesirable insert `shift` or `shiftAsync` calls at appropriate points.
+Wave can be used to perform long-running tasks without resorting to service workers on the main thread in this way.
 
 
 ### Resources
-Any Wave<E, A> may be safely used as a resource acquisition using the `bracket` or `bracketExit` combinators.
+Any `Wave<E, A>` may be safely used as a resource acquisition using the `bracket` or `bracketExit` combinators.
 Once the resource is acquired, the release action will always happen. 
 `bracketExit` is a more powerful form of `bracket` where the `Exit` of the resource use action is also available.
 If all you need is to ensure that an acquired resource is cleaned up, there is also the Resource data type which forms a Monad for nesting resource scopes.
@@ -100,7 +100,7 @@ Waveguide provides a number of useful modules. By function they are:
 waveguide uses a slightly different naming convention from fp-ts.
 The two sets of instances for Wave are exported as `wave` and `parWave` from `waveguide/lib/wave`.
 Generally fp-ts modules export data first functions on the typeclass instances and data last functions from the module.
-Since there are a large number of IO functions that do not correspond to typeclass implementations waveguide takes a slightly different approach.
+Since there are a large number of Wave functions that do not correspond to typeclass implementations waveguide takes a slightly different approach.
 In general, the module exports a number of data first functions such as:
 
 * chain
