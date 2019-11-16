@@ -114,4 +114,4 @@ It also exports a corresponding set of data last curried functions with the `Wit
 * mapWith
 * chainErrorWith
 
-Combinators that take multiple RIOs are different. Don't be confused by `zipWith` for instance.
+Combinators that take multiple Waves are different. Don't be confused by `zipWith` for instance.
