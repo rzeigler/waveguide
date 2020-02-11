@@ -458,3 +458,10 @@ export function getSemigroup<R, E, A>(m: Semigroup<A>): Semigroup<WaveR<R, E, A>
 export function getMonoid<R, E, A>(m: Monoid<A>): Monoid<WaveR<R, E, A>> {
   return reader.getMonoid(wave.getMonoid(m));
 }
+
+export function getRaceMonoid<R, E, A>(): Monoid<WaveR<R, E, A>> {
+  return {
+    concat: race,
+    empty: never
+  }
+}
