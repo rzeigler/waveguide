@@ -1171,3 +1171,10 @@ export function getMonoid<E, A>(m: Monoid<A>): Monoid<Wave<E, A>> {
     empty: pure(m.empty)
   }
 }
+
+export function getRaceMonoid<E, A>(): Monoid<Wave<E, A>> {
+  return {
+    concat: race,
+    empty: never
+  }
+}
